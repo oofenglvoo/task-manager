@@ -1,4 +1,6 @@
-import type { Status, Task } from './types'
+﻿import type { Status, Task } from './types'
+import { withAlpha } from './chartTheme'
+import type { ChartPalette } from './chartTheme'
 
 export const PRIORITY_LEVELS = [3, 2, 1] as const
 
@@ -21,12 +23,6 @@ export function priorityShortLabel(priority: number): string {
   if (priority >= 3) return '高'
   if (priority === 2) return '中'
   return '低'
-}
-
-export function priorityColor(priority: number): string {
-  if (priority >= 3) return '#ef4444'
-  if (priority === 2) return '#f59e0b'
-  return '#6b7280'
 }
 
 function recencyScore(updatedAt: string): number {
@@ -111,15 +107,22 @@ export interface MindMapTooltipMeta {
 export function formatTaskTooltip({ task, status }: MindMapTooltipMeta): string {
   const priority = priorityShortLabel(task.priority)
   const statusName = status?.name ?? '未分配'
+  const overdue = !task.completed_at && task.due_date != null && task.due_date < todayISO()
   const due = task.due_date
-    ? `${task.due_date}${!task.completed_at && task.due_date < todayISO() ? '（已逾期）' : ''}`
+    ? `${task.due_date}${overdue ? '（已逾期）' : ''}`
     : '未设置'
-  return [
-    `<div style="font-weight:600;margin-bottom:4px">${escapeHtml(task.title)}</div>`,
-    `<div>状态：${escapeHtml(statusName)}</div>`,
+  const doneCount = task.subtasks.filter((item) => item.is_done).length
+  const rows = [
+    `<div style="font-weight:600;font-size:13px;margin-bottom:6px">${escapeHtml(task.title)}</div>`,
+    `<div style="border-top:1px solid rgba(128,128,140,0.25);margin-bottom:5px"></div>`,
+    `<div>状态：${escapeHtml(statusName)}${task.completed_at ? '（已完成）' : ''}</div>`,
     `<div>优先级：${priority}</div>`,
-    `<div>截止：${escapeHtml(due)}</div>`,
-  ].join('')
+    `<div>截止：<span style="color:${overdue ? '#ef4444' : 'inherit'}">${escapeHtml(due)}</span></div>`,
+  ]
+  if (task.subtasks.length > 0) {
+    rows.push(`<div>子任务：${doneCount}/${task.subtasks.length}</div>`)
+  }
+  return rows.join('')
 }
 
 function escapeHtml(value: string): string {
@@ -147,54 +150,69 @@ export interface EChartsTreeNode {
   value?: number
   itemStyle?: { color?: string }
   symbolSize?: number
+  label?: { color?: string; fontWeight?: number }
+  lineStyle?: { color?: string }
   collapsed?: boolean
   children?: EChartsTreeNode[]
 }
 
-export function buildTreeData(tasks: Task[], statuses: Status[]): EChartsTreeNode {
+export function buildTreeData(
+  tasks: Task[],
+  statuses: Status[],
+  palette: ChartPalette,
+): EChartsTreeNode {
   const groups = groupTasks(tasks, statuses)
   return {
     id: ROOT_ID,
     name: ROOT_LABEL,
     value: tasks.length,
-    itemStyle: { color: '#5e6ad2' },
+    itemStyle: { color: palette.root },
+    symbolSize: 14,
     children: groups.map((group) => ({
       id: `priority-${group.priority}`,
       name: `${priorityShortLabel(group.priority)}优先级`,
       value: group.count,
-      itemStyle: { color: priorityColor(group.priority) },
+      itemStyle: { color: palette.priority[group.priority] },
+      symbolSize: 11,
+      lineStyle: { color: withAlpha(palette.priority[group.priority], 0.55) },
       children: group.branches.map((branch) => ({
         id: `status-${group.priority}-${branch.statusId ?? 'none'}`,
         name: branch.name,
         value: branch.total,
         itemStyle: { color: branch.color },
-        children: branchTasks(branch),
+        symbolSize: 9,
+        children: branchTasks(branch, palette),
       })),
     })),
   }
 }
 
-export function buildSunburstData(tasks: Task[], statuses: Status[]): EChartsTreeNode[] {
+export function buildSunburstData(
+  tasks: Task[],
+  statuses: Status[],
+  palette: ChartPalette,
+): EChartsTreeNode[] {
   const groups = groupTasks(tasks, statuses)
   return [
     {
       id: ROOT_ID,
       name: ROOT_LABEL,
       value: tasks.length,
-      itemStyle: { color: '#5e6ad2' },
+      itemStyle: { color: palette.root },
       children: groups.map((group) => ({
         id: `priority-${group.priority}`,
         name: `${priorityShortLabel(group.priority)}优先级`,
         value: group.count,
-        itemStyle: { color: priorityColor(group.priority) },
+        itemStyle: { color: palette.priority[group.priority] },
         children: group.branches.map((branch) => ({
           id: `status-${group.priority}-${branch.statusId ?? 'none'}`,
           name: branch.name,
           value: branch.total,
           itemStyle: { color: branch.color },
-          children: branchTasks(branch).map((node) => ({
+          children: branchTasks(branch, palette).map((node) => ({
             ...node,
             value: 1,
+            itemStyle: { color: withAlpha(node.itemStyle?.color ?? palette.root, 0.82) },
           })),
         })),
       })),
@@ -202,35 +220,45 @@ export function buildSunburstData(tasks: Task[], statuses: Status[]): EChartsTre
   ]
 }
 
-function branchTasks(branch: Branch): EChartsTreeNode[] {
+function branchTasks(branch: Branch, palette: ChartPalette): EChartsTreeNode[] {
   const nodes: EChartsTreeNode[] = branch.tasks.map((task) => ({
     id: `task-${task.id}`,
-    name: task.title,
+    name: task.completed_at != null ? `${task.title}` : task.title,
     value: 1,
-    itemStyle: { color: priorityColor(task.priority) },
+    itemStyle: { color: palette.priority[task.priority] ?? palette.muted },
+    label: task.completed_at != null ? { color: palette.muted } : undefined,
   }))
   if (branch.hidden > 0) {
     nodes.push({
       id: `more-${branch.statusId ?? 'none'}${MORE_SUFFIX}`,
       name: `还有 ${branch.hidden} 个…`,
       value: branch.hidden,
-      itemStyle: { color: '#94a3b8' },
+      itemStyle: { color: palette.muted },
+      label: { color: palette.muted },
     })
   }
   return nodes
 }
 
+
 export interface SankeyNode {
   name: string
   depth: number
   itemStyle?: { color?: string }
+  label?: { color?: string; fontWeight?: number }
+  // 自定义字段，供 label/tooltip formatter 使用
+  display?: string
+  taskId?: number
+  done?: boolean
+  completed?: number
+  total?: number
 }
 
 export interface SankeyLink {
   source: string
   target: string
   value: number
-  lineStyle?: { color?: string }
+  lineStyle?: { color?: string; opacity?: number }
 }
 
 export interface SankeyData {
@@ -239,65 +267,111 @@ export interface SankeyData {
 }
 
 // ECharts sankey 以 name 作为节点唯一键，同名状态（如不同优先级下的「待办」）
-// 会互相覆盖，因此内部用 `优先级::状态` 组合键，显示名由 label.formatter 还原。
+// 会互相覆盖，因此内部用组合键，显示名由 node.display 提供。
 export function sankeyNodeId(prefix: string, key: string): string {
   return `${prefix}::${key}`
 }
 
-export function buildSankeyData(tasks: Task[], statuses: Status[]): SankeyData {
+export function buildSankeyData(
+  tasks: Task[],
+  statuses: Status[],
+  palette: ChartPalette,
+): SankeyData {
   const groups = groupTasks(tasks, statuses)
-  const nodes: SankeyNode[] = [{ name: '全部任务', depth: 0 }]
+  const rootName = sankeyNodeId('root', 'all')
+  const nodes: SankeyNode[] = [
+    {
+      name: rootName,
+      depth: 0,
+      display: ROOT_LABEL,
+      itemStyle: { color: palette.root },
+      total: tasks.length,
+    },
+  ]
   const links: SankeyLink[] = []
-
-  nodes.push({ name: '已完成', depth: 1, itemStyle: { color: '#22c55e' } })
-  nodes.push({ name: '未完成', depth: 1, itemStyle: { color: '#ef4444' } })
-
-  const done = tasks.filter((task) => task.completed_at != null).length
-  const pending = tasks.length - done
-  if (done > 0) links.push({ source: '全部任务', target: '已完成', value: done })
-  if (pending > 0) links.push({ source: '全部任务', target: '未完成', value: pending })
 
   for (const group of groups) {
     const priorityId = sankeyNodeId('priority', String(group.priority))
-    nodes.push({
-      name: priorityId,
-      depth: 2,
-      itemStyle: { color: priorityColor(group.priority) },
-    })
+    const color = palette.priority[group.priority] ?? palette.muted
     const groupDone = group.branches
       .flatMap((branch) => branch.tasks)
       .filter((task) => task.completed_at != null).length
-    const groupPending = group.count - groupDone
-    if (groupDone > 0) {
-      links.push({
-        source: '已完成',
-        target: priorityId,
-        value: groupDone,
-        lineStyle: { color: priorityColor(group.priority) },
-      })
-    }
-    if (groupPending > 0) {
-      links.push({
-        source: '未完成',
-        target: priorityId,
-        value: groupPending,
-        lineStyle: { color: priorityColor(group.priority) },
-      })
-    }
+
+    nodes.push({
+      name: priorityId,
+      depth: 1,
+      display: `${priorityShortLabel(group.priority)}优先级 · ${groupDone}/${group.count}`,
+      itemStyle: { color },
+      label: { fontWeight: 600 },
+      completed: groupDone,
+      total: group.count,
+    })
+    links.push({
+      source: rootName,
+      target: priorityId,
+      value: group.count,
+      lineStyle: { color, opacity: 0.42 },
+    })
 
     for (const branch of group.branches) {
-      const statusId = sankeyNodeId('status', `${group.priority}-${branch.statusId ?? 'none'}`)
+      const statusId = sankeyNodeId(
+        'status',
+        `${group.priority}-${branch.statusId ?? 'none'}`,
+      )
       nodes.push({
         name: statusId,
-        depth: 3,
+        depth: 2,
+        display: branch.name,
         itemStyle: { color: branch.color },
+        total: branch.total,
       })
       links.push({
         source: priorityId,
         target: statusId,
         value: branch.total,
-        lineStyle: { color: branch.color },
+        lineStyle: { color: branch.color, opacity: 0.42 },
       })
+
+      for (const task of branch.tasks) {
+        const taskNodeId = sankeyNodeId('task', String(task.id))
+        nodes.push({
+          name: taskNodeId,
+          depth: 3,
+          display: task.title,
+          itemStyle: {
+            color: task.completed_at != null ? palette.done : color,
+          },
+          label: task.completed_at != null ? { color: palette.muted } : undefined,
+          taskId: task.id,
+          done: task.completed_at != null,
+        })
+        links.push({
+          source: statusId,
+          target: taskNodeId,
+          value: 1,
+          lineStyle: { color: branch.color, opacity: 0.32 },
+        })
+      }
+
+      if (branch.hidden > 0) {
+        const moreId = sankeyNodeId(
+          'more',
+          `${group.priority}-${branch.statusId ?? 'none'}`,
+        )
+        nodes.push({
+          name: moreId,
+          depth: 3,
+          display: `还有 ${branch.hidden} 个…`,
+          itemStyle: { color: palette.muted },
+          label: { color: palette.muted },
+        })
+        links.push({
+          source: statusId,
+          target: moreId,
+          value: branch.hidden,
+          lineStyle: { color: branch.color, opacity: 0.2 },
+        })
+      }
     }
   }
 

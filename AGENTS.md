@@ -90,8 +90,15 @@ Frontend, run from `frontend/`:
   not import `echarts` eagerly, and never `import * as echarts from 'echarts'` (full build).
 - `MindMapChart.tsx` owns `echarts.init`/`dispose`, `ResizeObserver`, and the click handler
   (task nodes are matched by `data.taskId` or an `id` of the form `task-<id>`).
-- Sankey node names must be unique: they use composite ids (`priority::N`, `status::N-ID`) and a
-  `displayName` helper strips the prefix for labels/tooltips.
+- Sankey node names must be unique: they use composite ids (`root::all`, `priority::N`,
+  `status::N-ID`, `task::ID`, `more::N-ID`) while the visible text comes from a `display` field
+  (so `label.formatter` reads `params.data.display`).
+- `lib/chartTheme.ts` provides `chartPalette(isDark)` / `chartTextStyle` / `chartTooltipStyle` /
+  `withAlpha`. Chart builders take the palette as an argument (they are pure); views rebuild
+  their option via `useMemo` on `resolvedTheme` so colors follow the theme. Do not reintroduce
+  hardcoded hex colors or `priorityColor()`.
+- Sankey / tree / sunburst all render **task titles on canvas** (truncated, full text in the
+  tooltip); swimlane renders them as chips with overdue / subtask-progress signals.
 - Drag-reorder only works when board sort is `position` (手动排序); other sorts disable drag.
   Dragging uses an explicit `GripVertical` handle (`SortableTaskCard`), not the whole card, and
   is also disabled while the list is truncated by the 60-per-page "显示更多" pagination.

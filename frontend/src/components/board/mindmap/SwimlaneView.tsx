@@ -1,7 +1,10 @@
 import { useMemo } from 'react'
+import { CheckSquare, CircleAlert } from 'lucide-react'
 import type { Status, Task } from '../../../lib/types'
-import { buildSwimlaneData, priorityColor, priorityLabel } from '../../../lib/mindmap'
-import { cn } from '../../../lib/utils'
+import { chartPalette } from '../../../lib/chartTheme'
+import { buildSwimlaneData, priorityLabel, priorityShortLabel } from '../../../lib/mindmap'
+import { cn, dueState } from '../../../lib/utils'
+import { usePreferences } from '../../../store/preferences'
 
 interface SwimlaneViewProps {
   tasks: Task[]
@@ -11,26 +14,37 @@ interface SwimlaneViewProps {
 }
 
 export function SwimlaneView({ tasks, statuses, height, onOpenTask }: SwimlaneViewProps) {
+  const { resolvedTheme } = usePreferences()
+  const isDark = resolvedTheme === 'dark'
+  const palette = useMemo(() => chartPalette(isDark), [isDark])
   const data = useMemo(() => buildSwimlaneData(tasks, statuses), [tasks, statuses])
 
-  const cellKey = (priority: number, statusId: number | null) => `${priority}-${statusId ?? 'none'}`
+  const cellKey = (priority: number, statusId: number | null) =>
+    `${priority}-${statusId ?? 'none'}`
 
   return (
     <div className="scrollbar-thin overflow-auto" style={{ maxHeight: height }}>
       <div className="flex min-w-max gap-3 p-1">
         <div className="flex shrink-0 flex-col gap-3">
-          <div className="h-6" />
+          <div className="h-7" />
           {data.priorities.map((priority) => (
             <div
               key={priority}
-              className="flex h-28 w-14 items-center justify-center rounded-md border text-xs font-semibold"
-              style={{
-                color: priorityColor(priority),
-                borderColor: priorityColor(priority),
-                backgroundColor: 'rgb(var(--c-elevated))',
-              }}
+              title={priorityLabel(priority)}
+              className="flex min-h-[104px] w-16 items-center gap-2 rounded-md border border-line bg-elevated/60 px-2"
             >
-              {priorityLabel(priority).replace('优先级', '')}
+              <span
+                className="h-8 w-1.5 shrink-0 rounded-full"
+                style={{ backgroundColor: palette.priority[priority] }}
+              />
+              <span
+                className="text-xs font-semibold leading-tight"
+                style={{ color: palette.priority[priority] }}
+              >
+                {priorityShortLabel(priority)}
+                <br />
+                优先
+              </span>
             </div>
           ))}
         </div>
@@ -38,9 +52,13 @@ export function SwimlaneView({ tasks, statuses, height, onOpenTask }: SwimlaneVi
         {data.statuses.map((column) => (
           <div key={column.id ?? 'none'} className="flex w-56 shrink-0 flex-col gap-3">
             <div
-              className="flex h-6 items-center rounded-md px-2 text-xs font-semibold"
-              style={{ color: column.color, backgroundColor: `${column.color}22` }}
+              className="flex h-7 items-center gap-1.5 rounded-md px-2 text-xs font-semibold"
+              style={{ color: column.color, backgroundColor: `${column.color}1f` }}
             >
+              <span
+                className="h-2 w-2 rounded-full"
+                style={{ backgroundColor: column.color }}
+              />
               {column.name}
             </div>
             {data.priorities.map((priority) => {
@@ -51,41 +69,30 @@ export function SwimlaneView({ tasks, statuses, height, onOpenTask }: SwimlaneVi
                 <div
                   key={cellKey(priority, column.id)}
                   className={cn(
-                    'h-28 overflow-hidden rounded-md border border-line/70 bg-surface p-1.5',
-                    !cell && 'opacity-40',
+                    'min-h-[104px] rounded-md border p-1.5',
+                    cell
+                      ? 'border-line/70 bg-surface'
+                      : 'border-dashed border-line/40 bg-transparent',
                   )}
                 >
                   {cell ? (
-                    <div className="flex h-full flex-col gap-1 overflow-y-auto">
+                    <div className="flex flex-col gap-1">
                       {cell.tasks.map((task) => (
-                        <button
+                        <SwimlaneTask
                           key={task.id}
-                          type="button"
+                          task={task}
+                          color={palette.priority[task.priority]}
+                          doneColor={palette.done}
                           onClick={() => onOpenTask(task.id)}
-                          title={task.title}
-                          className={cn(
-                            'flex w-full items-center gap-1.5 rounded border border-line/60 px-1.5 py-1 text-left text-[11px] leading-tight text-ink transition-colors hover:border-line-strong hover:bg-elevated',
-                            task.completed_at != null && 'text-muted line-through',
-                          )}
-                        >
-                          <span
-                            className="h-3 w-1 shrink-0 rounded-full"
-                            style={{ backgroundColor: priorityColor(task.priority) }}
-                          />
-                          <span className="truncate">{task.title}</span>
-                        </button>
+                        />
                       ))}
                       {cell.total > cell.tasks.length ? (
-                        <span className="px-1.5 text-[10px] text-muted">
+                        <span className="px-1.5 pt-0.5 text-[10px] text-muted">
                           还有 {cell.total - cell.tasks.length} 个…
                         </span>
                       ) : null}
                     </div>
-                  ) : (
-                    <div className="flex h-full items-center justify-center text-[10px] text-muted">
-                      无
-                    </div>
-                  )}
+                  ) : null}
                 </div>
               )
             })}
@@ -93,5 +100,47 @@ export function SwimlaneView({ tasks, statuses, height, onOpenTask }: SwimlaneVi
         ))}
       </div>
     </div>
+  )
+}
+
+function SwimlaneTask({
+  task,
+  color,
+  doneColor,
+  onClick,
+}: {
+  task: Task
+  color: string
+  doneColor: string
+  onClick: () => void
+}) {
+  const isDone = task.completed_at != null
+  const overdue = dueState(task.due_date, isDone) === 'overdue'
+  const doneCount = task.subtasks.filter((item) => item.is_done).length
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={task.title}
+      className={cn(
+        'flex w-full items-center gap-1.5 rounded border border-line/60 bg-elevated/40 px-1.5 py-1 text-left text-[11px] leading-tight text-ink transition-colors hover:border-line-strong hover:bg-elevated',
+        isDone && 'text-muted',
+      )}
+    >
+      <span
+        className="h-3.5 w-1 shrink-0 rounded-full"
+        style={{ backgroundColor: isDone ? doneColor : color }}
+      />
+      <span className={cn('flex-1 truncate', isDone && 'line-through')}>{task.title}</span>
+      {overdue ? (
+        <CircleAlert className="h-3 w-3 shrink-0 text-danger" />
+      ) : task.subtasks.length > 0 ? (
+        <span className="inline-flex shrink-0 items-center gap-0.5 text-[10px] text-muted">
+          <CheckSquare className="h-2.5 w-2.5" />
+          {doneCount}/{task.subtasks.length}
+        </span>
+      ) : null}
+    </button>
   )
 }

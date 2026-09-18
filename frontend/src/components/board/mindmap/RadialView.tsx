@@ -1,7 +1,9 @@
 import { useMemo } from 'react'
 import type { Status, Task } from '../../../lib/types'
 import type { EChartsOption } from '../../../lib/echarts'
+import { chartPalette, chartTooltipStyle } from '../../../lib/chartTheme'
 import { buildSunburstData, formatTaskTooltip } from '../../../lib/mindmap'
+import { usePreferences } from '../../../store/preferences'
 import { MindMapChart } from './MindMapChart'
 
 interface RadialViewProps {
@@ -17,12 +19,20 @@ function taskIdFromNodeId(id: string): number | null {
 }
 
 export function RadialView({ tasks, statuses, height, onOpenTask }: RadialViewProps) {
+  const { resolvedTheme } = usePreferences()
+  const isDark = resolvedTheme === 'dark'
+  const palette = useMemo(() => chartPalette(isDark), [isDark])
+  const tooltipStyle = useMemo(() => chartTooltipStyle(isDark), [isDark])
+
   const statusMap = useMemo(
     () => new Map(statuses.map((status) => [status.id, status])),
     [statuses],
   )
   const taskMap = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks])
-  const data = useMemo(() => buildSunburstData(tasks, statuses), [tasks, statuses])
+  const data = useMemo(
+    () => buildSunburstData(tasks, statuses, palette),
+    [tasks, statuses, palette],
+  )
 
   const option = useMemo<EChartsOption>(
     () => ({
@@ -30,9 +40,7 @@ export function RadialView({ tasks, statuses, height, onOpenTask }: RadialViewPr
       tooltip: {
         trigger: 'item',
         confine: true,
-        backgroundColor: 'rgb(var(--c-elevated))',
-        borderColor: 'rgb(var(--c-line))',
-        textStyle: { color: 'rgb(var(--c-ink))', fontSize: 12 },
+        ...tooltipStyle,
         formatter: (params: unknown) => {
           const p = params as { data?: { id?: string; name?: string } }
           const taskId = p.data?.id ? taskIdFromNodeId(p.data.id) : null
@@ -51,29 +59,57 @@ export function RadialView({ tasks, statuses, height, onOpenTask }: RadialViewPr
       series: [
         {
           type: 'sunburst',
-          radius: [0, '92%'],
+          radius: [0, '95%'],
+          center: ['50%', '50%'],
           sort: undefined,
           nodeClick: false,
           emphasis: { focus: 'ancestor' },
-          itemStyle: { borderColor: 'rgb(var(--c-canvas))', borderWidth: 1 },
+          itemStyle: { borderColor: palette.canvas, borderWidth: 1 },
           label: {
-            color: 'rgb(var(--c-ink))',
+            color: palette.text,
             fontSize: 11,
-            minAngle: 8,
-            rotate: 'radial',
+            fontFamily: 'Inter, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif',
+            minAngle: 6,
             overflow: 'truncate',
           },
+          labelLayout: { hideOverlap: true },
           levels: [
-            {},
-            { r0: '18%', r: '38%', label: { fontSize: 12, fontWeight: 600 } },
-            { r0: '38%', r: '62%', label: { fontSize: 11 } },
-            { r0: '62%', r: '92%', label: { fontSize: 10, minAngle: 12 } },
+            {
+              r0: '0%',
+              r: '18%',
+              label: {
+                rotate: 0,
+                fontSize: 12,
+                fontWeight: 600,
+                color: palette.text,
+              },
+            },
+            {
+              r0: '20%',
+              r: '42%',
+              label: { rotate: 'tangential', fontSize: 12, fontWeight: 600, minAngle: 12 },
+            },
+            {
+              r0: '42%',
+              r: '66%',
+              label: { rotate: 'tangential', fontSize: 11, minAngle: 14 },
+            },
+            {
+              r0: '66%',
+              r: '95%',
+              label: {
+                rotate: 'tangential',
+                fontSize: 10,
+                minAngle: 16,
+                color: palette.subText,
+              },
+            },
           ],
           data,
         },
       ],
     }),
-    [data, taskMap, statusMap],
+    [data, palette, taskMap, statusMap, tooltipStyle],
   )
 
   return (

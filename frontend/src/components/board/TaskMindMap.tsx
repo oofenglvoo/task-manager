@@ -1,6 +1,7 @@
 import { Suspense, lazy, useMemo, useState } from 'react'
 import { ChevronDown, ChevronUp, Plus } from 'lucide-react'
 import { useStatuses, useTasks } from '../../hooks/queries'
+import { cn } from '../../lib/utils'
 import { useUI } from '../../store/ui'
 import { EmptyState } from '../ui/EmptyState'
 import { Button } from '../ui/Button'
@@ -31,7 +32,18 @@ const VIEW_OPTIONS: Array<{ value: MindMapView; label: string }> = [
 const VIEW_STORAGE_KEY = 'task-manager:mindmap-view'
 const COLLAPSE_STORAGE_KEY = 'task-manager:mindmap-collapsed'
 
-const CHART_HEIGHT = 380
+const CHART_HEIGHTS: Record<MindMapView, number> = {
+  sankey: 440,
+  radial: 420,
+  tree: 440,
+  swimlane: 440,
+}
+
+const LEGEND: Array<{ priority: number; label: string; className: string }> = [
+  { priority: 3, label: '高', className: 'bg-priority-high' },
+  { priority: 2, label: '中', className: 'bg-priority-medium' },
+  { priority: 1, label: '低', className: 'bg-priority-low' },
+]
 
 function loadView(): MindMapView {
   try {
@@ -58,9 +70,11 @@ export function TaskMindMap() {
   const [view, setView] = useState<MindMapView>(loadView)
   const [collapsed, setCollapsed] = useState<boolean>(loadCollapsed)
 
+  const chartHeight = CHART_HEIGHTS[view]
+
   const viewProps = useMemo(
-    () => ({ tasks, statuses, height: CHART_HEIGHT, onOpenTask: openTask }),
-    [tasks, statuses, openTask],
+    () => ({ tasks, statuses, height: chartHeight, onOpenTask: openTask }),
+    [tasks, statuses, chartHeight, openTask],
   )
 
   function changeView(next: MindMapView) {
@@ -93,6 +107,14 @@ export function TaskMindMap() {
         <span className="text-xs text-muted">
           按优先级与最近更新时间综合排序，每分支最多展示 8 个
         </span>
+        <div className="ml-2 hidden items-center gap-2 sm:flex">
+          {LEGEND.map((item) => (
+            <span key={item.priority} className="inline-flex items-center gap-1 text-xs text-muted">
+              <span className={cn('h-2 w-2 rounded-full', item.className)} />
+              {item.label}
+            </span>
+          ))}
+        </div>
         <div className="ml-auto flex items-center gap-2">
           <Select
             value={view}
@@ -132,12 +154,17 @@ export function TaskMindMap() {
           }
         />
       ) : (
-        <div className="rounded-lg border border-line bg-surface p-1">
+        <div className="rounded-lg border border-line bg-canvas/30 p-3">
           <Suspense
-            fallback={<div className="animate-pulse rounded bg-elevated" style={{ height: CHART_HEIGHT }} />}
+            fallback={
+              <div
+                className="animate-pulse rounded bg-elevated"
+                style={{ height: chartHeight }}
+              />
+            }
           >
             {view === 'sankey' ? (
-              <SankeyView tasks={tasks} statuses={statuses} height={CHART_HEIGHT} />
+              <SankeyView {...viewProps} />
             ) : view === 'radial' ? (
               <RadialView {...viewProps} />
             ) : view === 'tree' ? (

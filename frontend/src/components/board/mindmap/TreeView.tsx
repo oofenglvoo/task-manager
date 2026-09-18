@@ -1,7 +1,9 @@
 import { useMemo } from 'react'
 import type { Status, Task } from '../../../lib/types'
 import type { EChartsOption } from '../../../lib/echarts'
+import { chartPalette, chartTooltipStyle } from '../../../lib/chartTheme'
 import { buildTreeData, formatTaskTooltip } from '../../../lib/mindmap'
+import { usePreferences } from '../../../store/preferences'
 import { MindMapChart } from './MindMapChart'
 
 interface TreeViewProps {
@@ -17,12 +19,20 @@ function taskIdFromNodeId(id: string): number | null {
 }
 
 export function TreeView({ tasks, statuses, height, onOpenTask }: TreeViewProps) {
+  const { resolvedTheme } = usePreferences()
+  const isDark = resolvedTheme === 'dark'
+  const palette = useMemo(() => chartPalette(isDark), [isDark])
+  const tooltipStyle = useMemo(() => chartTooltipStyle(isDark), [isDark])
+
   const statusMap = useMemo(
     () => new Map(statuses.map((status) => [status.id, status])),
     [statuses],
   )
   const taskMap = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks])
-  const data = useMemo(() => buildTreeData(tasks, statuses), [tasks, statuses])
+  const data = useMemo(
+    () => buildTreeData(tasks, statuses, palette),
+    [tasks, statuses, palette],
+  )
 
   const option = useMemo<EChartsOption>(
     () => ({
@@ -31,11 +41,9 @@ export function TreeView({ tasks, statuses, height, onOpenTask }: TreeViewProps)
         trigger: 'item',
         triggerOn: 'mousemove',
         confine: true,
-        backgroundColor: 'rgb(var(--c-elevated))',
-        borderColor: 'rgb(var(--c-line))',
-        textStyle: { color: 'rgb(var(--c-ink))', fontSize: 12 },
+        ...tooltipStyle,
         formatter: (params: unknown) => {
-          const p = params as { data?: { id?: string; name?: string; value?: number } }
+          const p = params as { data?: { id?: string; name?: string } }
           const taskId = p.data?.id ? taskIdFromNodeId(p.data.id) : null
           if (taskId != null) {
             const task = taskMap.get(taskId)
@@ -53,37 +61,45 @@ export function TreeView({ tasks, statuses, height, onOpenTask }: TreeViewProps)
         {
           type: 'tree',
           orient: 'LR',
-          left: 12,
-          right: 12,
-          top: 12,
-          bottom: 12,
-          symbol: 'emptyCircle',
-          symbolSize: 6,
+          left: 16,
+          right: 120,
+          top: 16,
+          bottom: 16,
+          symbol: 'circle',
+          symbolSize: 8,
           expandAndCollapse: false,
           initialTreeDepth: -1,
           roam: true,
-          lineStyle: { color: 'rgb(var(--c-line-strong))', width: 1.2, curveness: 0.5 },
+          initialZoom: 1,
+          lineStyle: { color: palette.lineStrong, width: 1.3, curveness: 0.5 },
+          itemStyle: { borderWidth: 0 },
           label: {
             position: 'left',
             verticalAlign: 'middle',
             align: 'right',
-            color: 'rgb(var(--c-ink))',
+            color: palette.text,
             fontSize: 11,
+            fontFamily: 'Inter, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif',
             overflow: 'truncate',
-            width: 130,
+            width: 140,
           },
           leaves: {
             label: {
               position: 'right',
               align: 'left',
+              color: palette.subText,
+              width: 150,
             },
           },
-          emphasis: { focus: 'descendant' },
+          emphasis: {
+            focus: 'descendant',
+            label: { fontSize: 12 },
+          },
           data: [data],
         },
       ],
     }),
-    [data, taskMap, statusMap],
+    [data, palette, taskMap, statusMap, tooltipStyle],
   )
 
   return (

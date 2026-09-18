@@ -2,33 +2,43 @@ import { useMemo } from 'react'
 import type { DefaultLabelFormatterCallbackParams } from 'echarts'
 import type { Status, Task } from '../../../lib/types'
 import type { EChartsOption } from '../../../lib/echarts'
-import { buildSankeyData, priorityShortLabel } from '../../../lib/mindmap'
+import { chartPalette, chartTooltipStyle, withAlpha } from '../../../lib/chartTheme'
+import { buildSankeyData, formatTaskTooltip } from '../../../lib/mindmap'
+import { usePreferences } from '../../../store/preferences'
 import { MindMapChart } from './MindMapChart'
 
 interface SankeyViewProps {
   tasks: Task[]
   statuses: Status[]
   height: number
+  onOpenTask: (taskId: number) => void
 }
 
-function nodeName(data: DefaultLabelFormatterCallbackParams['data']): string {
-  if (data && typeof data === 'object' && 'name' in data) {
-    const name = (data as { name?: unknown }).name
-    if (typeof name === 'string') return name
-  }
-  return ''
+interface SankeyNodeShape {
+  display?: string
+  taskId?: number
 }
 
-function displayName(raw: string): string {
-  const parts = raw.split('::')
-  if (parts[0] === 'priority') {
-    return `${priorityShortLabel(Number(parts[1]))}优先级`
-  }
-  return parts[parts.length - 1]
+function nodeOf(data: DefaultLabelFormatterCallbackParams['data']): SankeyNodeShape {
+  if (data && typeof data === 'object') return data as SankeyNodeShape
+  return {}
 }
 
-export function SankeyView({ tasks, statuses, height }: SankeyViewProps) {
-  const data = useMemo(() => buildSankeyData(tasks, statuses), [tasks, statuses])
+export function SankeyView({ tasks, statuses, height, onOpenTask }: SankeyViewProps) {
+  const { resolvedTheme } = usePreferences()
+  const isDark = resolvedTheme === 'dark'
+  const palette = useMemo(() => chartPalette(isDark), [isDark])
+  const tooltipStyle = useMemo(() => chartTooltipStyle(isDark), [isDark])
+
+  const statusMap = useMemo(
+    () => new Map(statuses.map((status) => [status.id, status])),
+    [statuses],
+  )
+  const taskMap = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks])
+  const data = useMemo(
+    () => buildSankeyData(tasks, statuses, palette),
+    [tasks, statuses, palette],
+  )
 
   const option = useMemo<EChartsOption>(
     () => ({
@@ -36,48 +46,64 @@ export function SankeyView({ tasks, statuses, height }: SankeyViewProps) {
       tooltip: {
         trigger: 'item',
         confine: true,
-        backgroundColor: 'rgb(var(--c-elevated))',
-        borderColor: 'rgb(var(--c-line))',
-        textStyle: { color: 'rgb(var(--c-ink))', fontSize: 12 },
+        ...tooltipStyle,
         formatter: (params: unknown) => {
           const p = params as {
             dataType?: string
-            data?: { name?: string; value?: number; source?: string; target?: string }
+            data?: { display?: string; value?: number; source?: string; target?: string; taskId?: number }
           }
           if (p.dataType === 'edge') {
-            const source = displayName(p.data?.source ?? '')
-            const target = displayName(p.data?.target ?? '')
-            return `<div style="font-weight:600">${source} → ${target}</div><div>任务数：${p.data?.value ?? 0}</div>`
+            return `<div style="font-weight:600">任务数：${p.data?.value ?? 0}</div>`
           }
-          return `<div style="font-weight:600">${displayName(p.data?.name ?? '')}</div>`
+          const taskId = p.data?.taskId
+          if (typeof taskId === 'number') {
+            const task = taskMap.get(taskId)
+            if (task) {
+              return formatTaskTooltip({
+                task,
+                status: task.status_id != null ? statusMap.get(task.status_id) : undefined,
+              })
+            }
+          }
+          return `<div style="font-weight:600">${p.data?.display ?? ''}</div>`
         },
       },
       series: [
         {
           type: 'sankey',
-          left: 8,
-          right: 8,
-          top: 8,
-          bottom: 8,
-          nodeWidth: 14,
-          nodeGap: 10,
+          left: 10,
+          right: 96,
+          top: 14,
+          bottom: 14,
+          nodeWidth: 15,
+          nodeGap: 12,
           draggable: false,
           emphasis: { focus: 'adjacency' },
           label: {
-            color: 'rgb(var(--c-ink))',
+            color: palette.text,
             fontSize: 11,
+            fontFamily: 'Inter, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif',
             formatter: (params: DefaultLabelFormatterCallbackParams) =>
-              displayName(nodeName(params.data)),
+              nodeOf(params.data).display ?? '',
           },
+          lineStyle: { curveness: 0.5 },
           data: data.nodes,
-          links: data.links,
+          links: data.links.map((link) => ({
+            ...link,
+            lineStyle: {
+              ...link.lineStyle,
+              color: link.lineStyle?.color
+                ? withAlpha(link.lineStyle.color, link.lineStyle.opacity ?? 0.4)
+                : undefined,
+            },
+          })),
         },
       ],
     }),
-    [data],
+    [data, palette, taskMap, statusMap, tooltipStyle],
   )
 
   return (
-    <MindMapChart option={option} height={height} ariaLabel="任务桑基流带图" />
+    <MindMapChart option={option} height={height} onTaskClick={onOpenTask} ariaLabel="任务桑基流带图" />
   )
 }
