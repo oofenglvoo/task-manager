@@ -19,7 +19,6 @@ import { LayoutGrid, Plus, Rows3 } from 'lucide-react'
 import { errorMessage } from '../../lib/api'
 import type { Task, TaskQuery } from '../../lib/types'
 import {
-  useProjects,
   useReorderTasks,
   useStatuses,
   useTasks,
@@ -34,6 +33,7 @@ import { EmptyState } from '../ui/EmptyState'
 import { Select } from '../ui/Input'
 import { TaskCard } from '../tasks/TaskCard'
 import { TaskCardSkeleton } from '../tasks/TaskCardSkeleton'
+import { BoardSummary } from './BoardSummary'
 import { SortableTaskCard } from './SortableTaskCard'
 
 const SORT_OPTIONS: Array<{
@@ -57,10 +57,9 @@ const SIZE_OPTIONS: Array<{ value: CardSize; label: string }> = [
 const PAGE_SIZE = 60
 
 export function BoardView() {
-  const { projectId, search, priority, tagId, openCreate } = useUI()
+  const { search, priority, tagId, openCreate } = useUI()
   const { cardSize, compact, setCardSize, setCompact } = usePreferences()
   const { data: statuses = [] } = useStatuses()
-  const { data: projects = [] } = useProjects()
   const reorderTasks = useReorderTasks()
   const updateTask = useUpdateTask()
   const { push } = useToast()
@@ -76,7 +75,6 @@ export function BoardView() {
 
   const query = useMemo<TaskQuery>(
     () => ({
-      project_id: projectId ?? undefined,
       status_id: statusFilter === '' ? undefined : statusFilter,
       priority: priority ?? undefined,
       tag_id: tagId ?? undefined,
@@ -84,7 +82,7 @@ export function BoardView() {
       sort: option.sort,
       order: option.order,
     }),
-    [projectId, statusFilter, priority, tagId, search, option.sort, option.order],
+    [statusFilter, priority, tagId, search, option.sort, option.order],
   )
 
   const { data: tasks = [], isLoading } = useTasks(query)
@@ -97,17 +95,12 @@ export function BoardView() {
     () => new Map(statuses.map((status) => [status.id, status])),
     [statuses],
   )
-  const projectMap = useMemo(
-    () => new Map(projects.map((project) => [project.id, project])),
-    [projects],
-  )
 
   const doneStatus = statuses.find((item) => item.is_done)
   const openStatus = statuses.find((item) => !item.is_done)
   const truncated = visibleCount < tasks.length
   const dragEnabled = manualOrder && !truncated
   const visibleTasks = truncated ? tasks.slice(0, visibleCount) : tasks
-  const showProject = projectId == null
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -152,6 +145,9 @@ export function BoardView() {
 
   return (
     <div className="flex h-full flex-col">
+      <div className="scrollbar-thin shrink-0 overflow-y-auto">
+        <BoardSummary />
+      </div>
       <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
         <span className="text-sm font-semibold text-ink">任务</span>
         <span className="text-xs text-muted">{tasks.length}</span>
@@ -267,8 +263,6 @@ export function BoardView() {
                       task.status_id != null ? statusMap.get(task.status_id) : undefined
                     }
                     statuses={statuses}
-                    project={projectMap.get(task.project_id)}
-                    showProject={showProject}
                     style={style}
                     compact={compact}
                     disabled={!dragEnabled}
@@ -289,8 +283,6 @@ export function BoardView() {
                         ? statusMap.get(activeTask.status_id)
                         : undefined
                     }
-                    project={projectMap.get(activeTask.project_id)}
-                    showProject={showProject}
                     style={style}
                     compact={compact}
                   />

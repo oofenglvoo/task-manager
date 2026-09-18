@@ -1,15 +1,3 @@
-export interface Project {
-  id: number
-  name: string
-  description: string | null
-  color: string
-  position: number
-  is_archived: boolean
-  task_count: number
-  created_at: string
-  updated_at: string
-}
-
 export interface Status {
   id: number
   name: string
@@ -34,7 +22,6 @@ export interface SubTask {
 
 export interface Task {
   id: number
-  project_id: number
   status_id: number | null
   title: string
   description: string | null
@@ -76,7 +63,6 @@ export interface Stats {
 
 export interface TaskInput {
   title: string
-  project_id: number
   status_id?: number | null
   description?: string | null
   priority?: number
@@ -85,7 +71,6 @@ export interface TaskInput {
 }
 
 export interface TaskQuery {
-  project_id?: number
   status_id?: number
   priority?: number
   tag_id?: number
@@ -106,7 +91,6 @@ export interface Preferences {
 }
 
 export interface ImportResult {
-  projects: number
   statuses: number
   tags: number
   tasks: number

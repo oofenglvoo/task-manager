@@ -89,3 +89,20 @@ export function dueBadgeClass(dueDate: string | null, isDone: boolean): string {
   if (state === 'today') return 'bg-warning/10 text-warning'
   return ''
 }
+
+export function noteSurfaceClass(priority: number, isDone: boolean): string {
+  if (isDone) return 'bg-note-low/40'
+  if (priority >= 3) return 'bg-note-high/70'
+  if (priority === 2) return 'bg-note-medium/60'
+  return 'bg-note-base'
+}
+
+export function noteTilt(id: number): number {
+  const angles = [-1.6, 1.1, -0.7, 1.8, -1.2, 0.6]
+  return angles[Math.abs(id) % angles.length]
+}
+
+export function isToday(value: string | null | undefined): boolean {
+  if (!value) return false
+  return value.slice(0, 10) === todayISO()
+}

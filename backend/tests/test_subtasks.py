@@ -1,5 +1,5 @@
-def test_subtask_crud(client, project, make_task):
-    task = make_task(project["id"])
+﻿def test_subtask_crud(client, make_task):
+    task = make_task()
 
     created = client.post(f"/api/tasks/{task['id']}/subtasks", json={"title": "第一步"})
     assert created.status_code == 201
@@ -24,8 +24,8 @@ def test_subtask_crud(client, project, make_task):
     assert len(client.get(f"/api/tasks/{task['id']}/subtasks").json()) == 1
 
 
-def test_subtasks_are_nested_in_task_payload(client, project, make_task):
-    task = make_task(project["id"])
+def test_subtasks_are_nested_in_task_payload(client, make_task):
+    task = make_task()
     client.post(f"/api/tasks/{task['id']}/subtasks", json={"title": "子任务"})
 
     fetched = client.get(f"/api/tasks/{task['id']}").json()
@@ -36,9 +36,9 @@ def test_subtask_of_missing_task_returns_404(client):
     assert client.get("/api/tasks/99999/subtasks").status_code == 404
 
 
-def test_subtask_id_must_belong_to_task(client, project, make_task):
-    first = make_task(project["id"])
-    second = make_task(project["id"])
+def test_subtask_id_must_belong_to_task(client, make_task):
+    first = make_task()
+    second = make_task()
     subtask = client.post(
         f"/api/tasks/{first['id']}/subtasks", json={"title": "子任务"}
     ).json()

@@ -36,16 +36,9 @@ def statuses(client):
 
 
 @pytest.fixture
-def project(client):
-    response = client.post("/api/projects", json={"name": "测试项目"})
-    assert response.status_code == 201, response.text
-    return response.json()
-
-
-@pytest.fixture
 def make_task(client):
-    def _make(project_id: int, **kwargs):
-        payload = {"title": "任务", "project_id": project_id}
+    def _make(**kwargs):
+        payload = {"title": "任务"}
         payload.update(kwargs)
         response = client.post("/api/tasks", json=payload)
         assert response.status_code == 201, response.text

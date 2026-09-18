@@ -12,35 +12,6 @@ UtcDatetime = Annotated[datetime, PlainSerializer(_serialize_utc, return_type=st
 
 
 # --------------------------------------------------------------------------- #
-# Project
-# --------------------------------------------------------------------------- #
-class ProjectCreate(BaseModel):
-    name: str = Field(min_length=1, max_length=200)
-    description: str | None = None
-    color: str = "#6366f1"
-
-
-class ProjectUpdate(BaseModel):
-    name: str | None = Field(default=None, min_length=1, max_length=200)
-    description: str | None = None
-    color: str | None = None
-
-
-class ProjectOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    name: str
-    description: str | None
-    color: str
-    position: int
-    is_archived: bool
-    task_count: int = 0
-    created_at: UtcDatetime
-    updated_at: UtcDatetime
-
-
-# --------------------------------------------------------------------------- #
 # Status
 # --------------------------------------------------------------------------- #
 class StatusCreate(BaseModel):
@@ -113,7 +84,6 @@ class SubTaskOut(BaseModel):
 # --------------------------------------------------------------------------- #
 class TaskCreate(BaseModel):
     title: str = Field(min_length=1, max_length=500)
-    project_id: int
     status_id: int | None = None
     description: str | None = None
     priority: int = Field(default=2, ge=1, le=3)
@@ -123,7 +93,6 @@ class TaskCreate(BaseModel):
 
 class TaskUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=500)
-    project_id: int | None = None
     status_id: int | None = None
     description: str | None = None
     priority: int | None = Field(default=None, ge=1, le=3)
@@ -133,7 +102,6 @@ class TaskUpdate(BaseModel):
 
 
 class TaskMove(BaseModel):
-    project_id: int | None = None
     status_id: int | None = None
     position: int | None = None
 
@@ -142,7 +110,6 @@ class TaskOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    project_id: int
     status_id: int | None
     title: str
     description: str | None
@@ -222,15 +189,6 @@ class BackgroundOut(BaseModel):
 # --------------------------------------------------------------------------- #
 # Export / Import
 # --------------------------------------------------------------------------- #
-class ExportProject(BaseModel):
-    id: int
-    name: str
-    description: str | None = None
-    color: str = "#6366f1"
-    position: int = 0
-    is_archived: bool = False
-
-
 class ExportStatus(BaseModel):
     id: int
     name: str
@@ -253,7 +211,6 @@ class ExportSubTask(BaseModel):
 
 class ExportTask(BaseModel):
     id: int
-    project_id: int
     status_id: int | None = None
     title: str
     description: str | None = None
@@ -271,14 +228,12 @@ class ExportTask(BaseModel):
 class ExportData(BaseModel):
     version: int = 1
     exported_at: datetime | None = None
-    projects: list[ExportProject] = Field(default_factory=list)
     statuses: list[ExportStatus] = Field(default_factory=list)
     tags: list[ExportTag] = Field(default_factory=list)
     tasks: list[ExportTask] = Field(default_factory=list)
 
 
 class ImportResult(BaseModel):
-    projects: int
     statuses: int
     tags: int
     tasks: int

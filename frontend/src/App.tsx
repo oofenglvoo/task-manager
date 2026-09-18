@@ -8,7 +8,6 @@ import { AppBackground } from './components/layout/AppBackground'
 import { AppShell } from './components/layout/AppShell'
 import { BoardView } from './components/board/BoardView'
 import { ListView } from './components/list/ListView'
-import { ProjectsView } from './components/projects/ProjectsView'
 import { SettingsView } from './components/settings/SettingsView'
 import { DashboardView } from './components/stats/DashboardView'
 
@@ -26,7 +25,6 @@ export default function App() {
                   <Route path="/board" element={<BoardView />} />
                   <Route path="/list" element={<ListView />} />
                   <Route path="/dashboard" element={<DashboardView />} />
-                  <Route path="/projects" element={<ProjectsView />} />
                   <Route path="/settings" element={<SettingsView />} />
                   <Route path="*" element={<Navigate to="/board" replace />} />
                 </Route>

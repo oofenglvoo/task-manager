@@ -31,7 +31,6 @@ def _get_task(db: Session, task_id: int) -> models.Task:
 
 @router.get("", response_model=list[schemas.TaskOut])
 def list_tasks(
-    project_id: int | None = None,
     status_id: int | None = None,
     priority: int | None = None,
     tag_id: int | None = None,
@@ -47,8 +46,6 @@ def list_tasks(
         raise HTTPException(status_code=400, detail="排序方向只能是 asc 或 desc")
 
     stmt = select(models.Task).where(models.Task.is_archived == archived)
-    if project_id is not None:
-        stmt = stmt.where(models.Task.project_id == project_id)
     if status_id is not None:
         stmt = stmt.where(models.Task.status_id == status_id)
     if priority is not None:

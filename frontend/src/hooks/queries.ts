@@ -3,19 +3,11 @@ import { api } from '../lib/api'
 import type { TaskInput, TaskQuery } from '../lib/types'
 
 export const keys = {
-  projects: (archived = false) => ['projects', archived] as const,
   statuses: ['statuses'] as const,
   tags: ['tags'] as const,
   tasks: (query: TaskQuery) => ['tasks', query] as const,
   task: (id: number) => ['task', id] as const,
-  stats: (projectId?: number) => ['stats', projectId ?? 'all'] as const,
-}
-
-export function useProjects(archived = false) {
-  return useQuery({
-    queryKey: keys.projects(archived),
-    queryFn: () => api.projects.list(archived),
-  })
+  stats: ['stats'] as const,
 }
 
 export function useStatuses() {
@@ -41,11 +33,8 @@ export function useTask(id: number | null) {
   })
 }
 
-export function useStats(projectId?: number) {
-  return useQuery({
-    queryKey: keys.stats(projectId),
-    queryFn: () => api.stats.get(projectId),
-  })
+export function useStats() {
+  return useQuery({ queryKey: keys.stats, queryFn: () => api.stats.get() })
 }
 
 function useInvalidateTasks() {
@@ -54,7 +43,6 @@ function useInvalidateTasks() {
     void qc.invalidateQueries({ queryKey: ['tasks'] })
     void qc.invalidateQueries({ queryKey: ['task'] })
     void qc.invalidateQueries({ queryKey: ['stats'] })
-    void qc.invalidateQueries({ queryKey: ['projects'] })
   }
 }
 
@@ -100,7 +88,7 @@ export function useMoveTask() {
       data,
     }: {
       id: number
-      data: { project_id?: number; status_id?: number; position?: number }
+      data: { status_id?: number; position?: number }
     }) => api.tasks.move(id, data),
     onSuccess: invalidate,
   })
@@ -120,58 +108,6 @@ export function useArchiveTask() {
     mutationFn: ({ id, isArchived }: { id: number; isArchived: boolean }) =>
       api.tasks.archive(id, isArchived),
     onSuccess: invalidate,
-  })
-}
-
-export function useCreateProject() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (data: { name: string; description?: string | null; color?: string }) =>
-      api.projects.create(data),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ['projects'] }),
-  })
-}
-
-export function useUpdateProject() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: ({
-      id,
-      data,
-    }: {
-      id: number
-      data: Partial<{ name: string; description: string | null; color: string }>
-    }) => api.projects.update(id, data),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ['projects'] }),
-  })
-}
-
-export function useDeleteProject() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (id: number) => api.projects.remove(id),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['projects'] })
-      void qc.invalidateQueries({ queryKey: ['tasks'] })
-      void qc.invalidateQueries({ queryKey: ['stats'] })
-    },
-  })
-}
-
-export function useArchiveProject() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: ({ id, isArchived }: { id: number; isArchived: boolean }) =>
-      api.projects.archive(id, isArchived),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ['projects'] }),
-  })
-}
-
-export function useReorderProjects() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (orderedIds: number[]) => api.projects.reorder(orderedIds),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ['projects'] }),
   })
 }
 

@@ -1,16 +1,16 @@
 # 任务管理系统
 
-一个中文任务管理应用：FastAPI + SQLite 后端，React + TypeScript 前端。以卡片网格展示任务，
-支持拖拽排序、列表筛选、项目/状态/标签管理与统计仪表盘。
+一个中文任务管理应用：FastAPI + SQLite 后端，React + TypeScript 前端。以**便签墙**形式展示任务，
+支持拖拽排序、列表筛选、状态/标签管理与统计总览。
 
 ## 功能
 
-- **任务看板**：任务以响应式卡片网格展示，直接看到标题、描述、状态、优先级、截止日期、标签与子任务进度；卡片上可勾选完成、点击优先级/状态快速修改；支持拖拽排序（手柄）、紧凑/宽松密度与三档卡片大小
-- **列表视图**：搜索标题/描述，按项目、状态、优先级、标签筛选，按列排序，查看/恢复归档任务
+- **任务看板（便签墙）**：任务以彩色便签卡片错落排布，按优先级自动取便签底色并带轻微倾斜（悬停摆正）；卡片显示标题、描述、状态、优先级、截止日期、标签、子任务进度，以及**创建时间与最后修改时间**；卡片上可勾选完成、点击优先级/状态快速修改、编辑；支持拖拽排序（手柄）、紧凑/宽松密度与三档卡片大小
+- **顶部任务总览**：主页最上方显示全部任务情况——总任务/进行中/已完成/完成率/已逾期/7 天内到期数字卡，按状态与优先级分布条形图，以及今日到期/逾期提醒
+- **列表视图**：搜索标题/描述，按状态、优先级、标签筛选，按列排序，查看/恢复归档任务
 - **任务详情**：编辑标题、描述、优先级、截止日期、标签；管理子任务（增删改、勾选）；归档/删除
-- **项目管理**：创建、编辑、颜色标记、归档、删除
 - **状态与标签管理**：增删改、颜色、排序；状态可标记为「已完成」（任务进入后自动记录完成时间）
-- **统计仪表盘**：总任务、进行中、已完成、完成率、逾期、7 天内到期，以及按状态/优先级分布
+- **统计仪表盘**：与主页总览同源的完整统计（数字卡 + 状态/优先级分布）
 - **界面**：默认收起左侧导航（顶部按钮展开），全宽展示任务看板
 - **外观设置**：深色 / 浅色 / 跟随系统主题（顶栏可快捷切换）、卡片大小（小/中/大）、显示密度（宽松/紧凑）、自定义背景图片（本地上传或图片链接）；偏好保存在后端并在浏览器缓存
 
@@ -32,16 +32,16 @@
 │   │   ├── models.py   # SQLAlchemy 模型
 │   │   ├── schemas.py  # Pydantic 模型（UTC 时间序列化为 Z 结尾）
 │   │   ├── crud.py     # 任务/排序等业务逻辑
-│   │   ├── seed.py     # 默认状态与项目
-│   │   ├── database.py # 引擎与会话（TASK_DB_PATH 可覆盖数据库路径）
-│   │   └── routers/    # projects / statuses / tags / tasks / subtasks / stats
+│   │   ├── seed.py     # 默认状态
+│   │   ├── database.py # 引擎、会话与 ensure_schema() 迁移（TASK_DB_PATH 可覆盖数据库路径）
+│   │   └── routers/    # statuses / tags / tasks / subtasks / stats
 │   └── tests/          # pytest 测试
 ├── frontend/           # React SPA
 │   └── src/
 │       ├── lib/        # api 封装、类型、工具
 │       ├── hooks/      # TanStack Query 查询与变更
-│       ├── store/      # 全局 UI 状态、Toast
-│       └── components/ # layout / board / list / tasks / projects / settings / stats / ui
+│       ├── store/      # 全局 UI 状态、Toast、外观偏好
+│       └── components/ # layout / board / list / tasks / settings / stats / ui
 ├── data/               # 运行时 SQLite 数据库（gitignore）
 ├── scripts/run.mjs     # 一键运行脚本（装依赖 + 构建前端 + 启动后端）
 ├── package.json        # 根脚本入口：npm run dev / start / build / serve
@@ -112,7 +112,7 @@ npm run lint
 | `TASK_DB_PATH` | 覆盖数据库文件路径（绝对路径），默认 `data/tasks.db` |
 | `VITE_API_BASE` | 前端 API 基础地址，默认走 Vite 代理的相对路径 `/api` |
 
-外观偏好（主题、卡片大小、背景图片）保存到**后端**（`/api/settings`），同时在浏览器
+外观偏好（主题、卡片大小、显示密度、背景图片）保存到**后端**（`/api/settings`），同时在浏览器
 `localStorage` 缓存一份以避免首屏闪烁，因此换浏览器/设备也能保持一致。本地上传的背景图片
 保存到 `data/backgrounds/`。
 
@@ -121,7 +121,7 @@ npm run lint
 - 全部业务数据保存在 SQLite 文件 `data/tasks.db`（可用环境变量 `TASK_DB_PATH` 覆盖路径）。
 - **备份**：直接复制 `data/tasks.db`；或使用应用内「设置 → 数据 → 导出备份」下载 JSON。
 - **恢复**：用导出的 JSON 通过「设置 → 数据 → 导入备份」还原；导入会**覆盖**当前全部数据
-  （项目、状态、标签、任务、子任务）。
+  （状态、标签、任务、子任务）。
 - 数据库文件已加入 `.gitignore`，不会随代码提交；注意 `git clean -xdf` 会删除它。
 
 ## 初始化数据
@@ -129,7 +129,9 @@ npm run lint
 首次启动（导入 `app.main`）会自动建表并写入默认数据：
 
 - 状态：待办、进行中、已完成（已完成 `is_done=true`）
-- 项目：默认项目
+
+> 历史版本曾包含「项目」概念，现已移除。启动时 `ensure_schema()` 会自动把旧数据库中的
+> `projects` 表与 `tasks.project_id` 列安全移除，**保留全部任务及其时间戳**。
 
 ## API 概览
 
@@ -138,28 +140,24 @@ npm run lint
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | GET | `/api/health` | 健康检查 |
-| GET/POST | `/api/projects` | 项目列表 / 创建 |
-| PUT/DELETE | `/api/projects/{id}` | 更新 / 删除项目 |
-| POST | `/api/projects/{id}/archive` | 归档 / 恢复项目 |
-| PUT | `/api/projects/reorder` | 项目排序 |
 | GET/POST | `/api/statuses` | 状态列表 / 创建 |
 | PUT/DELETE | `/api/statuses/{id}` | 更新 / 删除状态（被任务使用时返回 400） |
 | PUT | `/api/statuses/reorder` | 状态排序 |
 | GET/POST | `/api/tags` | 标签列表 / 创建 |
 | PUT/DELETE | `/api/tags/{id}` | 更新 / 删除标签 |
-| GET/POST | `/api/tasks` | 任务列表（支持 `project_id`、`status_id`、`priority`、`tag_id`、`q`、`archived`、`sort`、`order`）/ 创建 |
+| GET/POST | `/api/tasks` | 任务列表（支持 `status_id`、`priority`、`tag_id`、`q`、`archived`、`sort`、`order`）/ 创建 |
 | GET/PUT/DELETE | `/api/tasks/{id}` | 查询 / 更新 / 删除任务 |
-| PUT | `/api/tasks/{id}/move` | 移动任务（改项目/状态/位置） |
+| PUT | `/api/tasks/{id}/move` | 移动任务（改状态/位置） |
 | POST | `/api/tasks/{id}/archive` | 归档 / 恢复任务 |
 | PUT | `/api/tasks/reorder` | 任务排序 |
 | GET/POST | `/api/tasks/{id}/subtasks` | 子任务列表 / 创建 |
 | PUT/DELETE | `/api/tasks/{id}/subtasks/{subtask_id}` | 更新 / 删除子任务 |
-| GET | `/api/stats` | 统计（可用 `project_id` 限定项目） |
+| GET | `/api/stats` | 统计（全部任务） |
 | GET/PUT | `/api/settings` | 外观偏好（主题 / 卡片大小 / 紧凑模式 / 背景 URL） |
 | POST | `/api/backgrounds` | 上传背景图片（multipart，≤8MB），返回 `{ url }` |
 | GET/DELETE | `/api/backgrounds/{file}` | 读取 / 删除背景图片 |
 | GET | `/api/export` | 导出全部数据为 JSON |
-| POST | `/api/import` | 导入 JSON（覆盖现有全部数据） |
+| POST | `/api/import` | 导入 JSON（覆盖现有全部数据；兼容含 `projects` 字段的旧备份） |
 
 ## 约定
 
@@ -167,5 +165,6 @@ npm run lint
 - `priority` 为整数 1/2/3（低/中/高）。
 - 时间以无时区的 UTC 存储，序列化时以 `Z` 结尾。
 - 任务进入 `is_done=true` 的状态会自动写入 `completed_at`，移出时清空。
+- 每个任务即一个独立条目，不再有「项目」层级。
 
 更多开发与踩坑说明见 [AGENTS.md](./AGENTS.md)。

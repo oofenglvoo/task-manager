@@ -9,7 +9,6 @@ from .database import Base, SessionLocal, engine, ensure_schema
 from .routers import (
     backgrounds,
     data,
-    projects,
     settings,
     stats,
     statuses,
@@ -40,7 +39,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(projects.router)
 app.include_router(statuses.router)
 app.include_router(tags.router)
 app.include_router(tasks.router)

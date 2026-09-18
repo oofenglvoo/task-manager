@@ -8,14 +8,7 @@ import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
 
 export function AppShell() {
-  const {
-    createOpen,
-    closeCreate,
-    createStatusId,
-    projectId,
-    editTaskId,
-    closeEdit,
-  } = useUI()
+  const { createOpen, closeCreate, createStatusId, editTaskId, closeEdit } = useUI()
   const { data: editTask } = useTask(editTaskId)
 
   return (
@@ -31,7 +24,6 @@ export function AppShell() {
         open={createOpen}
         onClose={closeCreate}
         defaultStatusId={createStatusId}
-        defaultProjectId={projectId}
       />
       <TaskForm
         open={editTaskId != null}

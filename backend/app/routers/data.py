@@ -11,11 +11,6 @@ router = APIRouter(prefix="/api", tags=["data"])
 
 @router.get("/export", response_model=schemas.ExportData)
 def export_data(db: Session = Depends(get_db)):
-    projects = list(
-        db.scalars(
-            select(models.Project).order_by(models.Project.position, models.Project.id)
-        )
-    )
     statuses = list(
         db.scalars(
             select(models.Status).order_by(models.Status.position, models.Status.id)
@@ -36,17 +31,6 @@ def export_data(db: Session = Depends(get_db)):
     return schemas.ExportData(
         version=1,
         exported_at=utcnow(),
-        projects=[
-            schemas.ExportProject(
-                id=project.id,
-                name=project.name,
-                description=project.description,
-                color=project.color,
-                position=project.position,
-                is_archived=project.is_archived,
-            )
-            for project in projects
-        ],
         statuses=[
             schemas.ExportStatus(
                 id=status.id,
@@ -64,7 +48,6 @@ def export_data(db: Session = Depends(get_db)):
         tasks=[
             schemas.ExportTask(
                 id=task.id,
-                project_id=task.project_id,
                 status_id=task.status_id,
                 title=task.title,
                 description=task.description,
@@ -92,14 +75,9 @@ def export_data(db: Session = Depends(get_db)):
 
 @router.post("/import", response_model=schemas.ImportResult)
 def import_data(payload: schemas.ExportData, db: Session = Depends(get_db)):
-    project_ids = {project.id for project in payload.projects}
     tag_ids = {tag.id for tag in payload.tags}
 
     for task in payload.tasks:
-        if task.project_id not in project_ids:
-            raise HTTPException(
-                status_code=400, detail=f"任务「{task.title}」引用了不存在的项目"
-            )
         for tag_id in task.tag_ids:
             if tag_id not in tag_ids:
                 raise HTTPException(
@@ -118,21 +96,7 @@ def import_data(payload: schemas.ExportData, db: Session = Depends(get_db)):
     db.execute(delete(models.Task))
     db.execute(delete(models.Tag))
     db.execute(delete(models.Status))
-    db.execute(delete(models.Project))
     db.flush()
-
-    project_map: dict[int, int] = {}
-    for item in payload.projects:
-        project = models.Project(
-            name=item.name,
-            description=item.description,
-            color=item.color,
-            position=item.position,
-            is_archived=item.is_archived,
-        )
-        db.add(project)
-        db.flush()
-        project_map[item.id] = project.id
 
     status_map: dict[int, int] = {}
     for item in payload.statuses:
@@ -157,7 +121,6 @@ def import_data(payload: schemas.ExportData, db: Session = Depends(get_db)):
     subtask_count = 0
     for item in payload.tasks:
         task = models.Task(
-            project_id=project_map[item.project_id],
             status_id=status_map.get(item.status_id)
             if item.status_id is not None
             else None,
@@ -192,7 +155,6 @@ def import_data(payload: schemas.ExportData, db: Session = Depends(get_db)):
 
     db.commit()
     return schemas.ImportResult(
-        projects=len(payload.projects),
         statuses=len(payload.statuses),
         tags=len(payload.tags),
         tasks=task_count,

@@ -2,8 +2,6 @@ import { createContext, useContext, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 
 interface UIState {
-  projectId: number | null
-  setProjectId: (id: number | null) => void
   search: string
   setSearch: (value: string) => void
   priority: number | null
@@ -28,7 +26,6 @@ interface UIState {
 const UIContext = createContext<UIState | null>(null)
 
 export function UIProvider({ children }: { children: ReactNode }) {
-  const [projectId, setProjectId] = useState<number | null>(null)
   const [search, setSearch] = useState('')
   const [priority, setPriority] = useState<number | null>(null)
   const [tagId, setTagId] = useState<number | null>(null)
@@ -40,8 +37,6 @@ export function UIProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<UIState>(
     () => ({
-      projectId,
-      setProjectId,
       search,
       setSearch,
       priority,
@@ -66,7 +61,6 @@ export function UIProvider({ children }: { children: ReactNode }) {
       closeSidebar: () => setSidebarOpen(false),
     }),
     [
-      projectId,
       search,
       priority,
       tagId,

@@ -1,7 +1,6 @@
 import type {
   ImportResult,
   Preferences,
-  Project,
   Stats,
   Status,
   SubTask,
@@ -72,20 +71,6 @@ function qs(params: object): string {
 }
 
 export const api = {
-  projects: {
-    list: (archived = false) => request<Project[]>(`/api/projects${qs({ archived })}`),
-    create: (data: { name: string; description?: string | null; color?: string }) =>
-      request<Project>('/api/projects', 'POST', data),
-    update: (
-      id: number,
-      data: Partial<{ name: string; description: string | null; color: string }>,
-    ) => request<Project>(`/api/projects/${id}`, 'PUT', data),
-    remove: (id: number) => request<void>(`/api/projects/${id}`, 'DELETE'),
-    archive: (id: number, isArchived = true) =>
-      request<Project>(`/api/projects/${id}/archive`, 'POST', { is_archived: isArchived }),
-    reorder: (orderedIds: number[]) =>
-      request<void>('/api/projects/reorder', 'PUT', { ordered_ids: orderedIds }),
-  },
   statuses: {
     list: () => request<Status[]>('/api/statuses'),
     create: (data: { name: string; color?: string; is_done?: boolean }) =>
@@ -115,7 +100,7 @@ export const api = {
     remove: (id: number) => request<void>(`/api/tasks/${id}`, 'DELETE'),
     move: (
       id: number,
-      data: { project_id?: number; status_id?: number; position?: number },
+      data: { status_id?: number; position?: number },
     ) => request<Task>(`/api/tasks/${id}/move`, 'PUT', data),
     reorder: (orderedIds: number[]) =>
       request<void>('/api/tasks/reorder', 'PUT', { ordered_ids: orderedIds }),
@@ -135,8 +120,7 @@ export const api = {
       request<void>(`/api/tasks/${taskId}/subtasks/${id}`, 'DELETE'),
   },
   stats: {
-    get: (projectId?: number) =>
-      request<Stats>(`/api/stats${qs({ project_id: projectId })}`),
+    get: () => request<Stats>('/api/stats'),
   },
   settings: {
     get: () => request<Preferences>('/api/settings'),

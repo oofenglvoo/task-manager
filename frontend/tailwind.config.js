@@ -24,6 +24,12 @@ export default {
         success: 'rgb(var(--c-success) / <alpha-value>)',
         danger: 'rgb(var(--c-danger) / <alpha-value>)',
         warning: 'rgb(var(--c-warning) / <alpha-value>)',
+        note: {
+          base: 'rgb(var(--c-note-base) / <alpha-value>)',
+          low: 'rgb(var(--c-note-low) / <alpha-value>)',
+          medium: 'rgb(var(--c-note-medium) / <alpha-value>)',
+          high: 'rgb(var(--c-note-high) / <alpha-value>)',
+        },
       },
       fontFamily: {
         sans: [
@@ -46,6 +52,7 @@ export default {
       },
       boxShadow: {
         panel: 'var(--shadow-panel)',
+        note: 'var(--shadow-note)',
       },
     },
   },

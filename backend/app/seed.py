@@ -16,6 +16,4 @@ def seed_defaults(db: Session) -> None:
             db.add(
                 models.Status(name=name, color=color, is_done=is_done, position=index)
             )
-    if db.scalar(select(models.Project.id).limit(1)) is None:
-        db.add(models.Project(name="默认项目", color="#6366f1", position=1))
     db.commit()

@@ -1,5 +1,5 @@
 import { Moon, PanelLeft, Plus, Search, Sun } from 'lucide-react'
-import { useProjects, useTags } from '../../hooks/queries'
+import { useTags } from '../../hooks/queries'
 import { usePreferences } from '../../store/preferences'
 import { useUI } from '../../store/ui'
 import { Button } from '../ui/Button'
@@ -7,7 +7,6 @@ import { Input, Select } from '../ui/Input'
 
 export function Topbar() {
   const {
-    projectId,
     search,
     setSearch,
     priority,
@@ -17,10 +16,8 @@ export function Topbar() {
     openCreate,
     toggleSidebar,
   } = useUI()
-  const { data: projects = [] } = useProjects()
   const { data: tags = [] } = useTags()
   const { resolvedTheme, setTheme } = usePreferences()
-  const current = projects.find((project) => project.id === projectId)
 
   return (
     <header className="app-chrome flex h-14 shrink-0 items-center gap-3 border-b border-line bg-surface px-4">
@@ -32,9 +29,7 @@ export function Topbar() {
       >
         <PanelLeft className="h-4 w-4" />
       </button>
-      <span className="text-sm font-medium text-ink">
-        {current ? current.name : '全部任务'}
-      </span>
+      <span className="text-sm font-medium text-ink">全部任务</span>
 
       <div className="relative ml-auto w-56">
         <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />

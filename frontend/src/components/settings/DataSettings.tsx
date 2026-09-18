@@ -47,7 +47,7 @@ export function DataSettings() {
     try {
       const result = await api.data.importAll(pending)
       await queryClient.invalidateQueries()
-      push(`导入完成：${result.projects} 个项目、${result.tasks} 个任务`, 'success')
+      push(`导入完成：${result.tasks} 个任务、${result.subtasks} 个子任务`, 'success')
       setPending(null)
     } catch (error) {
       push(errorMessage(error), 'error')
@@ -85,7 +85,7 @@ export function DataSettings() {
           />
         </div>
         <p className="text-xs text-muted">
-          导出包含项目、状态、标签、任务与子任务；导入会
+          导出包含状态、标签、任务与子任务；导入会
           <strong className="text-danger">覆盖</strong>
           当前全部数据。
         </p>
@@ -94,7 +94,7 @@ export function DataSettings() {
       <ConfirmDialog
         open={pending != null}
         title="导入数据"
-        message="导入将清空当前所有项目、状态、标签与任务，并替换为备份内容，此操作不可撤销。确定继续吗？"
+        message="导入将清空当前所有状态、标签与任务，并替换为备份内容，此操作不可撤销。确定继续吗？"
         confirmLabel="覆盖导入"
         loading={busy}
         onCancel={() => setPending(null)}

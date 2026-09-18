@@ -14,7 +14,6 @@ import { cn, dueClass, dueLabel, formatDate, priorityLabel, PRIORITY_META } from
 import {
   useArchiveTask,
   useDeleteTask,
-  useProjects,
   useStatuses,
   useTags,
   useTasks,
@@ -37,9 +36,8 @@ const HEADERS: Array<{ field: SortField; label: string; className?: string }> = 
 ]
 
 export function ListView() {
-  const { projectId, search, setSearch, priority, setPriority, tagId, setTagId, openTask, openEdit } =
+  const { search, setSearch, priority, setPriority, tagId, setTagId, openTask, openEdit } =
     useUI()
-  const { data: projects = [] } = useProjects()
   const { data: statuses = [] } = useStatuses()
   const { data: tags = [] } = useTags()
   const archiveTask = useArchiveTask()
@@ -54,7 +52,6 @@ export function ListView() {
 
   const query = useMemo<TaskQuery>(
     () => ({
-      project_id: projectId ?? undefined,
       status_id: statusId === '' ? undefined : statusId,
       priority: priority ?? undefined,
       tag_id: tagId ?? undefined,
@@ -63,15 +60,11 @@ export function ListView() {
       sort,
       order,
     }),
-    [projectId, statusId, priority, tagId, search, archived, sort, order],
+    [statusId, priority, tagId, search, archived, sort, order],
   )
 
   const { data: tasks = [], isLoading } = useTasks(query)
 
-  const projectMap = useMemo(
-    () => new Map(projects.map((project) => [project.id, project])),
-    [projects],
-  )
   const statusMap = useMemo(
     () => new Map(statuses.map((status) => [status.id, status])),
     [statuses],
@@ -183,7 +176,6 @@ export function ListView() {
             </thead>
             <tbody>
               {tasks.map((task) => {
-                const project = projectMap.get(task.project_id)
                 const status = task.status_id != null ? statusMap.get(task.status_id) : undefined
                 const isDone = task.completed_at != null
                 return (
@@ -194,10 +186,6 @@ export function ListView() {
                   >
                     <td className="px-4 py-2">
                       <div className="flex items-center gap-2">
-                        <span
-                          className="h-3.5 w-1 rounded-full"
-                          style={{ backgroundColor: project?.color ?? '#6366f1' }}
-                        />
                         <span className={cn('text-ink', isDone && 'text-muted line-through')}>
                           {task.title}
                         </span>

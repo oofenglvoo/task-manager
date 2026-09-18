@@ -6,11 +6,10 @@ import {
   Percent,
   Layers,
 } from 'lucide-react'
-import { useProjects, useStats } from '../../hooks/queries'
-import { useUI } from '../../store/ui'
+import { useStats } from '../../hooks/queries'
 import { priorityLabel } from '../../lib/utils'
 import { LoadingBlock } from '../ui/Spinner'
-import { Select } from '../ui/Input'
+import { BarRow } from './BarRow'
 import { StatCard } from './StatCard'
 
 const PRIORITY_COLORS: Record<number, string> = {
@@ -20,9 +19,7 @@ const PRIORITY_COLORS: Record<number, string> = {
 }
 
 export function DashboardView() {
-  const { projectId, setProjectId } = useUI()
-  const { data: projects = [] } = useProjects()
-  const { data: stats, isLoading } = useStats(projectId ?? undefined)
+  const { data: stats, isLoading } = useStats()
 
   if (isLoading || !stats) return <LoadingBlock />
 
@@ -34,24 +31,8 @@ export function DashboardView() {
         <div className="flex items-center justify-between gap-3">
           <div>
             <h1 className="text-sm font-semibold text-ink">统计仪表盘</h1>
-            <p className="text-xs text-muted">
-              {projectId == null ? '全部项目' : '当前项目'}的任务概览
-            </p>
+            <p className="text-xs text-muted">全部任务概览</p>
           </div>
-          <Select
-            value={projectId ?? ''}
-            className="w-40"
-            onChange={(event) =>
-              setProjectId(event.target.value === '' ? null : Number(event.target.value))
-            }
-          >
-            <option value="">全部项目</option>
-            {projects.map((project) => (
-              <option key={project.id} value={project.id}>
-                {project.name}
-              </option>
-            ))}
-          </Select>
         </div>
 
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
@@ -121,36 +102,6 @@ export function DashboardView() {
             </div>
           </section>
         </div>
-      </div>
-    </div>
-  )
-}
-
-function BarRow({
-  label,
-  count,
-  total,
-  color,
-}: {
-  label: string
-  count: number
-  total: number
-  color: string
-}) {
-  const percent = total > 0 ? Math.round((count / total) * 100) : 0
-  return (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between text-xs">
-        <span className="text-ink-soft">{label}</span>
-        <span className="text-muted">
-          {count} · {percent}%
-        </span>
-      </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-line">
-        <div
-          className="h-full rounded-full transition-all"
-          style={{ width: `${percent}%`, backgroundColor: color }}
-        />
       </div>
     </div>
   )

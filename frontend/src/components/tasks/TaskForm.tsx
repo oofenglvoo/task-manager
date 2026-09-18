@@ -3,7 +3,6 @@ import { errorMessage } from '../../lib/api'
 import type { Task } from '../../lib/types'
 import {
   useCreateTask,
-  useProjects,
   useStatuses,
   useTags,
   useUpdateTask,
@@ -19,12 +18,10 @@ interface TaskFormProps {
   onClose: () => void
   task?: Task | null
   defaultStatusId?: number | null
-  defaultProjectId?: number | null
 }
 
 interface FormState {
   title: string
-  projectId: number | ''
   statusId: number | ''
   priority: number
   dueDate: string
@@ -34,7 +31,6 @@ interface FormState {
 
 const EMPTY: FormState = {
   title: '',
-  projectId: '',
   statusId: '',
   priority: 2,
   dueDate: '',
@@ -42,14 +38,7 @@ const EMPTY: FormState = {
   tagIds: [],
 }
 
-export function TaskForm({
-  open,
-  onClose,
-  task,
-  defaultStatusId,
-  defaultProjectId,
-}: TaskFormProps) {
-  const { data: projects = [] } = useProjects()
+export function TaskForm({ open, onClose, task, defaultStatusId }: TaskFormProps) {
   const { data: statuses = [] } = useStatuses()
   const { data: tags = [] } = useTags()
   const createTask = useCreateTask()
@@ -64,7 +53,6 @@ export function TaskForm({
     if (task) {
       setForm({
         title: task.title,
-        projectId: task.project_id,
         statusId: task.status_id ?? '',
         priority: task.priority,
         dueDate: task.due_date ?? '',
@@ -75,23 +63,21 @@ export function TaskForm({
     }
     setForm({
       ...EMPTY,
-      projectId: defaultProjectId ?? '',
       statusId: defaultStatusId ?? '',
     })
-  }, [open, task, defaultProjectId, defaultStatusId])
+  }, [open, task, defaultStatusId])
 
   useEffect(() => {
     if (!open || task) return
     setForm((prev) => {
-      const projectId = prev.projectId === '' && projects.length ? projects[0].id : prev.projectId
       const statusId =
         prev.statusId === '' && defaultStatusId == null && statuses.length
           ? statuses[0].id
           : prev.statusId
-      if (projectId === prev.projectId && statusId === prev.statusId) return prev
-      return { ...prev, projectId, statusId }
+      if (statusId === prev.statusId) return prev
+      return { ...prev, statusId }
     })
-  }, [open, task, projects, statuses, defaultStatusId])
+  }, [open, task, statuses, defaultStatusId])
 
   const pending = createTask.isPending || updateTask.isPending
 
@@ -101,13 +87,8 @@ export function TaskForm({
       setError('请输入任务标题')
       return
     }
-    if (form.projectId === '') {
-      setError('请选择所属项目')
-      return
-    }
     const payload = {
       title,
-      project_id: form.projectId,
       status_id: form.statusId === '' ? (task ? null : undefined) : form.statusId,
       priority: form.priority,
       due_date: form.dueDate || null,
@@ -156,24 +137,6 @@ export function TaskForm({
         </Field>
 
         <div className="grid grid-cols-2 gap-3">
-          <Field label="项目">
-            <Select
-              value={form.projectId}
-              onChange={(event) =>
-                setForm({
-                  ...form,
-                  projectId: event.target.value === '' ? '' : Number(event.target.value),
-                })
-              }
-            >
-              <option value="">请选择</option>
-              {projects.map((project) => (
-                <option key={project.id} value={project.id}>
-                  {project.name}
-                </option>
-              ))}
-            </Select>
-          </Field>
           <Field label="状态">
             <Select
               value={form.statusId}
@@ -192,9 +155,6 @@ export function TaskForm({
               ))}
             </Select>
           </Field>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
           <Field label="优先级">
             <Select
               value={form.priority}
@@ -205,14 +165,15 @@ export function TaskForm({
               <option value={3}>高</option>
             </Select>
           </Field>
-          <Field label="截止日期">
-            <Input
-              type="date"
-              value={form.dueDate}
-              onChange={(event) => setForm({ ...form, dueDate: event.target.value })}
-            />
-          </Field>
         </div>
+
+        <Field label="截止日期">
+          <Input
+            type="date"
+            value={form.dueDate}
+            onChange={(event) => setForm({ ...form, dueDate: event.target.value })}
+          />
+        </Field>
 
         <Field label="标签">
           <TagPicker

@@ -11,13 +11,11 @@ router = APIRouter(prefix="/api/stats", tags=["stats"])
 
 
 @router.get("", response_model=schemas.StatsOut)
-def get_stats(project_id: int | None = None, db: Session = Depends(get_db)):
+def get_stats(db: Session = Depends(get_db)):
     today = date.today()
     soon = today + timedelta(days=7)
 
     stmt = select(models.Task).options(selectinload(models.Task.status))
-    if project_id is not None:
-        stmt = stmt.where(models.Task.project_id == project_id)
     tasks = list(db.scalars(stmt))
 
     active = [task for task in tasks if not task.is_archived]

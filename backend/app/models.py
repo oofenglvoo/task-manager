@@ -32,29 +32,6 @@ task_tags = Table(
 )
 
 
-class Project(Base):
-    __tablename__ = "projects"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String(200), nullable=False)
-    description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    color: Mapped[str] = mapped_column(String(20), nullable=False, default="#6366f1")
-    position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=utcnow, onupdate=utcnow
-    )
-
-    tasks: Mapped[list["Task"]] = relationship(
-        back_populates="project", cascade="all, delete-orphan"
-    )
-
-    @property
-    def task_count(self) -> int:
-        return sum(1 for task in self.tasks if not task.is_archived)
-
-
 class Status(Base):
     __tablename__ = "statuses"
 
@@ -85,9 +62,6 @@ class Task(Base):
     __tablename__ = "tasks"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    project_id: Mapped[int] = mapped_column(
-        ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True
-    )
     status_id: Mapped[int | None] = mapped_column(
         ForeignKey("statuses.id", ondelete="SET NULL"), nullable=True, index=True
     )
@@ -103,7 +77,6 @@ class Task(Base):
     )
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
-    project: Mapped["Project"] = relationship(back_populates="tasks")
     status: Mapped["Status | None"] = relationship(back_populates="tasks")
     tags: Mapped[list["Tag"]] = relationship(
         secondary=task_tags, back_populates="tasks"

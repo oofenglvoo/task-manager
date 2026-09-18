@@ -2,7 +2,7 @@ import { GripVertical } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import type { CardSizeStyle } from '../../store/preferences'
-import type { Project, Status, Task } from '../../lib/types'
+import type { Status, Task } from '../../lib/types'
 import { cn } from '../../lib/utils'
 import { useUI } from '../../store/ui'
 import { TaskCard } from '../tasks/TaskCard'
@@ -11,8 +11,6 @@ interface SortableTaskCardProps {
   task: Task
   status?: Status
   statuses: Status[]
-  project?: Project
-  showProject?: boolean
   style: CardSizeStyle
   compact?: boolean
   onStatusChange: (taskId: number, statusId: number | null) => void
@@ -25,8 +23,6 @@ export function SortableTaskCard({
   task,
   status,
   statuses,
-  project,
-  showProject,
   style,
   compact,
   onStatusChange,
@@ -34,7 +30,7 @@ export function SortableTaskCard({
   onToggleDone,
   disabled,
 }: SortableTaskCardProps) {
-  const { openTask } = useUI()
+  const { openTask, openEdit } = useUI()
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: task.id, disabled })
 
@@ -64,12 +60,11 @@ export function SortableTaskCard({
         task={task}
         status={status}
         statuses={statuses}
-        project={project}
-        showProject={showProject}
         style={style}
         compact={compact}
         handle={handle}
         onOpen={() => openTask(task.id)}
+        onEdit={() => openEdit(task.id)}
         onStatusChange={(statusId) => onStatusChange(task.id, statusId)}
         onPriorityChange={(priority) => onPriorityChange(task.id, priority)}
         onToggleDone={() => onToggleDone(task)}

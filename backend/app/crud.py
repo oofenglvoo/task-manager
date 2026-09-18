@@ -11,10 +11,8 @@ def next_position(db: Session, model) -> int:
     return (max_pos or 0) + 1
 
 
-def next_task_position(db: Session, project_id: int) -> int:
-    max_pos = db.scalar(
-        select(func.max(models.Task.position)).where(models.Task.project_id == project_id)
-    )
+def next_task_position(db: Session) -> int:
+    max_pos = db.scalar(select(func.max(models.Task.position)))
     return (max_pos or 0) + 1
 
 
@@ -52,24 +50,15 @@ def load_tags(db: Session, tag_ids: list[int]) -> list[models.Tag]:
     return tags
 
 
-def get_project(db: Session, project_id: int) -> models.Project:
-    project = db.get(models.Project, project_id)
-    if project is None:
-        raise HTTPException(status_code=404, detail="项目不存在")
-    return project
-
-
 def create_task(db: Session, payload) -> models.Task:
-    get_project(db, payload.project_id)
     status = resolve_status(db, payload.status_id)
     task = models.Task(
-        project_id=payload.project_id,
         status_id=status.id if status is not None else None,
         title=_clean_title(payload.title),
         description=payload.description,
         priority=payload.priority,
         due_date=payload.due_date,
-        position=next_task_position(db, payload.project_id),
+        position=next_task_position(db),
     )
     if status is not None and status.is_done:
         task.completed_at = utcnow()
@@ -85,10 +74,6 @@ def update_task(db: Session, task: models.Task, payload) -> models.Task:
     tag_ids = data.pop("tag_ids", None)
     status_provided = "status_id" in data
     new_status_id = data.pop("status_id", None)
-
-    if "project_id" in data and data["project_id"] != task.project_id:
-        get_project(db, data["project_id"])
-        task.position = next_task_position(db, data["project_id"])
 
     if "title" in data and data["title"] is not None:
         data["title"] = _clean_title(data["title"])
@@ -114,11 +99,6 @@ def update_task(db: Session, task: models.Task, payload) -> models.Task:
 
 
 def move_task(db: Session, task: models.Task, payload) -> models.Task:
-    if payload.project_id is not None and payload.project_id != task.project_id:
-        get_project(db, payload.project_id)
-        task.project_id = payload.project_id
-        task.position = next_task_position(db, payload.project_id)
-
     if payload.status_id is not None:
         status = db.get(models.Status, payload.status_id)
         if status is None:

@@ -22,8 +22,8 @@ def test_update_status(client, statuses):
     assert updated["is_done"] is True
 
 
-def test_delete_status_in_use_is_blocked(client, project, statuses, make_task):
-    make_task(project["id"], status_id=statuses[0]["id"])
+def test_delete_status_in_use_is_blocked(client, statuses, make_task):
+    make_task(status_id=statuses[0]["id"])
     response = client.delete(f"/api/statuses/{statuses[0]['id']}")
     assert response.status_code == 400
     assert "移动" in response.json()["detail"]

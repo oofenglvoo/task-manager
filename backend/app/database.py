@@ -33,7 +33,7 @@ class Base(DeclarativeBase):
 
 
 def ensure_schema() -> None:
-    """Apply additive migrations that create_all cannot handle (new columns)."""
+    """Apply migrations that create_all cannot handle (new columns, dropped ones)."""
     with engine.begin() as connection:
         columns = {
             row[1]
@@ -43,6 +43,71 @@ def ensure_schema() -> None:
             connection.exec_driver_sql(
                 "ALTER TABLE preferences ADD COLUMN compact BOOLEAN NOT NULL DEFAULT 0"
             )
+        _drop_projects(connection)
+
+
+def _drop_projects(connection) -> None:
+    """Remove the legacy project concept, preserving every task row.
+
+    `create_all` never drops columns or tables, so an existing database still has
+    `tasks.project_id` (NOT NULL) and a `projects` table. Rebuild `tasks` without
+    that column, copy all rows verbatim, then drop the projects table.
+    """
+    task_columns = {
+        row[1] for row in connection.exec_driver_sql("PRAGMA table_info(tasks)")
+    }
+    if not task_columns:
+        return
+
+    has_projects_table = bool(
+        connection.exec_driver_sql(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='projects'"
+        ).fetchall()
+    )
+    if "project_id" not in task_columns and not has_projects_table:
+        return
+
+    connection.exec_driver_sql("PRAGMA foreign_keys=OFF")
+    try:
+        if "project_id" in task_columns:
+            connection.exec_driver_sql(
+                """
+                CREATE TABLE tasks_migrated (
+                    id INTEGER NOT NULL PRIMARY KEY,
+                    status_id INTEGER,
+                    title VARCHAR(500) NOT NULL,
+                    description TEXT,
+                    priority INTEGER NOT NULL,
+                    due_date DATE,
+                    position INTEGER NOT NULL,
+                    is_archived BOOLEAN NOT NULL,
+                    created_at DATETIME NOT NULL,
+                    updated_at DATETIME NOT NULL,
+                    completed_at DATETIME,
+                    FOREIGN KEY(status_id) REFERENCES statuses (id) ON DELETE SET NULL
+                )
+                """
+            )
+            connection.exec_driver_sql(
+                """
+                INSERT INTO tasks_migrated (
+                    id, status_id, title, description, priority, due_date,
+                    position, is_archived, created_at, updated_at, completed_at
+                )
+                SELECT
+                    id, status_id, title, description, priority, due_date,
+                    position, is_archived, created_at, updated_at, completed_at
+                FROM tasks
+                """
+            )
+            connection.exec_driver_sql("DROP TABLE tasks")
+            connection.exec_driver_sql("ALTER TABLE tasks_migrated RENAME TO tasks")
+            connection.exec_driver_sql(
+                "CREATE INDEX IF NOT EXISTS ix_tasks_status_id ON tasks (status_id)"
+            )
+        connection.exec_driver_sql("DROP TABLE IF EXISTS projects")
+    finally:
+        connection.exec_driver_sql("PRAGMA foreign_keys=ON")
 
 
 def get_db():
