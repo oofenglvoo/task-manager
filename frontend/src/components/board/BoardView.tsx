@@ -24,6 +24,8 @@ import {
 } from '../../hooks/queries'
 import { useToast } from '../../store/toast'
 import { useUI } from '../../store/ui'
+import { CARD_SIZE_MIN, usePreferences } from '../../store/preferences'
+import type { CardSize } from '../../store/preferences'
 import { Button } from '../ui/Button'
 import { EmptyState } from '../ui/EmptyState'
 import { Select } from '../ui/Input'
@@ -43,8 +45,15 @@ const SORT_OPTIONS: Array<{
   { value: 'created_at', label: '创建时间', sort: 'created_at', order: 'desc' },
 ]
 
+const SIZE_OPTIONS: Array<{ value: CardSize; label: string }> = [
+  { value: 'sm', label: '小' },
+  { value: 'md', label: '中' },
+  { value: 'lg', label: '大' },
+]
+
 export function BoardView() {
   const { projectId, search, priority, tagId, openCreate } = useUI()
+  const { cardSize, setCardSize } = usePreferences()
   const { data: statuses = [] } = useStatuses()
   const reorderTasks = useReorderTasks()
   const updateTask = useUpdateTask()
@@ -111,6 +120,18 @@ export function BoardView() {
         <span className="text-xs text-muted">{tasks.length}</span>
         <div className="ml-auto flex items-center gap-2">
           <Select
+            value={cardSize}
+            className="w-24"
+            aria-label="卡片大小"
+            onChange={(event) => setCardSize(event.target.value as CardSize)}
+          >
+            {SIZE_OPTIONS.map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.label}
+              </option>
+            ))}
+          </Select>
+          <Select
             value={statusFilter}
             className="w-32"
             aria-label="状态筛选"
@@ -169,7 +190,12 @@ export function BoardView() {
               items={tasks.map((task) => task.id)}
               strategy={rectSortingStrategy}
             >
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
+              <div
+                className="grid gap-4"
+                style={{
+                  gridTemplateColumns: `repeat(auto-fill, minmax(${CARD_SIZE_MIN[cardSize]}, 1fr))`,
+                }}
+              >
                 {tasks.map((task) => (
                   <SortableTaskCard
                     key={task.id}

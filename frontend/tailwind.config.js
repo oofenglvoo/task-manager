@@ -3,27 +3,27 @@ export default {
   theme: {
     extend: {
       colors: {
-        canvas: '#0a0a0c',
-        surface: '#131316',
-        elevated: '#1a1a1f',
-        line: '#26262c',
-        'line-strong': '#33333b',
-        ink: '#ececf1',
-        'ink-soft': '#a5a5b0',
-        muted: '#6f6f7a',
+        canvas: 'rgb(var(--c-canvas) / <alpha-value>)',
+        surface: 'rgb(var(--c-surface) / <alpha-value>)',
+        elevated: 'rgb(var(--c-elevated) / <alpha-value>)',
+        line: 'rgb(var(--c-line) / <alpha-value>)',
+        'line-strong': 'rgb(var(--c-line-strong) / <alpha-value>)',
+        ink: 'rgb(var(--c-ink) / <alpha-value>)',
+        'ink-soft': 'rgb(var(--c-ink-soft) / <alpha-value>)',
+        muted: 'rgb(var(--c-muted) / <alpha-value>)',
         accent: {
-          DEFAULT: '#5e6ad2',
-          hover: '#6d78dd',
-          soft: 'rgba(94, 106, 210, 0.15)',
+          DEFAULT: 'rgb(var(--c-accent) / <alpha-value>)',
+          hover: 'rgb(var(--c-accent-hover) / <alpha-value>)',
+          soft: 'rgb(var(--c-accent) / 0.15)',
         },
         priority: {
-          low: '#6b7280',
-          medium: '#f59e0b',
-          high: '#ef4444',
+          low: 'rgb(var(--c-priority-low) / <alpha-value>)',
+          medium: 'rgb(var(--c-priority-medium) / <alpha-value>)',
+          high: 'rgb(var(--c-priority-high) / <alpha-value>)',
         },
-        success: '#22c55e',
-        danger: '#ef4444',
-        warning: '#f59e0b',
+        success: 'rgb(var(--c-success) / <alpha-value>)',
+        danger: 'rgb(var(--c-danger) / <alpha-value>)',
+        warning: 'rgb(var(--c-warning) / <alpha-value>)',
       },
       fontFamily: {
         sans: [
@@ -45,7 +45,7 @@ export default {
         lg: '10px',
       },
       boxShadow: {
-        panel: '0 1px 0 rgba(255, 255, 255, 0.03), 0 8px 24px rgba(0, 0, 0, 0.35)',
+        panel: 'var(--shadow-panel)',
       },
     },
   },

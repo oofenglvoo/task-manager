@@ -1,5 +1,6 @@
-import { PanelLeft, Plus, Search } from 'lucide-react'
+import { Moon, PanelLeft, Plus, Search, Sun } from 'lucide-react'
 import { useProjects, useTags } from '../../hooks/queries'
+import { usePreferences } from '../../store/preferences'
 import { useUI } from '../../store/ui'
 import { Button } from '../ui/Button'
 import { Input, Select } from '../ui/Input'
@@ -18,10 +19,11 @@ export function Topbar() {
   } = useUI()
   const { data: projects = [] } = useProjects()
   const { data: tags = [] } = useTags()
+  const { resolvedTheme, setTheme } = usePreferences()
   const current = projects.find((project) => project.id === projectId)
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-surface px-4">
+    <header className="app-chrome flex h-14 shrink-0 items-center gap-3 border-b border-line bg-surface px-4">
       <button
         type="button"
         onClick={toggleSidebar}
@@ -73,6 +75,20 @@ export function Topbar() {
           </option>
         ))}
       </Select>
+
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label="切换主题"
+        title="切换主题"
+        onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+      >
+        {resolvedTheme === 'dark' ? (
+          <Moon className="h-4 w-4" />
+        ) : (
+          <Sun className="h-4 w-4" />
+        )}
+      </Button>
 
       <Button variant="primary" onClick={() => openCreate()}>
         <Plus className="h-4 w-4" />

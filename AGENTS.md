@@ -44,7 +44,13 @@ Frontend, run from `frontend/`:
 
 ## Frontend facts easy to get wrong
 - Stack: React 19 + Vite 8 + TypeScript 6 + Tailwind CSS 3.4, TanStack Query v5, react-router-dom,
-  @dnd-kit (task card grid drag-reorder), lucide-react. Dark Linear-style theme; all UI text is Chinese.
+  @dnd-kit (task card grid drag-reorder), lucide-react. All UI text is Chinese.
+- Theme colors are **CSS variables** in `src/index.css` (`--c-*`, `--shadow-panel`), consumed by
+  `tailwind.config.js` as `rgb(var(--c-x) / <alpha-value>)`. Light mode = `.light` class on `<html>`
+  overriding those vars; there is no `dark:` variant and no hardcoded hex in the Tailwind config.
+- Appearance preferences (theme dark/light/system, card size sm/md/lg, background image) live in
+  `src/store/preferences.tsx`, persisted to `localStorage` key `task-manager:preferences`.
+  `index.html` has an inline script that applies theme/background before React to avoid a flash.
 - Routes: `/board`, `/list`, `/dashboard`, `/projects`, `/settings` (all wrapped by `AppShell`).
 - `/board` is a responsive **card grid** (no status columns); cards show title/description/status/
   priority/due/tags/subtasks. The sidebar is an off-canvas drawer, hidden by default

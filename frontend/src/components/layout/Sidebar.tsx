@@ -27,7 +27,7 @@ export function Sidebar() {
       />
       <aside
         className={cn(
-          'fixed left-0 top-0 z-50 flex h-full w-60 flex-col border-r border-line bg-surface shadow-panel transition-transform duration-200',
+          'app-chrome fixed left-0 top-0 z-50 flex h-full w-60 flex-col border-r border-line bg-surface shadow-panel transition-transform duration-200',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full',
         )}
       >
