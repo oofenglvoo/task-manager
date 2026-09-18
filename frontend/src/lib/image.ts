@@ -1,30 +1,39 @@
-export async function fileToDataUrl(
+function loadImage(file: File): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file)
+    const image = new Image()
+    image.onload = () => {
+      URL.revokeObjectURL(url)
+      resolve(image)
+    }
+    image.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error('解析图片失败'))
+    }
+    image.src = url
+  })
+}
+
+export async function fileToUploadBlob(
   file: File,
   maxWidth = 1920,
   quality = 0.85,
-): Promise<string> {
-  const dataUrl = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(String(reader.result))
-    reader.onerror = () => reject(new Error('读取图片失败'))
-    reader.readAsDataURL(file)
-  })
+): Promise<Blob> {
+  if (file.type === 'image/svg+xml' || file.type === 'image/gif') return file
 
-  const image = await new Promise<HTMLImageElement>((resolve, reject) => {
-    const element = new Image()
-    element.onload = () => resolve(element)
-    element.onerror = () => reject(new Error('解析图片失败'))
-    element.src = dataUrl
-  })
+  const image = await loadImage(file)
+  if (image.width <= maxWidth && file.size <= 2 * 1024 * 1024) return file
 
-  if (image.width <= maxWidth) return dataUrl
-
-  const scale = maxWidth / image.width
+  const scale = Math.min(1, maxWidth / image.width)
   const canvas = document.createElement('canvas')
-  canvas.width = maxWidth
+  canvas.width = Math.round(image.width * scale)
   canvas.height = Math.round(image.height * scale)
   const ctx = canvas.getContext('2d')
-  if (!ctx) return dataUrl
+  if (!ctx) return file
   ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
-  return canvas.toDataURL('image/jpeg', quality)
+
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob(resolve, 'image/jpeg', quality),
+  )
+  return blob ?? file
 }

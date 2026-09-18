@@ -9,6 +9,7 @@ DATA_DIR = PROJECT_ROOT / "data"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 DB_PATH = os.environ.get("TASK_DB_PATH", str(DATA_DIR / "tasks.db"))
+DB_DIR = Path(DB_PATH).resolve().parent
 DATABASE_URL = f"sqlite:///{Path(DB_PATH).as_posix()}"
 
 engine = create_engine(

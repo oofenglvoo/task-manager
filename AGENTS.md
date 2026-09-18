@@ -41,6 +41,14 @@ Frontend, run from `frontend/`:
 - API is under `/api/*`; subtask routes share the `/api/tasks` prefix.
 - Deleting an in-use status returns 400; duplicate status/tag names return 409.
 - All user-facing strings, seed data, and error messages are Chinese — keep new UI/messages Chinese.
+- Appearance preferences are a single `preferences` row (id=1) served by `/api/settings`; background
+  files live in `DB_DIR/backgrounds/` (i.e. next to the SQLite file, so tests use the temp dir).
+- `/api/export` dumps all data; `POST /api/import` **wipes and replaces** projects/statuses/tags/tasks.
+
+## E2E / verification safety
+- **Never** run a script that deletes all tasks against the real `data/tasks.db` — this has destroyed
+  user data before. Start the API with `TASK_DB_PATH` pointing to a temp file for E2E runs, and make
+  scripts delete only the rows they created.
 
 ## Frontend facts easy to get wrong
 - Stack: React 19 + Vite 8 + TypeScript 6 + Tailwind CSS 3.4, TanStack Query v5, react-router-dom,

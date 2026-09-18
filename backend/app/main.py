@@ -6,7 +6,17 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from .database import Base, SessionLocal, engine
-from .routers import projects, stats, statuses, subtasks, tags, tasks
+from .routers import (
+    backgrounds,
+    data,
+    projects,
+    settings,
+    stats,
+    statuses,
+    subtasks,
+    tags,
+    tasks,
+)
 from .seed import seed_defaults
 
 Base.metadata.create_all(bind=engine)
@@ -35,6 +45,9 @@ app.include_router(tags.router)
 app.include_router(tasks.router)
 app.include_router(subtasks.router)
 app.include_router(stats.router)
+app.include_router(settings.router)
+app.include_router(backgrounds.router)
+app.include_router(data.router)
 
 
 @app.get("/api/health", tags=["health"])

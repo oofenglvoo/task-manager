@@ -1,8 +1,9 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import { api } from '../lib/api'
+import type { CardSize, ThemeMode } from '../lib/types'
 
-export type ThemeMode = 'dark' | 'light' | 'system'
-export type CardSize = 'sm' | 'md' | 'lg'
+export type { CardSize, ThemeMode }
 
 export const CARD_SIZE_MIN: Record<CardSize, string> = {
   sm: '220px',
@@ -55,6 +56,8 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
   const [systemDark, setSystemDark] = useState(() =>
     window.matchMedia('(prefers-color-scheme: dark)').matches,
   )
+  const prefsRef = useRef(prefs)
+  prefsRef.current = prefs
 
   useEffect(() => {
     const media = window.matchMedia('(prefers-color-scheme: dark)')
@@ -66,6 +69,40 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs))
   }, [prefs])
+
+  useEffect(() => {
+    let active = true
+    api.settings
+      .get()
+      .then((data) => {
+        if (!active) return
+        const server = {
+          theme: data.theme,
+          cardSize: data.card_size,
+          background: data.background_url,
+        }
+        const isServerDefault =
+          data.theme === 'system' &&
+          data.card_size === 'md' &&
+          data.background_url === null
+        const hadLocal = window.localStorage.getItem(STORAGE_KEY) != null
+        if (isServerDefault && hadLocal) {
+          void api.settings
+            .update({
+              theme: prefsRef.current.theme,
+              card_size: prefsRef.current.cardSize,
+              background_url: prefsRef.current.background,
+            })
+            .catch(() => {})
+          return
+        }
+        setPrefs(server)
+      })
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [])
 
   const resolvedTheme: 'dark' | 'light' =
     prefs.theme === 'system' ? (systemDark ? 'dark' : 'light') : prefs.theme
@@ -80,9 +117,18 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     () => ({
       ...prefs,
       resolvedTheme,
-      setTheme: (theme) => setPrefs((prev) => ({ ...prev, theme })),
-      setCardSize: (cardSize) => setPrefs((prev) => ({ ...prev, cardSize })),
-      setBackground: (background) => setPrefs((prev) => ({ ...prev, background })),
+      setTheme: (theme) => {
+        setPrefs((prev) => ({ ...prev, theme }))
+        void api.settings.update({ theme }).catch(() => {})
+      },
+      setCardSize: (cardSize) => {
+        setPrefs((prev) => ({ ...prev, cardSize }))
+        void api.settings.update({ card_size: cardSize }).catch(() => {})
+      },
+      setBackground: (background) => {
+        setPrefs((prev) => ({ ...prev, background }))
+        void api.settings.update({ background_url: background }).catch(() => {})
+      },
     }),
     [prefs, resolvedTheme],
   )

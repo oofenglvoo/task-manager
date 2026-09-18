@@ -112,8 +112,17 @@ npm run lint
 | `TASK_DB_PATH` | 覆盖数据库文件路径（绝对路径），默认 `data/tasks.db` |
 | `VITE_API_BASE` | 前端 API 基础地址，默认走 Vite 代理的相对路径 `/api` |
 
-外观偏好（主题、卡片大小、背景图片）保存在浏览器 `localStorage` 的
-`task-manager:preferences` 键中，不经过后端。
+外观偏好（主题、卡片大小、背景图片）保存到**后端**（`/api/settings`），同时在浏览器
+`localStorage` 缓存一份以避免首屏闪烁，因此换浏览器/设备也能保持一致。本地上传的背景图片
+保存到 `data/backgrounds/`。
+
+## 数据与备份
+
+- 全部业务数据保存在 SQLite 文件 `data/tasks.db`（可用环境变量 `TASK_DB_PATH` 覆盖路径）。
+- **备份**：直接复制 `data/tasks.db`；或使用应用内「设置 → 数据 → 导出备份」下载 JSON。
+- **恢复**：用导出的 JSON 通过「设置 → 数据 → 导入备份」还原；导入会**覆盖**当前全部数据
+  （项目、状态、标签、任务、子任务）。
+- 数据库文件已加入 `.gitignore`，不会随代码提交；注意 `git clean -xdf` 会删除它。
 
 ## 初始化数据
 
@@ -146,6 +155,11 @@ npm run lint
 | GET/POST | `/api/tasks/{id}/subtasks` | 子任务列表 / 创建 |
 | PUT/DELETE | `/api/tasks/{id}/subtasks/{subtask_id}` | 更新 / 删除子任务 |
 | GET | `/api/stats` | 统计（可用 `project_id` 限定项目） |
+| GET/PUT | `/api/settings` | 外观偏好（主题 / 卡片大小 / 背景 URL） |
+| POST | `/api/backgrounds` | 上传背景图片（multipart，≤8MB），返回 `{ url }` |
+| GET/DELETE | `/api/backgrounds/{file}` | 读取 / 删除背景图片 |
+| GET | `/api/export` | 导出全部数据为 JSON |
+| POST | `/api/import` | 导入 JSON（覆盖现有全部数据） |
 
 ## 约定
 

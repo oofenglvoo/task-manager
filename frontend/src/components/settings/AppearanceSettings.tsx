@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { ImagePlus, Link2, Trash2 } from 'lucide-react'
-import { errorMessage } from '../../lib/api'
-import { fileToDataUrl } from '../../lib/image'
+import { api, errorMessage } from '../../lib/api'
+import { fileToUploadBlob } from '../../lib/image'
 import { cn } from '../../lib/utils'
 import type { CardSize, ThemeMode } from '../../store/preferences'
 import { usePreferences } from '../../store/preferences'
@@ -56,20 +56,21 @@ export function AppearanceSettings() {
     usePreferences()
   const { push } = useToast()
   const [url, setUrl] = useState('')
+  const [uploading, setUploading] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   async function handleFile(file: File | undefined) {
     if (!file) return
+    setUploading(true)
     try {
-      const dataUrl = await fileToDataUrl(file)
-      if (dataUrl.length > 4_500_000) {
-        push('图片过大，请换一张更小的图片', 'error')
-        return
-      }
-      setBackground(dataUrl)
+      const blob = await fileToUploadBlob(file)
+      const { url: uploaded } = await api.backgrounds.upload(blob, file.name)
+      setBackground(uploaded)
       push('背景已更新', 'success')
     } catch (error) {
       push(errorMessage(error), 'error')
+    } finally {
+      setUploading(false)
     }
   }
 
@@ -79,6 +80,14 @@ export function AppearanceSettings() {
     setBackground(value)
     setUrl('')
     push('背景已更新', 'success')
+  }
+
+  function clearBackground() {
+    const current = background
+    setBackground(null)
+    if (current && current.startsWith('/api/backgrounds/')) {
+      void api.backgrounds.remove(current).catch(() => {})
+    }
   }
 
   return (
@@ -118,12 +127,16 @@ export function AppearanceSettings() {
               <Link2 className="h-3.5 w-3.5" />
               使用链接
             </Button>
-            <Button size="sm" onClick={() => fileRef.current?.click()}>
+            <Button
+              size="sm"
+              disabled={uploading}
+              onClick={() => fileRef.current?.click()}
+            >
               <ImagePlus className="h-3.5 w-3.5" />
-              上传图片
+              {uploading ? '上传中…' : '上传图片'}
             </Button>
             {background ? (
-              <Button size="sm" variant="danger" onClick={() => setBackground(null)}>
+              <Button size="sm" variant="danger" onClick={clearBackground}>
                 <Trash2 className="h-3.5 w-3.5" />
                 清除
               </Button>
@@ -145,7 +158,7 @@ export function AppearanceSettings() {
             </div>
           ) : (
             <p className="text-xs text-muted">
-              支持本地上传或图片链接；背景应用于整个应用，任务卡片保持不透明。
+              本地上传的图片会保存到后端（data/backgrounds/），偏好同步到后端；也可直接填图片链接。
             </p>
           )}
         </div>

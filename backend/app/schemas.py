@@ -194,3 +194,90 @@ class StatsOut(BaseModel):
     due_soon: int
     by_status: list[StatusStat]
     by_priority: list[PriorityStat]
+
+
+# --------------------------------------------------------------------------- #
+# Preferences
+# --------------------------------------------------------------------------- #
+class PreferenceOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    theme: str
+    card_size: str
+    background_url: str | None
+
+
+class PreferenceUpdate(BaseModel):
+    theme: str | None = None
+    card_size: str | None = None
+    background_url: str | None = None
+
+
+class BackgroundOut(BaseModel):
+    url: str
+
+
+# --------------------------------------------------------------------------- #
+# Export / Import
+# --------------------------------------------------------------------------- #
+class ExportProject(BaseModel):
+    id: int
+    name: str
+    description: str | None = None
+    color: str = "#6366f1"
+    position: int = 0
+    is_archived: bool = False
+
+
+class ExportStatus(BaseModel):
+    id: int
+    name: str
+    color: str = "#94a3b8"
+    is_done: bool = False
+    position: int = 0
+
+
+class ExportTag(BaseModel):
+    id: int
+    name: str
+    color: str = "#38bdf8"
+
+
+class ExportSubTask(BaseModel):
+    title: str
+    is_done: bool = False
+    position: int = 0
+
+
+class ExportTask(BaseModel):
+    id: int
+    project_id: int
+    status_id: int | None = None
+    title: str
+    description: str | None = None
+    priority: int = 2
+    due_date: date | None = None
+    position: int = 0
+    is_archived: bool = False
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    completed_at: datetime | None = None
+    tag_ids: list[int] = Field(default_factory=list)
+    subtasks: list[ExportSubTask] = Field(default_factory=list)
+
+
+class ExportData(BaseModel):
+    version: int = 1
+    exported_at: datetime | None = None
+    projects: list[ExportProject] = Field(default_factory=list)
+    statuses: list[ExportStatus] = Field(default_factory=list)
+    tags: list[ExportTag] = Field(default_factory=list)
+    tasks: list[ExportTask] = Field(default_factory=list)
+
+
+class ImportResult(BaseModel):
+    projects: int
+    statuses: int
+    tags: int
+    tasks: int
+    subtasks: int

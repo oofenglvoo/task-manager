@@ -1,0 +1,200 @@
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import delete, select
+from sqlalchemy.orm import Session, selectinload
+
+from .. import models, schemas
+from ..database import get_db
+from ..models import utcnow
+
+router = APIRouter(prefix="/api", tags=["data"])
+
+
+@router.get("/export", response_model=schemas.ExportData)
+def export_data(db: Session = Depends(get_db)):
+    projects = list(
+        db.scalars(
+            select(models.Project).order_by(models.Project.position, models.Project.id)
+        )
+    )
+    statuses = list(
+        db.scalars(
+            select(models.Status).order_by(models.Status.position, models.Status.id)
+        )
+    )
+    tags = list(db.scalars(select(models.Tag).order_by(models.Tag.name)))
+    tasks = list(
+        db.scalars(
+            select(models.Task)
+            .options(
+                selectinload(models.Task.tags),
+                selectinload(models.Task.subtasks),
+            )
+            .order_by(models.Task.position, models.Task.id)
+        )
+    )
+
+    return schemas.ExportData(
+        version=1,
+        exported_at=utcnow(),
+        projects=[
+            schemas.ExportProject(
+                id=project.id,
+                name=project.name,
+                description=project.description,
+                color=project.color,
+                position=project.position,
+                is_archived=project.is_archived,
+            )
+            for project in projects
+        ],
+        statuses=[
+            schemas.ExportStatus(
+                id=status.id,
+                name=status.name,
+                color=status.color,
+                is_done=status.is_done,
+                position=status.position,
+            )
+            for status in statuses
+        ],
+        tags=[
+            schemas.ExportTag(id=tag.id, name=tag.name, color=tag.color)
+            for tag in tags
+        ],
+        tasks=[
+            schemas.ExportTask(
+                id=task.id,
+                project_id=task.project_id,
+                status_id=task.status_id,
+                title=task.title,
+                description=task.description,
+                priority=task.priority,
+                due_date=task.due_date,
+                position=task.position,
+                is_archived=task.is_archived,
+                created_at=task.created_at,
+                updated_at=task.updated_at,
+                completed_at=task.completed_at,
+                tag_ids=[tag.id for tag in task.tags],
+                subtasks=[
+                    schemas.ExportSubTask(
+                        title=subtask.title,
+                        is_done=subtask.is_done,
+                        position=subtask.position,
+                    )
+                    for subtask in task.subtasks
+                ],
+            )
+            for task in tasks
+        ],
+    )
+
+
+@router.post("/import", response_model=schemas.ImportResult)
+def import_data(payload: schemas.ExportData, db: Session = Depends(get_db)):
+    project_ids = {project.id for project in payload.projects}
+    tag_ids = {tag.id for tag in payload.tags}
+
+    for task in payload.tasks:
+        if task.project_id not in project_ids:
+            raise HTTPException(
+                status_code=400, detail=f"任务「{task.title}」引用了不存在的项目"
+            )
+        for tag_id in task.tag_ids:
+            if tag_id not in tag_ids:
+                raise HTTPException(
+                    status_code=400, detail=f"任务「{task.title}」引用了不存在的标签"
+                )
+
+    status_names = [status.name for status in payload.statuses]
+    if len(status_names) != len(set(status_names)):
+        raise HTTPException(status_code=400, detail="导入数据中状态名称重复")
+    tag_names = [tag.name for tag in payload.tags]
+    if len(tag_names) != len(set(tag_names)):
+        raise HTTPException(status_code=400, detail="导入数据中标签名称重复")
+
+    db.execute(delete(models.SubTask))
+    db.execute(delete(models.task_tags))
+    db.execute(delete(models.Task))
+    db.execute(delete(models.Tag))
+    db.execute(delete(models.Status))
+    db.execute(delete(models.Project))
+    db.flush()
+
+    project_map: dict[int, int] = {}
+    for item in payload.projects:
+        project = models.Project(
+            name=item.name,
+            description=item.description,
+            color=item.color,
+            position=item.position,
+            is_archived=item.is_archived,
+        )
+        db.add(project)
+        db.flush()
+        project_map[item.id] = project.id
+
+    status_map: dict[int, int] = {}
+    for item in payload.statuses:
+        status = models.Status(
+            name=item.name,
+            color=item.color,
+            is_done=item.is_done,
+            position=item.position,
+        )
+        db.add(status)
+        db.flush()
+        status_map[item.id] = status.id
+
+    tag_map: dict[int, int] = {}
+    for item in payload.tags:
+        tag = models.Tag(name=item.name, color=item.color)
+        db.add(tag)
+        db.flush()
+        tag_map[item.id] = tag.id
+
+    task_count = 0
+    subtask_count = 0
+    for item in payload.tasks:
+        task = models.Task(
+            project_id=project_map[item.project_id],
+            status_id=status_map.get(item.status_id)
+            if item.status_id is not None
+            else None,
+            title=item.title,
+            description=item.description,
+            priority=item.priority,
+            due_date=item.due_date,
+            position=item.position,
+            is_archived=item.is_archived,
+            completed_at=item.completed_at,
+        )
+        if item.created_at is not None:
+            task.created_at = item.created_at
+        if item.updated_at is not None:
+            task.updated_at = item.updated_at
+        task.tags = [
+            db.get(models.Tag, tag_map[tag_id])
+            for tag_id in item.tag_ids
+            if tag_id in tag_map
+        ]
+        for subtask in item.subtasks:
+            task.subtasks.append(
+                models.SubTask(
+                    title=subtask.title,
+                    is_done=subtask.is_done,
+                    position=subtask.position,
+                )
+            )
+        db.add(task)
+        task_count += 1
+        subtask_count += len(item.subtasks)
+
+    db.commit()
+    return schemas.ImportResult(
+        projects=len(payload.projects),
+        statuses=len(payload.statuses),
+        tags=len(payload.tags),
+        tasks=task_count,
+        subtasks=subtask_count,
+    )

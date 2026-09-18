@@ -128,3 +128,15 @@ class SubTask(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utcnow)
 
     task: Mapped["Task"] = relationship(back_populates="subtasks")
+
+
+class Preference(Base):
+    __tablename__ = "preferences"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    theme: Mapped[str] = mapped_column(String(20), nullable=False, default="system")
+    card_size: Mapped[str] = mapped_column(String(20), nullable=False, default="md")
+    background_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=utcnow, onupdate=utcnow
+    )

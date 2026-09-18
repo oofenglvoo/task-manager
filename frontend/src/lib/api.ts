@@ -1,4 +1,6 @@
 import type {
+  ImportResult,
+  Preferences,
   Project,
   Stats,
   Status,
@@ -23,6 +25,18 @@ export class ApiError extends Error {
 
 type Body = object
 
+async function toError(res: Response): Promise<ApiError> {
+  let message = res.statusText || `请求失败 (${res.status})`
+  try {
+    const data = (await res.json()) as { detail?: unknown }
+    if (typeof data.detail === 'string') message = data.detail
+    else if (data.detail) message = JSON.stringify(data.detail)
+  } catch {
+    message = message || `请求失败 (${res.status})`
+  }
+  return new ApiError(res.status, message)
+}
+
 async function request<T>(path: string, method = 'GET', body?: Body): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     method,
@@ -30,19 +44,14 @@ async function request<T>(path: string, method = 'GET', body?: Body): Promise<T>
     body: body === undefined ? undefined : JSON.stringify(body),
   })
 
-  if (!res.ok) {
-    let message = res.statusText || `请求失败 (${res.status})`
-    try {
-      const data = (await res.json()) as { detail?: unknown }
-      if (typeof data.detail === 'string') message = data.detail
-      else if (data.detail) message = JSON.stringify(data.detail)
-    } catch {
-      message = message || `请求失败 (${res.status})`
-    }
-    throw new ApiError(res.status, message)
-  }
-
+  if (!res.ok) throw await toError(res)
   if (res.status === 204) return undefined as T
+  return (await res.json()) as T
+}
+
+async function requestForm<T>(path: string, form: FormData): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, { method: 'POST', body: form })
+  if (!res.ok) throw await toError(res)
   return (await res.json()) as T
 }
 
@@ -128,5 +137,26 @@ export const api = {
   stats: {
     get: (projectId?: number) =>
       request<Stats>(`/api/stats${qs({ project_id: projectId })}`),
+  },
+  settings: {
+    get: () => request<Preferences>('/api/settings'),
+    update: (data: Partial<Preferences>) =>
+      request<Preferences>('/api/settings', 'PUT', data),
+  },
+  backgrounds: {
+    upload: (file: Blob, filename: string) => {
+      const form = new FormData()
+      form.append('file', file, filename)
+      return requestForm<{ url: string }>('/api/backgrounds', form)
+    },
+    remove: (url: string) => {
+      const name = url.split('/').pop() ?? ''
+      return request<void>(`/api/backgrounds/${name}`, 'DELETE')
+    },
+  },
+  data: {
+    exportAll: () => request<Record<string, unknown>>('/api/export'),
+    importAll: (payload: Record<string, unknown>) =>
+      request<ImportResult>('/api/import', 'POST', payload),
   },
 }

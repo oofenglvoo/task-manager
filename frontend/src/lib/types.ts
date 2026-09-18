@@ -94,3 +94,20 @@ export interface TaskQuery {
   sort?: string
   order?: 'asc' | 'desc'
 }
+
+export type ThemeMode = 'dark' | 'light' | 'system'
+export type CardSize = 'sm' | 'md' | 'lg'
+
+export interface Preferences {
+  theme: ThemeMode
+  card_size: CardSize
+  background_url: string | null
+}
+
+export interface ImportResult {
+  projects: number
+  statuses: number
+  tags: number
+  tasks: number
+  subtasks: number
+}
