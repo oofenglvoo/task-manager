@@ -13,6 +13,7 @@ const npmCmd = isWindows ? 'npm.cmd' : 'npm'
 const argv = process.argv.slice(2)
 const buildOnly = argv.includes('--build-only')
 const noBuild = argv.includes('--no-build')
+const noOpen = argv.includes('--no-open')
 const portIndex = argv.indexOf('--port')
 const port =
   portIndex !== -1 ? argv[portIndex + 1] : process.env.PORT || '8000'
@@ -57,6 +58,31 @@ function buildFrontend() {
   run(npmCmd, ['run', 'build'], frontendDir)
 }
 
+function openBrowser(url) {
+  const options = { detached: true, stdio: 'ignore', shell: isWindows }
+  let command
+  let args
+  if (isWindows) {
+    command = 'cmd'
+    args = ['/c', 'start', '', url]
+  } else if (process.platform === 'darwin') {
+    command = 'open'
+    args = [url]
+  } else {
+    command = 'xdg-open'
+    args = [url]
+  }
+  try {
+    const child = spawn(command, args, options)
+    child.on('error', () => {
+      console.log(`[run] 无法自动打开浏览器，请手动访问 ${url}`)
+    })
+    child.unref()
+  } catch {
+    console.log(`[run] 无法自动打开浏览器，请手动访问 ${url}`)
+  }
+}
+
 function startBackend(python) {
   const url = `http://127.0.0.1:${port}`
   console.log(`[run] 启动后端，前端由后端托管 → ${url}`)
@@ -75,6 +101,13 @@ function startBackend(python) {
     ],
     { cwd: backendDir, stdio: 'inherit' },
   )
+
+  if (!noOpen) {
+    setTimeout(() => {
+      console.log(`[run] 已在浏览器打开 ${url}`)
+      openBrowser(url)
+    }, 1500)
+  }
 
   const shutdown = () => {
     if (!child.killed) child.kill()

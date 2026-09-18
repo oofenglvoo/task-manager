@@ -33,7 +33,7 @@ import { EmptyState } from '../ui/EmptyState'
 import { Select } from '../ui/Input'
 import { TaskCard } from '../tasks/TaskCard'
 import { TaskCardSkeleton } from '../tasks/TaskCardSkeleton'
-import { BoardSummary } from './BoardSummary'
+import { TaskMindMap } from './TaskMindMap'
 import { SortableTaskCard } from './SortableTaskCard'
 
 const SORT_OPTIONS: Array<{
@@ -146,7 +146,7 @@ export function BoardView() {
   return (
     <div className="flex h-full flex-col">
       <div className="scrollbar-thin shrink-0 overflow-y-auto">
-        <BoardSummary />
+        <TaskMindMap />
       </div>
       <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
         <span className="text-sm font-semibold text-ink">任务</span>

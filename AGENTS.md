@@ -10,7 +10,8 @@
 
 ## Commands (Windows / PowerShell)
 Repo root (one command; installs missing deps, builds the frontend, serves it from the API):
-- `npm run dev` → http://127.0.0.1:8000 (`scripts/run.mjs`; no Vite/HMR)
+- `npm run dev` → http://127.0.0.1:8000 (`scripts/run.mjs`; no Vite/HMR). After starting uvicorn it
+  auto-opens the default browser (skippable with `--no-open`).
 - `npm start` (alias), `npm run build` (build only), `npm run serve` (serve without rebuild)
 - `--port <n>` / env `PORT` overrides the API port.
 
@@ -71,10 +72,17 @@ Frontend, run from `frontend/`:
   `/projects` route or project UI anymore.
 - `/board` is a **sticky-note wall**: a responsive card grid where cards tilt slightly and are tinted
   by priority (`noteSurfaceClass`/`noteTilt` in `src/lib/utils.ts`); hover straightens the card.
-  `BoardSummary` renders the top overview (number cards + status/priority bars + today/overdue).
   Cards show title/description/status/priority/due/tags/subtasks **and created/updated timestamps**.
   The sidebar is an off-canvas drawer, hidden by default (`ui.sidebarOpen`); the topbar's `PanelLeft`
   button toggles it.
+- The board's top section is **`TaskMindMap`** (a hand-rolled SVG node-link diagram, zero deps):
+  four columns root → priority → status → task. Layout/data come from `src/lib/mindmap.ts`
+  (`buildMindMap`), a pure function over `Task[]` + `Status[]`; there is **no backend endpoint**.
+  Tasks within each (priority→status) branch are sorted by `taskScore` = priority weight +
+  recency weight (`PRIORITY_FACTOR`/`RECENCY_FACTOR`), capped at `BRANCH_LIMIT` (8) with the
+  remainder collapsed into a dashed "还有 N 个…" node. Layout must keep all node y ≥ 0 (the
+  offset is derived from real rect extents, not just branch centers). Clicking a task node calls
+  `openTask`; hovering a priority/status node highlights that branch's links.
 - Drag-reorder only works when board sort is `position` (手动排序); other sorts disable drag.
   Dragging uses an explicit `GripVertical` handle (`SortableTaskCard`), not the whole card, and
   is also disabled while the list is truncated by the 60-per-page "显示更多" pagination.
