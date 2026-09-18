@@ -43,6 +43,8 @@ Frontend, run from `frontend/`:
 - All user-facing strings, seed data, and error messages are Chinese — keep new UI/messages Chinese.
 - Appearance preferences are a single `preferences` row (id=1) served by `/api/settings`; background
   files live in `DB_DIR/backgrounds/` (i.e. next to the SQLite file, so tests use the temp dir).
+- New preference columns need a manual migration: `create_all` does not alter existing tables, so
+  `database.ensure_schema()` runs `ALTER TABLE ... ADD COLUMN` at startup (called from `main.py`).
 - `/api/export` dumps all data; `POST /api/import` **wipes and replaces** projects/statuses/tags/tasks.
 
 ## E2E / verification safety
@@ -64,6 +66,10 @@ Frontend, run from `frontend/`:
   priority/due/tags/subtasks. The sidebar is an off-canvas drawer, hidden by default
   (`ui.sidebarOpen`); the topbar's `PanelLeft` button toggles it.
 - Drag-reorder only works when board sort is `position` (手动排序); other sorts disable drag.
+  Dragging uses an explicit `GripVertical` handle (`SortableTaskCard`), not the whole card, and
+  is also disabled while the list is truncated by the 60-per-page "显示更多" pagination.
+- Card density/size come from `CARD_SIZE_STYLES` in `src/store/preferences.tsx` (padding/title/
+  desc lines/gap), plus a `compact` preference; both are persisted server-side.
 - Vite dev server binds to `localhost` only, not `127.0.0.1` — open http://localhost:5173.
 - `npm run build` runs `tsc -b` with `verbatimModuleSyntax` + `erasableSyntaxOnly` + `noUnusedLocals`:
   type-only imports must use `import type`, and TS enums are disallowed.

@@ -11,9 +11,46 @@ export const CARD_SIZE_MIN: Record<CardSize, string> = {
   lg: '360px',
 }
 
+export interface CardSizeStyle {
+  min: string
+  gap: string
+  padding: string
+  title: string
+  descLines: string
+  tag: 'compact' | 'subtle'
+}
+
+export const CARD_SIZE_STYLES: Record<CardSize, CardSizeStyle> = {
+  sm: {
+    min: '220px',
+    gap: 'gap-3',
+    padding: 'p-3',
+    title: 'text-sm',
+    descLines: 'line-clamp-1',
+    tag: 'compact',
+  },
+  md: {
+    min: '280px',
+    gap: 'gap-4',
+    padding: 'p-4',
+    title: 'text-sm',
+    descLines: 'line-clamp-2',
+    tag: 'subtle',
+  },
+  lg: {
+    min: '360px',
+    gap: 'gap-5',
+    padding: 'p-5',
+    title: 'text-base',
+    descLines: 'line-clamp-3',
+    tag: 'subtle',
+  },
+}
+
 interface Preferences {
   theme: ThemeMode
   cardSize: CardSize
+  compact: boolean
   background: string | null
 }
 
@@ -21,12 +58,18 @@ interface PreferencesState extends Preferences {
   resolvedTheme: 'dark' | 'light'
   setTheme: (theme: ThemeMode) => void
   setCardSize: (size: CardSize) => void
+  setCompact: (compact: boolean) => void
   setBackground: (background: string | null) => void
 }
 
 const STORAGE_KEY = 'task-manager:preferences'
 
-const DEFAULTS: Preferences = { theme: 'system', cardSize: 'md', background: null }
+const DEFAULTS: Preferences = {
+  theme: 'system',
+  cardSize: 'md',
+  compact: false,
+  background: null,
+}
 
 function loadPreferences(): Preferences {
   try {
@@ -42,6 +85,7 @@ function loadPreferences(): Preferences {
         parsed.cardSize === 'sm' || parsed.cardSize === 'md' || parsed.cardSize === 'lg'
           ? parsed.cardSize
           : DEFAULTS.cardSize,
+      compact: typeof parsed.compact === 'boolean' ? parsed.compact : DEFAULTS.compact,
       background: typeof parsed.background === 'string' ? parsed.background : null,
     }
   } catch {
@@ -79,11 +123,13 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
         const server = {
           theme: data.theme,
           cardSize: data.card_size,
+          compact: data.compact,
           background: data.background_url,
         }
         const isServerDefault =
           data.theme === 'system' &&
           data.card_size === 'md' &&
+          !data.compact &&
           data.background_url === null
         const hadLocal = window.localStorage.getItem(STORAGE_KEY) != null
         if (isServerDefault && hadLocal) {
@@ -91,6 +137,7 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
             .update({
               theme: prefsRef.current.theme,
               card_size: prefsRef.current.cardSize,
+              compact: prefsRef.current.compact,
               background_url: prefsRef.current.background,
             })
             .catch(() => {})
@@ -124,6 +171,10 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
       setCardSize: (cardSize) => {
         setPrefs((prev) => ({ ...prev, cardSize }))
         void api.settings.update({ card_size: cardSize }).catch(() => {})
+      },
+      setCompact: (compact) => {
+        setPrefs((prev) => ({ ...prev, compact }))
+        void api.settings.update({ compact }).catch(() => {})
       },
       setBackground: (background) => {
         setPrefs((prev) => ({ ...prev, background }))

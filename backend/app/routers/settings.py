@@ -14,7 +14,7 @@ def get_or_create(db: Session) -> models.Preference:
     preference = db.get(models.Preference, 1)
     if preference is None:
         preference = models.Preference(
-            id=1, theme="system", card_size="md", background_url=None
+            id=1, theme="system", card_size="md", compact=False, background_url=None
         )
         db.add(preference)
         db.commit()

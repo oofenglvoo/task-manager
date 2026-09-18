@@ -32,6 +32,19 @@ class Base(DeclarativeBase):
     pass
 
 
+def ensure_schema() -> None:
+    """Apply additive migrations that create_all cannot handle (new columns)."""
+    with engine.begin() as connection:
+        columns = {
+            row[1]
+            for row in connection.exec_driver_sql("PRAGMA table_info(preferences)")
+        }
+        if columns and "compact" not in columns:
+            connection.exec_driver_sql(
+                "ALTER TABLE preferences ADD COLUMN compact BOOLEAN NOT NULL DEFAULT 0"
+            )
+
+
 def get_db():
     db = SessionLocal()
     try:

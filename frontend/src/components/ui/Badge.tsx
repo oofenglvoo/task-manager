@@ -37,13 +37,36 @@ export function ColorDot({ color, className }: { color: string; className?: stri
   )
 }
 
-export function TagChip({ tag, onRemove }: { tag: Tag; onRemove?: () => void }) {
+export function TagChip({
+  tag,
+  onRemove,
+  variant = 'solid',
+}: {
+  tag: Tag
+  onRemove?: () => void
+  variant?: 'solid' | 'subtle' | 'compact'
+}) {
+  const solid = variant === 'solid'
   return (
     <span
-      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs"
-      style={{ color: tag.color, backgroundColor: `${tag.color}1f` }}
+      className={cn(
+        'inline-flex items-center gap-1 rounded-full',
+        variant === 'compact' ? 'px-1.5 py-0 text-[10px]' : 'px-2 py-0.5 text-xs',
+        !solid && 'border',
+      )}
+      style={
+        solid
+          ? { color: tag.color, backgroundColor: `${tag.color}1f` }
+          : { color: tag.color, borderColor: `${tag.color}44`, backgroundColor: 'transparent' }
+      }
     >
-      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: tag.color }} />
+      <span
+        className={cn(
+          'rounded-full',
+          variant === 'compact' ? 'h-1 w-1' : 'h-1.5 w-1.5',
+        )}
+        style={{ backgroundColor: tag.color }}
+      />
       {tag.name}
       {onRemove ? (
         <button

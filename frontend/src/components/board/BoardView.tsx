@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   DndContext,
   DragOverlay,
+  KeyboardSensor,
   PointerSensor,
   closestCenter,
   useSensor,
@@ -12,11 +13,13 @@ import {
   SortableContext,
   arrayMove,
   rectSortingStrategy,
+  sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable'
-import { Plus } from 'lucide-react'
+import { LayoutGrid, Plus, Rows3 } from 'lucide-react'
 import { errorMessage } from '../../lib/api'
-import type { TaskQuery } from '../../lib/types'
+import type { Task, TaskQuery } from '../../lib/types'
 import {
+  useProjects,
   useReorderTasks,
   useStatuses,
   useTasks,
@@ -24,13 +27,13 @@ import {
 } from '../../hooks/queries'
 import { useToast } from '../../store/toast'
 import { useUI } from '../../store/ui'
-import { CARD_SIZE_MIN, usePreferences } from '../../store/preferences'
+import { CARD_SIZE_STYLES, usePreferences } from '../../store/preferences'
 import type { CardSize } from '../../store/preferences'
 import { Button } from '../ui/Button'
 import { EmptyState } from '../ui/EmptyState'
 import { Select } from '../ui/Input'
-import { LoadingBlock } from '../ui/Spinner'
 import { TaskCard } from '../tasks/TaskCard'
+import { TaskCardSkeleton } from '../tasks/TaskCardSkeleton'
 import { SortableTaskCard } from './SortableTaskCard'
 
 const SORT_OPTIONS: Array<{
@@ -51,10 +54,13 @@ const SIZE_OPTIONS: Array<{ value: CardSize; label: string }> = [
   { value: 'lg', label: '大' },
 ]
 
+const PAGE_SIZE = 60
+
 export function BoardView() {
   const { projectId, search, priority, tagId, openCreate } = useUI()
-  const { cardSize, setCardSize } = usePreferences()
+  const { cardSize, compact, setCardSize, setCompact } = usePreferences()
   const { data: statuses = [] } = useStatuses()
+  const { data: projects = [] } = useProjects()
   const reorderTasks = useReorderTasks()
   const updateTask = useUpdateTask()
   const { push } = useToast()
@@ -62,7 +68,9 @@ export function BoardView() {
   const [sortValue, setSortValue] = useState('position')
   const [statusFilter, setStatusFilter] = useState<number | ''>('')
   const [activeId, setActiveId] = useState<number | null>(null)
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
 
+  const style = CARD_SIZE_STYLES[cardSize]
   const option = SORT_OPTIONS.find((item) => item.value === sortValue) ?? SORT_OPTIONS[0]
   const manualOrder = sortValue === 'position'
 
@@ -81,19 +89,47 @@ export function BoardView() {
 
   const { data: tasks = [], isLoading } = useTasks(query)
 
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE)
+  }, [query])
+
   const statusMap = useMemo(
     () => new Map(statuses.map((status) => [status.id, status])),
     [statuses],
   )
+  const projectMap = useMemo(
+    () => new Map(projects.map((project) => [project.id, project])),
+    [projects],
+  )
+
+  const doneStatus = statuses.find((item) => item.is_done)
+  const openStatus = statuses.find((item) => !item.is_done)
+  const truncated = visibleCount < tasks.length
+  const dragEnabled = manualOrder && !truncated
+  const visibleTasks = truncated ? tasks.slice(0, visibleCount) : tasks
+  const showProject = projectId == null
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
 
   const onError = (error: unknown) => push(errorMessage(error), 'error')
 
   function changeStatus(taskId: number, statusId: number | null) {
     updateTask.mutate({ id: taskId, data: { status_id: statusId } }, { onError })
+  }
+
+  function changePriority(taskId: number, value: number) {
+    updateTask.mutate({ id: taskId, data: { priority: value } }, { onError })
+  }
+
+  function toggleDone(task: Task) {
+    if (task.completed_at != null) {
+      if (openStatus) changeStatus(task.id, openStatus.id)
+    } else if (doneStatus) {
+      changeStatus(task.id, doneStatus.id)
+    }
   }
 
   function handleDragStart(event: DragStartEvent) {
@@ -104,21 +140,37 @@ export function BoardView() {
     setActiveId(null)
     const { active, over } = event
     if (!over || active.id === over.id) return
-    const ids = tasks.map((task) => task.id)
+    const ids = visibleTasks.map((task) => task.id)
     const from = ids.indexOf(Number(active.id))
     const to = ids.indexOf(Number(over.id))
     if (from < 0 || to < 0) return
     reorderTasks.mutate(arrayMove(ids, from, to), { onError })
   }
 
-  const activeTask = activeId != null ? tasks.find((task) => task.id === activeId) : undefined
+  const activeTask =
+    activeId != null ? visibleTasks.find((task) => task.id === activeId) : undefined
 
   return (
     <div className="flex h-full flex-col">
       <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
         <span className="text-sm font-semibold text-ink">任务</span>
         <span className="text-xs text-muted">{tasks.length}</span>
+        {!dragEnabled && manualOrder && truncated ? (
+          <span className="text-xs text-muted">（已加载 {visibleTasks.length} 条，拖拽已暂停）</span>
+        ) : null}
+        {!manualOrder ? (
+          <span className="text-xs text-muted">（切换「手动排序」后可拖拽）</span>
+        ) : null}
         <div className="ml-auto flex items-center gap-2">
+          <button
+            type="button"
+            aria-label={compact ? '切换为宽松显示' : '切换为紧凑显示'}
+            title={compact ? '宽松显示' : '紧凑显示'}
+            onClick={() => setCompact(!compact)}
+            className="rounded border border-line p-1.5 text-ink-soft transition-colors hover:border-line-strong hover:text-ink"
+          >
+            {compact ? <Rows3 className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}
+          </button>
           <Select
             value={cardSize}
             className="w-24"
@@ -164,7 +216,18 @@ export function BoardView() {
       </div>
 
       {isLoading ? (
-        <LoadingBlock />
+        <div className="scrollbar-thin flex-1 overflow-y-auto p-4">
+          <div
+            className={`grid ${style.gap}`}
+            style={{
+              gridTemplateColumns: `repeat(auto-fill, minmax(${style.min}, 1fr))`,
+            }}
+          >
+            {Array.from({ length: 8 }).map((_, index) => (
+              <TaskCardSkeleton key={index} />
+            ))}
+          </div>
+        </div>
       ) : tasks.length === 0 ? (
         <div className="p-4">
           <EmptyState
@@ -187,30 +250,38 @@ export function BoardView() {
             onDragEnd={handleDragEnd}
           >
             <SortableContext
-              items={tasks.map((task) => task.id)}
+              items={visibleTasks.map((task) => task.id)}
               strategy={rectSortingStrategy}
             >
               <div
-                className="grid gap-4"
+                className={`grid ${style.gap}`}
                 style={{
-                  gridTemplateColumns: `repeat(auto-fill, minmax(${CARD_SIZE_MIN[cardSize]}, 1fr))`,
+                  gridTemplateColumns: `repeat(auto-fill, minmax(${style.min}, 1fr))`,
                 }}
               >
-                {tasks.map((task) => (
+                {visibleTasks.map((task) => (
                   <SortableTaskCard
                     key={task.id}
                     task={task}
-                    status={task.status_id != null ? statusMap.get(task.status_id) : undefined}
+                    status={
+                      task.status_id != null ? statusMap.get(task.status_id) : undefined
+                    }
                     statuses={statuses}
+                    project={projectMap.get(task.project_id)}
+                    showProject={showProject}
+                    style={style}
+                    compact={compact}
+                    disabled={!dragEnabled}
                     onStatusChange={changeStatus}
-                    disabled={!manualOrder}
+                    onPriorityChange={changePriority}
+                    onToggleDone={toggleDone}
                   />
                 ))}
               </div>
             </SortableContext>
             <DragOverlay>
               {activeTask ? (
-                <div className="w-64 rotate-2 opacity-90">
+                <div className="w-72 rotate-2 opacity-90">
                   <TaskCard
                     task={activeTask}
                     status={
@@ -218,11 +289,26 @@ export function BoardView() {
                         ? statusMap.get(activeTask.status_id)
                         : undefined
                     }
+                    project={projectMap.get(activeTask.project_id)}
+                    showProject={showProject}
+                    style={style}
+                    compact={compact}
                   />
                 </div>
               ) : null}
             </DragOverlay>
           </DndContext>
+
+          {truncated ? (
+            <div className="mt-4 flex justify-center">
+              <Button
+                size="sm"
+                onClick={() => setVisibleCount((prev) => prev + PAGE_SIZE)}
+              >
+                显示更多（还有 {tasks.length - visibleTasks.length} 条）
+              </Button>
+            </div>
+          ) : null}
         </div>
       )}
     </div>

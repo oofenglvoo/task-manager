@@ -204,12 +204,14 @@ class PreferenceOut(BaseModel):
 
     theme: str
     card_size: str
+    compact: bool
     background_url: str | None
 
 
 class PreferenceUpdate(BaseModel):
     theme: str | None = None
     card_size: str | None = None
+    compact: bool | None = None
     background_url: str | None = None
 
 

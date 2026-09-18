@@ -101,6 +101,7 @@ export type CardSize = 'sm' | 'md' | 'lg'
 export interface Preferences {
   theme: ThemeMode
   card_size: CardSize
+  compact: boolean
   background_url: string | null
 }
 

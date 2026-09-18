@@ -4,6 +4,7 @@ def test_get_default_settings(client):
     data = response.json()
     assert data["theme"] == "system"
     assert data["card_size"] == "md"
+    assert data["compact"] is False
     assert data["background_url"] is None
 
 
@@ -13,6 +14,7 @@ def test_update_settings(client):
         json={
             "theme": "dark",
             "card_size": "lg",
+            "compact": True,
             "background_url": "/api/backgrounds/demo.png",
         },
     )
@@ -20,6 +22,7 @@ def test_update_settings(client):
     data = response.json()
     assert data["theme"] == "dark"
     assert data["card_size"] == "lg"
+    assert data["compact"] is True
     assert data["background_url"] == "/api/backgrounds/demo.png"
     assert client.get("/api/settings").json() == data
 

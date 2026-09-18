@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from .database import Base, SessionLocal, engine
+from .database import Base, SessionLocal, engine, ensure_schema
 from .routers import (
     backgrounds,
     data,
@@ -20,6 +20,7 @@ from .routers import (
 from .seed import seed_defaults
 
 Base.metadata.create_all(bind=engine)
+ensure_schema()
 
 with SessionLocal() as _session:
     seed_defaults(_session)

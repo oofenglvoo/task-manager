@@ -82,3 +82,10 @@ export function dueClass(dueDate: string | null, isDone: boolean): string {
   if (state === 'soon') return 'text-warning/80'
   return 'text-ink-soft'
 }
+
+export function dueBadgeClass(dueDate: string | null, isDone: boolean): string {
+  const state = dueState(dueDate, isDone)
+  if (state === 'overdue') return 'bg-danger/10 text-danger'
+  if (state === 'today') return 'bg-warning/10 text-warning'
+  return ''
+}

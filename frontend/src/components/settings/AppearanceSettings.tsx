@@ -21,6 +21,11 @@ const SIZE_OPTIONS: Array<{ value: CardSize; label: string }> = [
   { value: 'lg', label: '大' },
 ]
 
+const COMPACT_OPTIONS: Array<{ value: 'off' | 'on'; label: string }> = [
+  { value: 'off', label: '宽松' },
+  { value: 'on', label: '紧凑' },
+]
+
 function Segmented<T extends string>({
   value,
   options,
@@ -52,7 +57,7 @@ function Segmented<T extends string>({
 }
 
 export function AppearanceSettings() {
-  const { theme, cardSize, background, setTheme, setCardSize, setBackground } =
+  const { theme, cardSize, compact, background, setTheme, setCardSize, setCompact, setBackground } =
     usePreferences()
   const { push } = useToast()
   const [url, setUrl] = useState('')
@@ -106,6 +111,15 @@ export function AppearanceSettings() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <span className="text-sm text-ink-soft">卡片大小</span>
           <Segmented value={cardSize} options={SIZE_OPTIONS} onChange={setCardSize} />
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="text-sm text-ink-soft">显示密度</span>
+          <Segmented
+            value={compact ? 'on' : 'off'}
+            options={COMPACT_OPTIONS}
+            onChange={(value) => setCompact(value === 'on')}
+          />
         </div>
 
         <div className="space-y-3">

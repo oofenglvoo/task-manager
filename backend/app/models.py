@@ -136,6 +136,7 @@ class Preference(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     theme: Mapped[str] = mapped_column(String(20), nullable=False, default="system")
     card_size: Mapped[str] = mapped_column(String(20), nullable=False, default="md")
+    compact: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     background_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, default=utcnow, onupdate=utcnow
