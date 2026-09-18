@@ -43,7 +43,31 @@ def ensure_schema() -> None:
             connection.exec_driver_sql(
                 "ALTER TABLE preferences ADD COLUMN compact BOOLEAN NOT NULL DEFAULT 0"
             )
+        if columns and "group_by" not in columns:
+            connection.exec_driver_sql(
+                "ALTER TABLE preferences ADD COLUMN group_by BOOLEAN NOT NULL DEFAULT 0"
+            )
         _drop_projects(connection)
+        _add_task_group(connection)
+
+
+def _add_task_group(connection) -> None:
+    """Add `tasks.group_id` to existing databases (create_all only adds new tables).
+
+    SQLite supports adding a nullable column with a REFERENCES clause, so no table
+    rebuild is needed. Idempotent: guarded by a PRAGMA column check.
+    """
+    task_columns = {
+        row[1] for row in connection.exec_driver_sql("PRAGMA table_info(tasks)")
+    }
+    if not task_columns or "group_id" in task_columns:
+        return
+    connection.exec_driver_sql(
+        "ALTER TABLE tasks ADD COLUMN group_id INTEGER REFERENCES groups (id) ON DELETE SET NULL"
+    )
+    connection.exec_driver_sql(
+        "CREATE INDEX IF NOT EXISTS ix_tasks_group_id ON tasks (group_id)"
+    )
 
 
 def _drop_projects(connection) -> None:

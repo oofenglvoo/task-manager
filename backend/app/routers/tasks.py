@@ -18,6 +18,7 @@ SORT_COLUMNS = {
 
 LOAD_OPTIONS = (
     selectinload(models.Task.tags),
+    selectinload(models.Task.group),
     selectinload(models.Task.subtasks),
 )
 
@@ -32,6 +33,8 @@ def _get_task(db: Session, task_id: int) -> models.Task:
 @router.get("", response_model=list[schemas.TaskOut])
 def list_tasks(
     status_id: int | None = None,
+    group_id: int | None = None,
+    ungrouped: bool = False,
     priority: int | None = None,
     tag_id: int | None = None,
     q: str | None = None,
@@ -48,6 +51,10 @@ def list_tasks(
     stmt = select(models.Task).where(models.Task.is_archived == archived)
     if status_id is not None:
         stmt = stmt.where(models.Task.status_id == status_id)
+    if group_id is not None:
+        stmt = stmt.where(models.Task.group_id == group_id)
+    elif ungrouped:
+        stmt = stmt.where(models.Task.group_id.is_(None))
     if priority is not None:
         stmt = stmt.where(models.Task.priority == priority)
     if tag_id is not None:

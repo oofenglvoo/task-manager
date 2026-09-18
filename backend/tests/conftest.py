@@ -36,6 +36,18 @@ def statuses(client):
 
 
 @pytest.fixture
+def make_group(client):
+    def _make(name: str = "测试分组", **kwargs):
+        payload = {"name": name}
+        payload.update(kwargs)
+        response = client.post("/api/groups", json=payload)
+        assert response.status_code == 201, response.text
+        return response.json()
+
+    return _make
+
+
+@pytest.fixture
 def make_task(client):
     def _make(**kwargs):
         payload = {"title": "任务"}

@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import {
   ArrowDown,
   ArrowUp,
   Archive,
   ArchiveRestore,
+  Layers,
   Pencil,
   Search,
   Trash2,
@@ -14,12 +15,14 @@ import { cn, dueClass, dueLabel, formatDate, priorityLabel, PRIORITY_META } from
 import {
   useArchiveTask,
   useDeleteTask,
+  useGroups,
   useStatuses,
   useTags,
   useTasks,
 } from '../../hooks/queries'
 import { useToast } from '../../store/toast'
 import { useUI } from '../../store/ui'
+import { usePreferences } from '../../store/preferences'
 import { Button } from '../ui/Button'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { Input, Select } from '../ui/Input'
@@ -40,6 +43,8 @@ export function ListView() {
     useUI()
   const { data: statuses = [] } = useStatuses()
   const { data: tags = [] } = useTags()
+  const { data: groups = [] } = useGroups()
+  const { groupBy, setGroupBy } = usePreferences()
   const archiveTask = useArchiveTask()
   const deleteTask = useDeleteTask()
   const { push } = useToast()
@@ -47,12 +52,14 @@ export function ListView() {
   const [sort, setSort] = useState<SortField>('position')
   const [order, setOrder] = useState<'asc' | 'desc'>('asc')
   const [statusId, setStatusId] = useState<number | ''>('')
+  const [groupId, setGroupId] = useState<number | ''>('')
   const [archived, setArchived] = useState(false)
   const [deleting, setDeleting] = useState<Task | null>(null)
 
   const query = useMemo<TaskQuery>(
     () => ({
       status_id: statusId === '' ? undefined : statusId,
+      group_id: groupId === '' ? undefined : groupId,
       priority: priority ?? undefined,
       tag_id: tagId ?? undefined,
       q: search || undefined,
@@ -60,7 +67,7 @@ export function ListView() {
       sort,
       order,
     }),
-    [statusId, priority, tagId, search, archived, sort, order],
+    [statusId, groupId, priority, tagId, search, archived, sort, order],
   )
 
   const { data: tasks = [], isLoading } = useTasks(query)
@@ -69,6 +76,31 @@ export function ListView() {
     () => new Map(statuses.map((status) => [status.id, status])),
     [statuses],
   )
+
+  const sections = useMemo(() => {
+    if (!groupBy) return []
+    const map = new Map<
+      string,
+      { key: string; name: string; color: string | null; tasks: Task[] }
+    >()
+    for (const task of tasks) {
+      const key = task.group ? `g-${task.group.id}` : 'none'
+      let section = map.get(key)
+      if (!section) {
+        section = {
+          key,
+          name: task.group?.name ?? '未分组',
+          color: task.group?.color ?? null,
+          tasks: [],
+        }
+        map.set(key, section)
+      }
+      section.tasks.push(task)
+    }
+    const list = [...map.values()]
+    list.sort((a, b) => (a.key === 'none' ? 1 : b.key === 'none' ? -1 : 0))
+    return list
+  }, [groupBy, tasks])
 
   function toggleSort(field: SortField) {
     if (sort === field) {
@@ -80,6 +112,112 @@ export function ListView() {
   }
 
   const onError = (error: unknown) => push(errorMessage(error), 'error')
+
+  function renderRow(task: Task) {
+    const status = task.status_id != null ? statusMap.get(task.status_id) : undefined
+    const isDone = task.completed_at != null
+    return (
+      <tr
+        key={task.id}
+        className="cursor-pointer border-b border-line/60 transition-colors hover:bg-elevated"
+        onClick={() => openTask(task.id)}
+      >
+        <td className="px-4 py-2">
+          <div className="flex items-center gap-2">
+            <span className={cn('text-ink', isDone && 'text-muted line-through')}>
+              {task.title}
+            </span>
+          </div>
+        </td>
+        <td className="px-4 py-2">
+          <span className={cn('text-xs', PRIORITY_META[task.priority]?.text)}>
+            {priorityLabel(task.priority)}
+          </span>
+        </td>
+        <td className={cn('px-4 py-2 text-xs', dueClass(task.due_date, isDone))}>
+          {task.due_date ? dueLabel(task.due_date, isDone) : '—'}
+        </td>
+        <td className="px-4 py-2 text-xs text-muted">
+          {formatDate(task.created_at)}
+        </td>
+        <td className="px-4 py-2">
+          {status ? (
+            <span
+              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs"
+              style={{ color: status.color, backgroundColor: `${status.color}1f` }}
+            >
+              {status.name}
+            </span>
+          ) : (
+            <span className="text-xs text-muted">未分配</span>
+          )}
+        </td>
+        <td className="px-4 py-2">
+          {task.group ? (
+            <span
+              className="inline-flex max-w-[10rem] items-center gap-1 rounded px-1.5 py-0.5 text-xs"
+              style={{ color: task.group.color, backgroundColor: `${task.group.color}1f` }}
+            >
+              <span
+                className="h-1.5 w-1.5 shrink-0 rounded-sm"
+                style={{ backgroundColor: task.group.color }}
+              />
+              <span className="truncate">{task.group.name}</span>
+            </span>
+          ) : (
+            <span className="text-xs text-muted">未分组</span>
+          )}
+        </td>
+        <td className="px-4 py-2">
+          <div className="flex flex-wrap gap-1">
+            {task.tags.map((tag) => (
+              <TagChip key={tag.id} tag={tag} />
+            ))}
+          </div>
+        </td>
+        <td className="px-4 py-2">
+          <div
+            className="flex items-center justify-end gap-1"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              title="编辑"
+              onClick={() => openEdit(task.id)}
+              className="rounded p-1 text-muted transition-colors hover:bg-surface hover:text-ink"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              title={task.is_archived ? '恢复' : '归档'}
+              onClick={() =>
+                archiveTask.mutate(
+                  { id: task.id, isArchived: !task.is_archived },
+                  { onError },
+                )
+              }
+              className="rounded p-1 text-muted transition-colors hover:bg-surface hover:text-ink"
+            >
+              {task.is_archived ? (
+                <ArchiveRestore className="h-3.5 w-3.5" />
+              ) : (
+                <Archive className="h-3.5 w-3.5" />
+              )}
+            </button>
+            <button
+              type="button"
+              title="删除"
+              onClick={() => setDeleting(task)}
+              className="rounded p-1 text-muted transition-colors hover:bg-surface hover:text-danger"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </td>
+      </tr>
+    )
+  }
 
   return (
     <div className="flex h-full flex-col">
@@ -104,6 +242,20 @@ export function ListView() {
           {statuses.map((status) => (
             <option key={status.id} value={status.id}>
               {status.name}
+            </option>
+          ))}
+        </Select>
+        <Select
+          value={groupId}
+          className="w-32"
+          onChange={(event) =>
+            setGroupId(event.target.value === '' ? '' : Number(event.target.value))
+          }
+        >
+          <option value="">全部分组</option>
+          {groups.map((group) => (
+            <option key={group.id} value={group.id}>
+              {group.name}
             </option>
           ))}
         </Select>
@@ -134,6 +286,20 @@ export function ListView() {
           ))}
         </Select>
         <div className="flex-1" />
+        <button
+          type="button"
+          aria-label={groupBy ? '切换为不分组' : '按分组查看'}
+          title={groupBy ? '不分组' : '按分组'}
+          onClick={() => setGroupBy(!groupBy)}
+          className={
+            'rounded border p-1.5 transition-colors ' +
+            (groupBy
+              ? 'border-accent/60 bg-accent-soft text-ink'
+              : 'border-line text-ink-soft hover:border-line-strong hover:text-ink')
+          }
+        >
+          <Layers className="h-4 w-4" />
+        </button>
         <Button
           variant={archived ? 'primary' : 'secondary'}
           size="sm"
@@ -170,105 +336,41 @@ export function ListView() {
                   </th>
                 ))}
                 <th className="w-28 px-4 py-2 font-medium">状态</th>
+                <th className="w-32 px-4 py-2 font-medium">分组</th>
                 <th className="px-4 py-2 font-medium">标签</th>
                 <th className="w-24 px-4 py-2 text-right font-medium">操作</th>
               </tr>
             </thead>
             <tbody>
-              {tasks.map((task) => {
-                const status = task.status_id != null ? statusMap.get(task.status_id) : undefined
-                const isDone = task.completed_at != null
-                return (
-                  <tr
-                    key={task.id}
-                    className="cursor-pointer border-b border-line/60 transition-colors hover:bg-elevated"
-                    onClick={() => openTask(task.id)}
-                  >
-                    <td className="px-4 py-2">
-                      <div className="flex items-center gap-2">
-                        <span className={cn('text-ink', isDone && 'text-muted line-through')}>
-                          {task.title}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-2">
-                      <span
-                        className={cn('text-xs', PRIORITY_META[task.priority]?.text)}
-                      >
-                        {priorityLabel(task.priority)}
-                      </span>
-                    </td>
-                    <td className={cn('px-4 py-2 text-xs', dueClass(task.due_date, isDone))}>
-                      {task.due_date ? dueLabel(task.due_date, isDone) : '—'}
-                    </td>
-                    <td className="px-4 py-2 text-xs text-muted">
-                      {formatDate(task.created_at)}
-                    </td>
-                    <td className="px-4 py-2">
-                      {status ? (
-                        <span
-                          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs"
-                          style={{ color: status.color, backgroundColor: `${status.color}1f` }}
-                        >
-                          {status.name}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-muted">未分配</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-2">
-                      <div className="flex flex-wrap gap-1">
-                        {task.tags.map((tag) => (
-                          <TagChip key={tag.id} tag={tag} />
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-4 py-2">
-                      <div
-                        className="flex items-center justify-end gap-1"
-                        onClick={(event) => event.stopPropagation()}
-                      >
-                        <button
-                          type="button"
-                          title="编辑"
-                          onClick={() => openEdit(task.id)}
-                          className="rounded p-1 text-muted transition-colors hover:bg-surface hover:text-ink"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          title={task.is_archived ? '恢复' : '归档'}
-                          onClick={() =>
-                            archiveTask.mutate(
-                              { id: task.id, isArchived: !task.is_archived },
-                              { onError },
-                            )
-                          }
-                          className="rounded p-1 text-muted transition-colors hover:bg-surface hover:text-ink"
-                        >
-                          {task.is_archived ? (
-                            <ArchiveRestore className="h-3.5 w-3.5" />
-                          ) : (
-                            <Archive className="h-3.5 w-3.5" />
-                          )}
-                        </button>
-                        <button
-                          type="button"
-                          title="删除"
-                          onClick={() => setDeleting(task)}
-                          className="rounded p-1 text-muted transition-colors hover:bg-surface hover:text-danger"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
+              {groupBy
+                ? sections.map((section) => (
+                    <Fragment key={section.key}>
+                      <tr className="bg-elevated/60">
+                        <td colSpan={8} className="px-4 py-1.5">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="h-2.5 w-2.5 rounded-sm"
+                              style={{
+                                backgroundColor:
+                                  section.color ?? 'rgb(var(--c-line-strong))',
+                              }}
+                            />
+                            <span className="text-xs font-semibold text-ink">
+                              {section.name}
+                            </span>
+                            <span className="text-xs text-muted">
+                              {section.tasks.length}
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                      {section.tasks.map((task) => renderRow(task))}
+                    </Fragment>
+                  ))
+                : tasks.map((task) => renderRow(task))}
               {tasks.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-sm text-muted">
+                  <td colSpan={8} className="px-4 py-12 text-center text-sm text-muted">
                     没有符合条件的任务
                   </td>
                 </tr>

@@ -120,6 +120,19 @@ export function TaskCard({
         {task.title}
       </button>
 
+      {task.group ? (
+        <span
+          className="mt-1.5 inline-flex w-fit max-w-full items-center gap-1 rounded px-1.5 py-0.5 text-[11px]"
+          style={{ color: task.group.color, backgroundColor: `${task.group.color}1f` }}
+        >
+          <span
+            className="h-1.5 w-1.5 shrink-0 rounded-sm"
+            style={{ backgroundColor: task.group.color }}
+          />
+          <span className="truncate">{task.group.name}</span>
+        </span>
+      ) : null}
+
       {!compact && task.description ? (
         <p className={cn('mt-1.5 text-xs leading-relaxed text-ink-soft/80', style.descLines)}>
           {task.description}

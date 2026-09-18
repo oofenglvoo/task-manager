@@ -51,6 +51,7 @@ interface Preferences {
   theme: ThemeMode
   cardSize: CardSize
   compact: boolean
+  groupBy: boolean
   background: string | null
 }
 
@@ -59,6 +60,7 @@ interface PreferencesState extends Preferences {
   setTheme: (theme: ThemeMode) => void
   setCardSize: (size: CardSize) => void
   setCompact: (compact: boolean) => void
+  setGroupBy: (groupBy: boolean) => void
   setBackground: (background: string | null) => void
 }
 
@@ -68,6 +70,7 @@ const DEFAULTS: Preferences = {
   theme: 'system',
   cardSize: 'md',
   compact: false,
+  groupBy: false,
   background: null,
 }
 
@@ -86,6 +89,7 @@ function loadPreferences(): Preferences {
           ? parsed.cardSize
           : DEFAULTS.cardSize,
       compact: typeof parsed.compact === 'boolean' ? parsed.compact : DEFAULTS.compact,
+      groupBy: typeof parsed.groupBy === 'boolean' ? parsed.groupBy : DEFAULTS.groupBy,
       background: typeof parsed.background === 'string' ? parsed.background : null,
     }
   } catch {
@@ -124,12 +128,14 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
           theme: data.theme,
           cardSize: data.card_size,
           compact: data.compact,
+          groupBy: data.group_by,
           background: data.background_url,
         }
         const isServerDefault =
           data.theme === 'system' &&
           data.card_size === 'md' &&
           !data.compact &&
+          !data.group_by &&
           data.background_url === null
         const hadLocal = window.localStorage.getItem(STORAGE_KEY) != null
         if (isServerDefault && hadLocal) {
@@ -138,6 +144,7 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
               theme: prefsRef.current.theme,
               card_size: prefsRef.current.cardSize,
               compact: prefsRef.current.compact,
+              group_by: prefsRef.current.groupBy,
               background_url: prefsRef.current.background,
             })
             .catch(() => {})
@@ -175,6 +182,10 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
       setCompact: (compact) => {
         setPrefs((prev) => ({ ...prev, compact }))
         void api.settings.update({ compact }).catch(() => {})
+      },
+      setGroupBy: (groupBy) => {
+        setPrefs((prev) => ({ ...prev, groupBy }))
+        void api.settings.update({ group_by: groupBy }).catch(() => {})
       },
       setBackground: (background) => {
         setPrefs((prev) => ({ ...prev, background }))

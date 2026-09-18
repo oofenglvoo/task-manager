@@ -1,4 +1,5 @@
 import type {
+  Group,
   ImportResult,
   Preferences,
   Stats,
@@ -90,6 +91,16 @@ export const api = {
     update: (id: number, data: Partial<{ name: string; color: string }>) =>
       request<Tag>(`/api/tags/${id}`, 'PUT', data),
     remove: (id: number) => request<void>(`/api/tags/${id}`, 'DELETE'),
+  },
+  groups: {
+    list: () => request<Group[]>('/api/groups'),
+    create: (data: { name: string; color?: string }) =>
+      request<Group>('/api/groups', 'POST', data),
+    update: (id: number, data: Partial<{ name: string; color: string }>) =>
+      request<Group>(`/api/groups/${id}`, 'PUT', data),
+    remove: (id: number) => request<void>(`/api/groups/${id}`, 'DELETE'),
+    reorder: (orderedIds: number[]) =>
+      request<void>('/api/groups/reorder', 'PUT', { ordered_ids: orderedIds }),
   },
   tasks: {
     list: (query: TaskQuery = {}) => request<Task[]>(`/api/tasks${qs(query)}`),

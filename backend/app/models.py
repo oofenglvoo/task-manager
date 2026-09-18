@@ -58,12 +58,27 @@ class Tag(Base):
     )
 
 
+class Group(Base):
+    __tablename__ = "groups"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+    color: Mapped[str] = mapped_column(String(20), nullable=False, default="#6366f1")
+    position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utcnow)
+
+    tasks: Mapped[list["Task"]] = relationship(back_populates="group")
+
+
 class Task(Base):
     __tablename__ = "tasks"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     status_id: Mapped[int | None] = mapped_column(
         ForeignKey("statuses.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    group_id: Mapped[int | None] = mapped_column(
+        ForeignKey("groups.id", ondelete="SET NULL"), nullable=True, index=True
     )
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -78,6 +93,7 @@ class Task(Base):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     status: Mapped["Status | None"] = relationship(back_populates="tasks")
+    group: Mapped["Group | None"] = relationship(back_populates="tasks")
     tags: Mapped[list["Tag"]] = relationship(
         secondary=task_tags, back_populates="tasks"
     )
@@ -110,6 +126,7 @@ class Preference(Base):
     theme: Mapped[str] = mapped_column(String(20), nullable=False, default="system")
     card_size: Mapped[str] = mapped_column(String(20), nullable=False, default="md")
     compact: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    group_by: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     background_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, default=utcnow, onupdate=utcnow

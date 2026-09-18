@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import type { SunburstSeriesOption } from 'echarts/charts'
 import type { Status, Task } from '../../../lib/types'
 import type { EChartsOption } from '../../../lib/echarts'
 import { chartPalette, chartTooltipStyle } from '../../../lib/chartTheme'
@@ -10,6 +11,7 @@ interface RadialViewProps {
   tasks: Task[]
   statuses: Status[]
   height: number
+  groupBy: boolean
   onOpenTask: (taskId: number) => void
 }
 
@@ -18,7 +20,7 @@ function taskIdFromNodeId(id: string): number | null {
   return match ? Number(match[1]) : null
 }
 
-export function RadialView({ tasks, statuses, height, onOpenTask }: RadialViewProps) {
+export function RadialView({ tasks, statuses, height, groupBy, onOpenTask }: RadialViewProps) {
   const { resolvedTheme } = usePreferences()
   const isDark = resolvedTheme === 'dark'
   const palette = useMemo(() => chartPalette(isDark), [isDark])
@@ -30,9 +32,74 @@ export function RadialView({ tasks, statuses, height, onOpenTask }: RadialViewPr
   )
   const taskMap = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks])
   const data = useMemo(
-    () => buildSunburstData(tasks, statuses, palette),
-    [tasks, statuses, palette],
+    () => buildSunburstData(tasks, statuses, palette, groupBy),
+    [tasks, statuses, palette, groupBy],
   )
+
+  // 分组视图下多一圈（根 → 分组 → 优先级 → 状态 → 任务），半径需要重新划分。
+  const levels = useMemo<SunburstSeriesOption['levels']>(() => {
+    if (!groupBy) {
+      return [
+        {
+          r0: '0%',
+          r: '18%',
+          label: { rotate: 0, fontSize: 12, fontWeight: 600, color: palette.text },
+        },
+        {
+          r0: '20%',
+          r: '42%',
+          label: { rotate: 'tangential', fontSize: 12, fontWeight: 600, minAngle: 12 },
+        },
+        {
+          r0: '42%',
+          r: '66%',
+          label: { rotate: 'tangential', fontSize: 11, minAngle: 14 },
+        },
+        {
+          r0: '66%',
+          r: '95%',
+          label: {
+            rotate: 'tangential',
+            fontSize: 10,
+            minAngle: 16,
+            color: palette.subText,
+          },
+        },
+      ]
+    }
+    return [
+      {
+        r0: '0%',
+        r: '14%',
+        label: { rotate: 0, fontSize: 12, fontWeight: 600, color: palette.text },
+      },
+      {
+        r0: '15%',
+        r: '30%',
+        label: { rotate: 'tangential', fontSize: 11, fontWeight: 600, minAngle: 10 },
+      },
+      {
+        r0: '31%',
+        r: '47%',
+        label: { rotate: 'tangential', fontSize: 11, fontWeight: 600, minAngle: 12 },
+      },
+      {
+        r0: '48%',
+        r: '69%',
+        label: { rotate: 'tangential', fontSize: 10, minAngle: 14 },
+      },
+      {
+        r0: '70%',
+        r: '95%',
+        label: {
+          rotate: 'tangential',
+          fontSize: 9,
+          minAngle: 16,
+          color: palette.subText,
+        },
+      },
+    ]
+  }, [groupBy, palette])
 
   const option = useMemo<EChartsOption>(
     () => ({
@@ -73,43 +140,12 @@ export function RadialView({ tasks, statuses, height, onOpenTask }: RadialViewPr
             overflow: 'truncate',
           },
           labelLayout: { hideOverlap: true },
-          levels: [
-            {
-              r0: '0%',
-              r: '18%',
-              label: {
-                rotate: 0,
-                fontSize: 12,
-                fontWeight: 600,
-                color: palette.text,
-              },
-            },
-            {
-              r0: '20%',
-              r: '42%',
-              label: { rotate: 'tangential', fontSize: 12, fontWeight: 600, minAngle: 12 },
-            },
-            {
-              r0: '42%',
-              r: '66%',
-              label: { rotate: 'tangential', fontSize: 11, minAngle: 14 },
-            },
-            {
-              r0: '66%',
-              r: '95%',
-              label: {
-                rotate: 'tangential',
-                fontSize: 10,
-                minAngle: 16,
-                color: palette.subText,
-              },
-            },
-          ],
+          levels,
           data,
         },
       ],
     }),
-    [data, palette, taskMap, statusMap, tooltipStyle],
+    [data, levels, palette, taskMap, statusMap, tooltipStyle],
   )
 
   return (

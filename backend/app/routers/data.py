@@ -17,6 +17,11 @@ def export_data(db: Session = Depends(get_db)):
         )
     )
     tags = list(db.scalars(select(models.Tag).order_by(models.Tag.name)))
+    groups = list(
+        db.scalars(
+            select(models.Group).order_by(models.Group.position, models.Group.id)
+        )
+    )
     tasks = list(
         db.scalars(
             select(models.Task)
@@ -45,10 +50,17 @@ def export_data(db: Session = Depends(get_db)):
             schemas.ExportTag(id=tag.id, name=tag.name, color=tag.color)
             for tag in tags
         ],
+        groups=[
+            schemas.ExportGroup(
+                id=group.id, name=group.name, color=group.color, position=group.position
+            )
+            for group in groups
+        ],
         tasks=[
             schemas.ExportTask(
                 id=task.id,
                 status_id=task.status_id,
+                group_id=task.group_id,
                 title=task.title,
                 description=task.description,
                 priority=task.priority,
@@ -76,6 +88,7 @@ def export_data(db: Session = Depends(get_db)):
 @router.post("/import", response_model=schemas.ImportResult)
 def import_data(payload: schemas.ExportData, db: Session = Depends(get_db)):
     tag_ids = {tag.id for tag in payload.tags}
+    group_ids = {group.id for group in payload.groups}
 
     for task in payload.tasks:
         for tag_id in task.tag_ids:
@@ -83,6 +96,10 @@ def import_data(payload: schemas.ExportData, db: Session = Depends(get_db)):
                 raise HTTPException(
                     status_code=400, detail=f"任务「{task.title}」引用了不存在的标签"
                 )
+        if task.group_id is not None and task.group_id not in group_ids:
+            raise HTTPException(
+                status_code=400, detail=f"任务「{task.title}」引用了不存在的分组"
+            )
 
     status_names = [status.name for status in payload.statuses]
     if len(status_names) != len(set(status_names)):
@@ -90,11 +107,15 @@ def import_data(payload: schemas.ExportData, db: Session = Depends(get_db)):
     tag_names = [tag.name for tag in payload.tags]
     if len(tag_names) != len(set(tag_names)):
         raise HTTPException(status_code=400, detail="导入数据中标签名称重复")
+    group_names = [group.name for group in payload.groups]
+    if len(group_names) != len(set(group_names)):
+        raise HTTPException(status_code=400, detail="导入数据中分组名称重复")
 
     db.execute(delete(models.SubTask))
     db.execute(delete(models.task_tags))
     db.execute(delete(models.Task))
     db.execute(delete(models.Tag))
+    db.execute(delete(models.Group))
     db.execute(delete(models.Status))
     db.flush()
 
@@ -117,12 +138,22 @@ def import_data(payload: schemas.ExportData, db: Session = Depends(get_db)):
         db.flush()
         tag_map[item.id] = tag.id
 
+    group_map: dict[int, int] = {}
+    for item in payload.groups:
+        group = models.Group(name=item.name, color=item.color, position=item.position)
+        db.add(group)
+        db.flush()
+        group_map[item.id] = group.id
+
     task_count = 0
     subtask_count = 0
     for item in payload.tasks:
         task = models.Task(
             status_id=status_map.get(item.status_id)
             if item.status_id is not None
+            else None,
+            group_id=group_map.get(item.group_id)
+            if item.group_id is not None
             else None,
             title=item.title,
             description=item.description,
@@ -157,6 +188,7 @@ def import_data(payload: schemas.ExportData, db: Session = Depends(get_db)):
     return schemas.ImportResult(
         statuses=len(payload.statuses),
         tags=len(payload.tags),
+        groups=len(payload.groups),
         tasks=task_count,
         subtasks=subtask_count,
     )

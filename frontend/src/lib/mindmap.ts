@@ -1,4 +1,4 @@
-﻿import type { Status, Task } from './types'
+﻿import type { Group, Status, Task } from './types'
 import { withAlpha } from './chartTheme'
 import type { ChartPalette } from './chartTheme'
 
@@ -99,6 +99,63 @@ export function groupTasks(tasks: Task[], statuses: Status[]): PriorityGroup[] {
   }).filter((group) => group.count > 0)
 }
 
+export const UNGROUPED_COLOR = '#94a3b8'
+export const UNGROUPED_NAME = '未分组'
+
+export interface TaskGroupSection {
+  id: number | null
+  name: string
+  color: string
+  count: number
+  tasks: Task[]
+  priorities: PriorityGroup[]
+}
+
+// 按任务分组拆分为区块，组按 position 排序，未分组固定排在最后。
+export function groupSections(tasks: Task[], statuses: Status[]): TaskGroupSection[] {
+  const byGroup = new Map<number | null, Task[]>()
+  const meta = new Map<number, Group>()
+
+  for (const task of tasks) {
+    const id = task.group?.id ?? null
+    if (task.group) meta.set(task.group.id, task.group)
+    const bucket = byGroup.get(id)
+    if (bucket) bucket.push(task)
+    else byGroup.set(id, [task])
+  }
+
+  const sections: TaskGroupSection[] = []
+  const ordered = [...meta.values()].sort(
+    (a, b) => a.position - b.position || a.id - b.id,
+  )
+  for (const group of ordered) {
+    const items = byGroup.get(group.id)
+    if (!items || items.length === 0) continue
+    sections.push({
+      id: group.id,
+      name: group.name,
+      color: group.color,
+      count: items.length,
+      tasks: items,
+      priorities: groupTasks(items, statuses),
+    })
+  }
+
+  const ungrouped = byGroup.get(null)
+  if (ungrouped && ungrouped.length > 0) {
+    sections.push({
+      id: null,
+      name: UNGROUPED_NAME,
+      color: UNGROUPED_COLOR,
+      count: ungrouped.length,
+      tasks: ungrouped,
+      priorities: groupTasks(ungrouped, statuses),
+    })
+  }
+
+  return sections
+}
+
 export interface MindMapTooltipMeta {
   task: Task
   status?: Status
@@ -119,6 +176,9 @@ export function formatTaskTooltip({ task, status }: MindMapTooltipMeta): string 
     `<div>优先级：${priority}</div>`,
     `<div>截止：<span style="color:${overdue ? '#ef4444' : 'inherit'}">${escapeHtml(due)}</span></div>`,
   ]
+  if (task.group) {
+    rows.push(`<div>分组：${escapeHtml(task.group.name)}</div>`)
+  }
   if (task.subtasks.length > 0) {
     rows.push(`<div>子任务：${doneCount}/${task.subtasks.length}</div>`)
   }
@@ -156,34 +216,86 @@ export interface EChartsTreeNode {
   children?: EChartsTreeNode[]
 }
 
+function priorityNodes(
+  groups: PriorityGroup[],
+  palette: ChartPalette,
+  idPrefix: string,
+): EChartsTreeNode[] {
+  return groups.map((group) => ({
+    id: `${idPrefix}priority-${group.priority}`,
+    name: `${priorityShortLabel(group.priority)}优先级`,
+    value: group.count,
+    itemStyle: { color: palette.priority[group.priority] },
+    symbolSize: 11,
+    lineStyle: { color: withAlpha(palette.priority[group.priority], 0.55) },
+    children: group.branches.map((branch) => ({
+      id: `${idPrefix}status-${group.priority}-${branch.statusId ?? 'none'}`,
+      name: branch.name,
+      value: branch.total,
+      itemStyle: { color: branch.color },
+      symbolSize: 9,
+      children: branchTasks(
+        branch,
+        palette,
+        `${idPrefix}${group.priority}-${branch.statusId ?? 'none'}`,
+      ),
+    })),
+  }))
+}
+
+function sunburstPriorityNodes(
+  groups: PriorityGroup[],
+  palette: ChartPalette,
+  idPrefix: string,
+): EChartsTreeNode[] {
+  return groups.map((group) => ({
+    id: `${idPrefix}priority-${group.priority}`,
+    name: `${priorityShortLabel(group.priority)}优先级`,
+    value: group.count,
+    itemStyle: { color: palette.priority[group.priority] },
+    children: group.branches.map((branch) => ({
+      id: `${idPrefix}status-${group.priority}-${branch.statusId ?? 'none'}`,
+      name: branch.name,
+      value: branch.total,
+      itemStyle: { color: branch.color },
+      children: branchTasks(
+        branch,
+        palette,
+        `${idPrefix}${group.priority}-${branch.statusId ?? 'none'}`,
+      ).map((node) => ({
+        ...node,
+        value: 1,
+        itemStyle: { color: withAlpha(node.itemStyle?.color ?? palette.root, 0.82) },
+      })),
+    })),
+  }))
+}
+
 export function buildTreeData(
   tasks: Task[],
   statuses: Status[],
   palette: ChartPalette,
+  groupBy = false,
 ): EChartsTreeNode {
-  const groups = groupTasks(tasks, statuses)
+  const children = groupBy
+    ? groupSections(tasks, statuses).map((section) => ({
+        id: `group-${section.id ?? 'none'}`,
+        name: section.name,
+        value: section.count,
+        itemStyle: { color: section.color },
+        symbolSize: 12,
+        lineStyle: { color: withAlpha(section.color, 0.55) },
+        children: priorityNodes(section.priorities, palette, `group-${section.id ?? 'none'}-`),
+      }))
+    : priorityNodes(groupTasks(tasks, statuses), palette, '')
+
   return {
     id: ROOT_ID,
     name: ROOT_LABEL,
     value: tasks.length,
     itemStyle: { color: palette.root },
     symbolSize: 14,
-    children: groups.map((group) => ({
-      id: `priority-${group.priority}`,
-      name: `${priorityShortLabel(group.priority)}优先级`,
-      value: group.count,
-      itemStyle: { color: palette.priority[group.priority] },
-      symbolSize: 11,
-      lineStyle: { color: withAlpha(palette.priority[group.priority], 0.55) },
-      children: group.branches.map((branch) => ({
-        id: `status-${group.priority}-${branch.statusId ?? 'none'}`,
-        name: branch.name,
-        value: branch.total,
-        itemStyle: { color: branch.color },
-        symbolSize: 9,
-        children: branchTasks(branch, palette),
-      })),
-    })),
+    children,
   }
 }
 
@@ -191,36 +303,38 @@ export function buildSunburstData(
   tasks: Task[],
   statuses: Status[],
   palette: ChartPalette,
+  groupBy = false,
 ): EChartsTreeNode[] {
-  const groups = groupTasks(tasks, statuses)
+  const children = groupBy
+    ? groupSections(tasks, statuses).map((section) => ({
+        id: `group-${section.id ?? 'none'}`,
+        name: section.name,
+        value: section.count,
+        itemStyle: { color: section.color },
+        children: sunburstPriorityNodes(
+          section.priorities,
+          palette,
+          `group-${section.id ?? 'none'}-`,
+        ),
+      }))
+    : sunburstPriorityNodes(groupTasks(tasks, statuses), palette, '')
+
   return [
     {
       id: ROOT_ID,
       name: ROOT_LABEL,
       value: tasks.length,
       itemStyle: { color: palette.root },
-      children: groups.map((group) => ({
-        id: `priority-${group.priority}`,
-        name: `${priorityShortLabel(group.priority)}优先级`,
-        value: group.count,
-        itemStyle: { color: palette.priority[group.priority] },
-        children: group.branches.map((branch) => ({
-          id: `status-${group.priority}-${branch.statusId ?? 'none'}`,
-          name: branch.name,
-          value: branch.total,
-          itemStyle: { color: branch.color },
-          children: branchTasks(branch, palette).map((node) => ({
-            ...node,
-            value: 1,
-            itemStyle: { color: withAlpha(node.itemStyle?.color ?? palette.root, 0.82) },
-          })),
-        })),
-      })),
+      children,
     },
   ]
 }
 
-function branchTasks(branch: Branch, palette: ChartPalette): EChartsTreeNode[] {
+function branchTasks(
+  branch: Branch,
+  palette: ChartPalette,
+  moreKey: string,
+): EChartsTreeNode[] {
   const nodes: EChartsTreeNode[] = branch.tasks.map((task) => ({
     id: `task-${task.id}`,
     name: task.completed_at != null ? `${task.title}` : task.title,
@@ -230,7 +344,7 @@ function branchTasks(branch: Branch, palette: ChartPalette): EChartsTreeNode[] {
   }))
   if (branch.hidden > 0) {
     nodes.push({
-      id: `more-${branch.statusId ?? 'none'}${MORE_SUFFIX}`,
+      id: `more-${moreKey}${MORE_SUFFIX}`,
       name: `还有 ${branch.hidden} 个…`,
       value: branch.hidden,
       itemStyle: { color: palette.muted },
@@ -276,8 +390,8 @@ export function buildSankeyData(
   tasks: Task[],
   statuses: Status[],
   palette: ChartPalette,
+  groupBy = false,
 ): SankeyData {
-  const groups = groupTasks(tasks, statuses)
   const rootName = sankeyNodeId('root', 'all')
   const nodes: SankeyNode[] = [
     {
@@ -290,89 +404,129 @@ export function buildSankeyData(
   ]
   const links: SankeyLink[] = []
 
-  for (const group of groups) {
-    const priorityId = sankeyNodeId('priority', String(group.priority))
-    const color = palette.priority[group.priority] ?? palette.muted
-    const groupDone = group.branches
-      .flatMap((branch) => branch.tasks)
-      .filter((task) => task.completed_at != null).length
+  const emitPriorities = (
+    priorityGroups: PriorityGroup[],
+    parentId: string,
+    depth: number,
+    keyPrefix: string,
+  ) => {
+    for (const group of priorityGroups) {
+      const priorityId = sankeyNodeId('priority', `${keyPrefix}${group.priority}`)
+      const color = palette.priority[group.priority] ?? palette.muted
+      const groupDone = group.branches
+        .flatMap((branch) => branch.tasks)
+        .filter((task) => task.completed_at != null).length
 
-    nodes.push({
-      name: priorityId,
-      depth: 1,
-      display: `${priorityShortLabel(group.priority)}优先级 · ${groupDone}/${group.count}`,
-      itemStyle: { color },
-      label: { fontWeight: 600 },
-      completed: groupDone,
-      total: group.count,
-    })
-    links.push({
-      source: rootName,
-      target: priorityId,
-      value: group.count,
-      lineStyle: { color, opacity: 0.42 },
-    })
-
-    for (const branch of group.branches) {
-      const statusId = sankeyNodeId(
-        'status',
-        `${group.priority}-${branch.statusId ?? 'none'}`,
-      )
       nodes.push({
-        name: statusId,
-        depth: 2,
-        display: branch.name,
-        itemStyle: { color: branch.color },
-        total: branch.total,
+        name: priorityId,
+        depth,
+        display: `${priorityShortLabel(group.priority)}优先级 · ${groupDone}/${group.count}`,
+        itemStyle: { color },
+        label: { fontWeight: 600 },
+        completed: groupDone,
+        total: group.count,
       })
       links.push({
-        source: priorityId,
-        target: statusId,
-        value: branch.total,
-        lineStyle: { color: branch.color, opacity: 0.42 },
+        source: parentId,
+        target: priorityId,
+        value: group.count,
+        lineStyle: { color, opacity: 0.42 },
       })
 
-      for (const task of branch.tasks) {
-        const taskNodeId = sankeyNodeId('task', String(task.id))
-        nodes.push({
-          name: taskNodeId,
-          depth: 3,
-          display: task.title,
-          itemStyle: {
-            color: task.completed_at != null ? palette.done : color,
-          },
-          label: task.completed_at != null ? { color: palette.muted } : undefined,
-          taskId: task.id,
-          done: task.completed_at != null,
-        })
-        links.push({
-          source: statusId,
-          target: taskNodeId,
-          value: 1,
-          lineStyle: { color: branch.color, opacity: 0.32 },
-        })
-      }
-
-      if (branch.hidden > 0) {
-        const moreId = sankeyNodeId(
-          'more',
-          `${group.priority}-${branch.statusId ?? 'none'}`,
+      const branchPrefix = `${keyPrefix}${group.priority}-`
+      for (const branch of group.branches) {
+        const statusId = sankeyNodeId(
+          'status',
+          `${branchPrefix}${branch.statusId ?? 'none'}`,
         )
         nodes.push({
-          name: moreId,
-          depth: 3,
-          display: `还有 ${branch.hidden} 个…`,
-          itemStyle: { color: palette.muted },
-          label: { color: palette.muted },
+          name: statusId,
+          depth: depth + 1,
+          display: branch.name,
+          itemStyle: { color: branch.color },
+          total: branch.total,
         })
         links.push({
-          source: statusId,
-          target: moreId,
-          value: branch.hidden,
-          lineStyle: { color: branch.color, opacity: 0.2 },
+          source: priorityId,
+          target: statusId,
+          value: branch.total,
+          lineStyle: { color: branch.color, opacity: 0.42 },
         })
+
+        for (const task of branch.tasks) {
+          const taskNodeId = sankeyNodeId('task', String(task.id))
+          nodes.push({
+            name: taskNodeId,
+            depth: depth + 2,
+            display: task.title,
+            itemStyle: {
+              color: task.completed_at != null ? palette.done : color,
+            },
+            label: task.completed_at != null ? { color: palette.muted } : undefined,
+            taskId: task.id,
+            done: task.completed_at != null,
+          })
+          links.push({
+            source: statusId,
+            target: taskNodeId,
+            value: 1,
+            lineStyle: { color: branch.color, opacity: 0.32 },
+          })
+        }
+
+        if (branch.hidden > 0) {
+          const moreId = sankeyNodeId(
+            'more',
+            `${branchPrefix}${branch.statusId ?? 'none'}`,
+          )
+          nodes.push({
+            name: moreId,
+            depth: depth + 2,
+            display: `还有 ${branch.hidden} 个…`,
+            itemStyle: { color: palette.muted },
+            label: { color: palette.muted },
+          })
+          links.push({
+            source: statusId,
+            target: moreId,
+            value: branch.hidden,
+            lineStyle: { color: branch.color, opacity: 0.2 },
+          })
+        }
       }
     }
+  }
+
+  if (groupBy) {
+    for (const section of groupSections(tasks, statuses)) {
+      const groupId = sankeyNodeId('group', String(section.id ?? 'none'))
+      const groupDone = section.tasks.filter(
+        (task) => task.completed_at != null,
+      ).length
+      nodes.push({
+        name: groupId,
+        depth: 1,
+        display: `${section.name} · ${groupDone}/${section.count}`,
+        itemStyle: { color: section.color },
+        label: { fontWeight: 600 },
+        completed: groupDone,
+        total: section.count,
+      })
+      links.push({
+        source: rootName,
+        target: groupId,
+        value: section.count,
+        lineStyle: { color: section.color, opacity: 0.42 },
+      })
+      emitPriorities(
+        section.priorities,
+        groupId,
+        2,
+        `group-${section.id ?? 'none'}-`,
+      )
+    }
+  } else {
+    emitPriorities(groupTasks(tasks, statuses), rootName, 1, '')
   }
 
   return { nodes, links }

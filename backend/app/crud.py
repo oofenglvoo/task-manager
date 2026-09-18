@@ -50,10 +50,21 @@ def load_tags(db: Session, tag_ids: list[int]) -> list[models.Tag]:
     return tags
 
 
+def resolve_group(db: Session, group_id: int | None) -> models.Group | None:
+    if group_id is None:
+        return None
+    group = db.get(models.Group, group_id)
+    if group is None:
+        raise HTTPException(status_code=404, detail="分组不存在")
+    return group
+
+
 def create_task(db: Session, payload) -> models.Task:
     status = resolve_status(db, payload.status_id)
+    resolve_group(db, payload.group_id)
     task = models.Task(
         status_id=status.id if status is not None else None,
+        group_id=payload.group_id,
         title=_clean_title(payload.title),
         description=payload.description,
         priority=payload.priority,
@@ -74,12 +85,18 @@ def update_task(db: Session, task: models.Task, payload) -> models.Task:
     tag_ids = data.pop("tag_ids", None)
     status_provided = "status_id" in data
     new_status_id = data.pop("status_id", None)
+    group_provided = "group_id" in data
+    new_group_id = data.pop("group_id", None)
 
     if "title" in data and data["title"] is not None:
         data["title"] = _clean_title(data["title"])
 
     for key, value in data.items():
         setattr(task, key, value)
+
+    if group_provided:
+        resolve_group(db, new_group_id)
+        task.group_id = new_group_id
 
     if status_provided:
         status = resolve_status(db, new_status_id)
@@ -109,6 +126,10 @@ def move_task(db: Session, task: models.Task, payload) -> models.Task:
                 task.completed_at = utcnow()
         else:
             task.completed_at = None
+
+    if payload.group_id is not None:
+        resolve_group(db, payload.group_id)
+        task.group_id = payload.group_id
 
     if payload.position is not None:
         task.position = payload.position

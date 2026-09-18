@@ -2,7 +2,13 @@ import { useMemo } from 'react'
 import { CheckSquare, CircleAlert } from 'lucide-react'
 import type { Status, Task } from '../../../lib/types'
 import { chartPalette } from '../../../lib/chartTheme'
-import { buildSwimlaneData, priorityLabel, priorityShortLabel } from '../../../lib/mindmap'
+import type { ChartPalette } from '../../../lib/chartTheme'
+import {
+  buildSwimlaneData,
+  groupSections,
+  priorityLabel,
+  priorityShortLabel,
+} from '../../../lib/mindmap'
 import { cn, dueState } from '../../../lib/utils'
 import { usePreferences } from '../../../store/preferences'
 
@@ -10,95 +16,151 @@ interface SwimlaneViewProps {
   tasks: Task[]
   statuses: Status[]
   height: number
+  groupBy: boolean
   onOpenTask: (taskId: number) => void
 }
 
-export function SwimlaneView({ tasks, statuses, height, onOpenTask }: SwimlaneViewProps) {
+export function SwimlaneView({
+  tasks,
+  statuses,
+  height,
+  groupBy,
+  onOpenTask,
+}: SwimlaneViewProps) {
   const { resolvedTheme } = usePreferences()
   const isDark = resolvedTheme === 'dark'
   const palette = useMemo(() => chartPalette(isDark), [isDark])
+  const sections = useMemo(
+    () => (groupBy ? groupSections(tasks, statuses) : []),
+    [groupBy, tasks, statuses],
+  )
+
+  return (
+    <div className="scrollbar-thin overflow-auto" style={{ maxHeight: height }}>
+      {groupBy ? (
+        <div className="flex flex-col gap-5 p-1">
+          {sections.map((section) => (
+            <div key={section.id ?? 'none'}>
+              <div className="mb-2 flex items-center gap-2">
+                <span
+                  className="h-2.5 w-2.5 rounded-sm"
+                  style={{ backgroundColor: section.color }}
+                />
+                <span className="text-xs font-semibold text-ink">{section.name}</span>
+                <span className="text-xs text-muted">{section.count}</span>
+              </div>
+              <SwimlaneGrid
+                tasks={section.tasks}
+                statuses={statuses}
+                palette={palette}
+                onOpenTask={onOpenTask}
+              />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <SwimlaneGrid
+          tasks={tasks}
+          statuses={statuses}
+          palette={palette}
+          onOpenTask={onOpenTask}
+        />
+      )}
+    </div>
+  )
+}
+
+function SwimlaneGrid({
+  tasks,
+  statuses,
+  palette,
+  onOpenTask,
+}: {
+  tasks: Task[]
+  statuses: Status[]
+  palette: ChartPalette
+  onOpenTask: (taskId: number) => void
+}) {
   const data = useMemo(() => buildSwimlaneData(tasks, statuses), [tasks, statuses])
 
   const cellKey = (priority: number, statusId: number | null) =>
     `${priority}-${statusId ?? 'none'}`
 
   return (
-    <div className="scrollbar-thin overflow-auto" style={{ maxHeight: height }}>
-      <div className="flex min-w-max gap-3 p-1">
-        <div className="flex shrink-0 flex-col gap-3">
-          <div className="h-7" />
-          {data.priorities.map((priority) => (
-            <div
-              key={priority}
-              title={priorityLabel(priority)}
-              className="flex min-h-[104px] w-16 items-center gap-2 rounded-md border border-line bg-elevated/60 px-2"
+    <div className="flex min-w-max gap-3 p-1">
+      <div className="flex shrink-0 flex-col gap-3">
+        <div className="h-7" />
+        {data.priorities.map((priority) => (
+          <div
+            key={priority}
+            title={priorityLabel(priority)}
+            className="flex min-h-[104px] w-16 items-center gap-2 rounded-md border border-line bg-elevated/60 px-2"
+          >
+            <span
+              className="h-8 w-1.5 shrink-0 rounded-full"
+              style={{ backgroundColor: palette.priority[priority] }}
+            />
+            <span
+              className="text-xs font-semibold leading-tight"
+              style={{ color: palette.priority[priority] }}
             >
-              <span
-                className="h-8 w-1.5 shrink-0 rounded-full"
-                style={{ backgroundColor: palette.priority[priority] }}
-              />
-              <span
-                className="text-xs font-semibold leading-tight"
-                style={{ color: palette.priority[priority] }}
-              >
-                {priorityShortLabel(priority)}
-                <br />
-                优先
-              </span>
-            </div>
-          ))}
-        </div>
-
-        {data.statuses.map((column) => (
-          <div key={column.id ?? 'none'} className="flex w-56 shrink-0 flex-col gap-3">
-            <div
-              className="flex h-7 items-center gap-1.5 rounded-md px-2 text-xs font-semibold"
-              style={{ color: column.color, backgroundColor: `${column.color}1f` }}
-            >
-              <span
-                className="h-2 w-2 rounded-full"
-                style={{ backgroundColor: column.color }}
-              />
-              {column.name}
-            </div>
-            {data.priorities.map((priority) => {
-              const cell = data.cells.find(
-                (item) => item.priority === priority && item.statusId === column.id,
-              )
-              return (
-                <div
-                  key={cellKey(priority, column.id)}
-                  className={cn(
-                    'min-h-[104px] rounded-md border p-1.5',
-                    cell
-                      ? 'border-line/70 bg-surface'
-                      : 'border-dashed border-line/40 bg-transparent',
-                  )}
-                >
-                  {cell ? (
-                    <div className="flex flex-col gap-1">
-                      {cell.tasks.map((task) => (
-                        <SwimlaneTask
-                          key={task.id}
-                          task={task}
-                          color={palette.priority[task.priority]}
-                          doneColor={palette.done}
-                          onClick={() => onOpenTask(task.id)}
-                        />
-                      ))}
-                      {cell.total > cell.tasks.length ? (
-                        <span className="px-1.5 pt-0.5 text-[10px] text-muted">
-                          还有 {cell.total - cell.tasks.length} 个…
-                        </span>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </div>
-              )
-            })}
+              {priorityShortLabel(priority)}
+              <br />
+              优先
+            </span>
           </div>
         ))}
       </div>
+
+      {data.statuses.map((column) => (
+        <div key={column.id ?? 'none'} className="flex w-56 shrink-0 flex-col gap-3">
+          <div
+            className="flex h-7 items-center gap-1.5 rounded-md px-2 text-xs font-semibold"
+            style={{ color: column.color, backgroundColor: `${column.color}1f` }}
+          >
+            <span
+              className="h-2 w-2 rounded-full"
+              style={{ backgroundColor: column.color }}
+            />
+            {column.name}
+          </div>
+          {data.priorities.map((priority) => {
+            const cell = data.cells.find(
+              (item) => item.priority === priority && item.statusId === column.id,
+            )
+            return (
+              <div
+                key={cellKey(priority, column.id)}
+                className={cn(
+                  'min-h-[104px] rounded-md border p-1.5',
+                  cell
+                    ? 'border-line/70 bg-surface'
+                    : 'border-dashed border-line/40 bg-transparent',
+                )}
+              >
+                {cell ? (
+                  <div className="flex flex-col gap-1">
+                    {cell.tasks.map((task) => (
+                      <SwimlaneTask
+                        key={task.id}
+                        task={task}
+                        color={palette.priority[task.priority]}
+                        doneColor={palette.done}
+                        onClick={() => onOpenTask(task.id)}
+                      />
+                    ))}
+                    {cell.total > cell.tasks.length ? (
+                      <span className="px-1.5 pt-0.5 text-[10px] text-muted">
+                        还有 {cell.total - cell.tasks.length} 个…
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            )
+          })}
+        </div>
+      ))}
     </div>
   )
 }

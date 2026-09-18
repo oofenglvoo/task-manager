@@ -5,6 +5,7 @@ import type { TaskInput, TaskQuery } from '../lib/types'
 export const keys = {
   statuses: ['statuses'] as const,
   tags: ['tags'] as const,
+  groups: ['groups'] as const,
   tasks: (query: TaskQuery) => ['tasks', query] as const,
   task: (id: number) => ['task', id] as const,
   stats: ['stats'] as const,
@@ -16,6 +17,10 @@ export function useStatuses() {
 
 export function useTags() {
   return useQuery({ queryKey: keys.tags, queryFn: () => api.tags.list() })
+}
+
+export function useGroups() {
+  return useQuery({ queryKey: keys.groups, queryFn: () => api.groups.list() })
 }
 
 export function useTasks(query: TaskQuery) {
@@ -192,6 +197,43 @@ export function useDeleteTag() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['tags'] })
       void qc.invalidateQueries({ queryKey: ['tasks'] })
+    },
+  })
+}
+
+export function useCreateGroup() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { name: string; color?: string }) => api.groups.create(data),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['groups'] }),
+  })
+}
+
+export function useUpdateGroup() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number
+      data: Partial<{ name: string; color: string }>
+    }) => api.groups.update(id, data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['groups'] })
+      void qc.invalidateQueries({ queryKey: ['tasks'] })
+    },
+  })
+}
+
+export function useDeleteGroup() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => api.groups.remove(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['groups'] })
+      void qc.invalidateQueries({ queryKey: ['tasks'] })
+      void qc.invalidateQueries({ queryKey: ['stats'] })
     },
   })
 }

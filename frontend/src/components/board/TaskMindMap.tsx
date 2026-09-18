@@ -1,7 +1,8 @@
 import { Suspense, lazy, useMemo, useState } from 'react'
-import { ChevronDown, ChevronUp, Plus } from 'lucide-react'
+import { ChevronDown, ChevronUp, Layers, Plus } from 'lucide-react'
 import { useStatuses, useTasks } from '../../hooks/queries'
 import { cn } from '../../lib/utils'
+import { usePreferences } from '../../store/preferences'
 import { useUI } from '../../store/ui'
 import { EmptyState } from '../ui/EmptyState'
 import { Button } from '../ui/Button'
@@ -67,14 +68,15 @@ export function TaskMindMap() {
   const { data: statuses = [] } = useStatuses()
   const { data: tasks = [], isLoading } = useTasks({ sort: 'position', order: 'asc' })
   const { openTask, openCreate } = useUI()
+  const { groupBy, setGroupBy } = usePreferences()
   const [view, setView] = useState<MindMapView>(loadView)
   const [collapsed, setCollapsed] = useState<boolean>(loadCollapsed)
 
   const chartHeight = CHART_HEIGHTS[view]
 
   const viewProps = useMemo(
-    () => ({ tasks, statuses, height: chartHeight, onOpenTask: openTask }),
-    [tasks, statuses, chartHeight, openTask],
+    () => ({ tasks, statuses, height: chartHeight, groupBy, onOpenTask: openTask }),
+    [tasks, statuses, chartHeight, groupBy, openTask],
   )
 
   function changeView(next: MindMapView) {
@@ -105,7 +107,9 @@ export function TaskMindMap() {
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <h2 className="text-sm font-semibold text-ink">任务脉络</h2>
         <span className="text-xs text-muted">
-          按优先级与最近更新时间综合排序，每分支最多展示 8 个
+          {groupBy
+            ? '按分组 / 优先级与最近更新时间综合排序，每分支最多展示 8 个'
+            : '按优先级与最近更新时间综合排序，每分支最多展示 8 个'}
         </span>
         <div className="ml-2 hidden items-center gap-2 sm:flex">
           {LEGEND.map((item) => (
@@ -116,6 +120,20 @@ export function TaskMindMap() {
           ))}
         </div>
         <div className="ml-auto flex items-center gap-2">
+          <button
+            type="button"
+            aria-label={groupBy ? '切换为不分组' : '按分组查看'}
+            title={groupBy ? '不分组' : '按分组'}
+            onClick={() => setGroupBy(!groupBy)}
+            className={
+              'rounded border p-1.5 transition-colors ' +
+              (groupBy
+                ? 'border-accent/60 bg-accent-soft text-ink'
+                : 'border-line text-ink-soft hover:border-line-strong hover:text-ink')
+            }
+          >
+            <Layers className="h-4 w-4" />
+          </button>
           <Select
             value={view}
             className="w-32"

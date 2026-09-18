@@ -3,6 +3,7 @@ import { errorMessage } from '../../lib/api'
 import type { Task } from '../../lib/types'
 import {
   useCreateTask,
+  useGroups,
   useStatuses,
   useTags,
   useUpdateTask,
@@ -23,6 +24,7 @@ interface TaskFormProps {
 interface FormState {
   title: string
   statusId: number | ''
+  groupId: number | ''
   priority: number
   dueDate: string
   description: string
@@ -32,6 +34,7 @@ interface FormState {
 const EMPTY: FormState = {
   title: '',
   statusId: '',
+  groupId: '',
   priority: 2,
   dueDate: '',
   description: '',
@@ -40,6 +43,7 @@ const EMPTY: FormState = {
 
 export function TaskForm({ open, onClose, task, defaultStatusId }: TaskFormProps) {
   const { data: statuses = [] } = useStatuses()
+  const { data: groups = [] } = useGroups()
   const { data: tags = [] } = useTags()
   const createTask = useCreateTask()
   const updateTask = useUpdateTask()
@@ -54,6 +58,7 @@ export function TaskForm({ open, onClose, task, defaultStatusId }: TaskFormProps
       setForm({
         title: task.title,
         statusId: task.status_id ?? '',
+        groupId: task.group_id ?? '',
         priority: task.priority,
         dueDate: task.due_date ?? '',
         description: task.description ?? '',
@@ -90,6 +95,7 @@ export function TaskForm({ open, onClose, task, defaultStatusId }: TaskFormProps
     const payload = {
       title,
       status_id: form.statusId === '' ? (task ? null : undefined) : form.statusId,
+      group_id: form.groupId === '' ? null : form.groupId,
       priority: form.priority,
       due_date: form.dueDate || null,
       description: form.description.trim() || null,
@@ -155,6 +161,27 @@ export function TaskForm({ open, onClose, task, defaultStatusId }: TaskFormProps
               ))}
             </Select>
           </Field>
+          <Field label="分组">
+            <Select
+              value={form.groupId}
+              onChange={(event) =>
+                setForm({
+                  ...form,
+                  groupId: event.target.value === '' ? '' : Number(event.target.value),
+                })
+              }
+            >
+              <option value="">未分组</option>
+              {groups.map((group) => (
+                <option key={group.id} value={group.id}>
+                  {group.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
           <Field label="优先级">
             <Select
               value={form.priority}
@@ -165,15 +192,14 @@ export function TaskForm({ open, onClose, task, defaultStatusId }: TaskFormProps
               <option value={3}>高</option>
             </Select>
           </Field>
+          <Field label="截止日期">
+            <Input
+              type="date"
+              value={form.dueDate}
+              onChange={(event) => setForm({ ...form, dueDate: event.target.value })}
+            />
+          </Field>
         </div>
-
-        <Field label="截止日期">
-          <Input
-            type="date"
-            value={form.dueDate}
-            onChange={(event) => setForm({ ...form, dueDate: event.target.value })}
-          />
-        </Field>
 
         <Field label="标签">
           <TagPicker

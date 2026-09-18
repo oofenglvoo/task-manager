@@ -11,6 +11,7 @@ interface SankeyViewProps {
   tasks: Task[]
   statuses: Status[]
   height: number
+  groupBy: boolean
   onOpenTask: (taskId: number) => void
 }
 
@@ -24,7 +25,7 @@ function nodeOf(data: DefaultLabelFormatterCallbackParams['data']): SankeyNodeSh
   return {}
 }
 
-export function SankeyView({ tasks, statuses, height, onOpenTask }: SankeyViewProps) {
+export function SankeyView({ tasks, statuses, height, groupBy, onOpenTask }: SankeyViewProps) {
   const { resolvedTheme } = usePreferences()
   const isDark = resolvedTheme === 'dark'
   const palette = useMemo(() => chartPalette(isDark), [isDark])
@@ -36,8 +37,8 @@ export function SankeyView({ tasks, statuses, height, onOpenTask }: SankeyViewPr
   )
   const taskMap = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks])
   const data = useMemo(
-    () => buildSankeyData(tasks, statuses, palette),
-    [tasks, statuses, palette],
+    () => buildSankeyData(tasks, statuses, palette, groupBy),
+    [tasks, statuses, palette, groupBy],
   )
 
   const option = useMemo<EChartsOption>(

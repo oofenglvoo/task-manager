@@ -12,6 +12,14 @@ export interface Tag {
   color: string
 }
 
+export interface Group {
+  id: number
+  name: string
+  color: string
+  position: number
+  task_count: number
+}
+
 export interface SubTask {
   id: number
   task_id: number
@@ -23,6 +31,7 @@ export interface SubTask {
 export interface Task {
   id: number
   status_id: number | null
+  group_id: number | null
   title: string
   description: string | null
   priority: number
@@ -32,6 +41,7 @@ export interface Task {
   created_at: string
   updated_at: string
   completed_at: string | null
+  group: Group | null
   tags: Tag[]
   subtasks: SubTask[]
 }
@@ -64,6 +74,7 @@ export interface Stats {
 export interface TaskInput {
   title: string
   status_id?: number | null
+  group_id?: number | null
   description?: string | null
   priority?: number
   due_date?: string | null
@@ -72,6 +83,8 @@ export interface TaskInput {
 
 export interface TaskQuery {
   status_id?: number
+  group_id?: number
+  ungrouped?: boolean
   priority?: number
   tag_id?: number
   q?: string
@@ -87,12 +100,14 @@ export interface Preferences {
   theme: ThemeMode
   card_size: CardSize
   compact: boolean
+  group_by: boolean
   background_url: string | null
 }
 
 export interface ImportResult {
   statuses: number
   tags: number
+  groups: number
   tasks: number
   subtasks: number
 }

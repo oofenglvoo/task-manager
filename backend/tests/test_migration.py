@@ -138,3 +138,41 @@ def test_drop_projects_is_idempotent(tmp_path):
 
     with sqlite3.connect(db_path) as connection:
         assert connection.execute("SELECT COUNT(*) FROM tasks").fetchone()[0] == 2
+
+
+def test_add_task_group_is_idempotent(tmp_path):
+    from app import database
+
+    db_path = tmp_path / "legacy.db"
+    _build_legacy_db(db_path)
+
+    engine = create_engine(f"sqlite:///{db_path.as_posix()}", future=True)
+    with engine.begin() as connection:
+        connection.exec_driver_sql(
+            "CREATE TABLE groups (id INTEGER NOT NULL PRIMARY KEY, name VARCHAR(100) NOT NULL)"
+        )
+        database._add_task_group(connection)
+    with engine.begin() as connection:
+        database._add_task_group(connection)
+
+    with sqlite3.connect(db_path) as connection:
+        columns = [row[1] for row in connection.execute("PRAGMA table_info(tasks)")]
+        assert columns.count("group_id") == 1
+        assert connection.execute("SELECT COUNT(*) FROM tasks").fetchone()[0] == 2
+        indexes = [row[1] for row in connection.execute("PRAGMA index_list(tasks)")]
+        assert "ix_tasks_group_id" in indexes
+
+
+def test_add_task_group_noop_when_existing(tmp_path):
+    from app import database
+
+    db_path = tmp_path / "modern.db"
+    engine = create_engine(f"sqlite:///{db_path.as_posix()}", future=True)
+    with engine.begin() as connection:
+        connection.exec_driver_sql(
+            "CREATE TABLE tasks (id INTEGER NOT NULL PRIMARY KEY, group_id INTEGER)"
+        )
+        database._add_task_group(connection)
+        columns = [row[1] for row in connection.exec_driver_sql("PRAGMA table_info(tasks)")]
+        assert columns == ["id", "group_id"]
+

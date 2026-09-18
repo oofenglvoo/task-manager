@@ -10,6 +10,7 @@ interface TreeViewProps {
   tasks: Task[]
   statuses: Status[]
   height: number
+  groupBy: boolean
   onOpenTask: (taskId: number) => void
 }
 
@@ -18,7 +19,7 @@ function taskIdFromNodeId(id: string): number | null {
   return match ? Number(match[1]) : null
 }
 
-export function TreeView({ tasks, statuses, height, onOpenTask }: TreeViewProps) {
+export function TreeView({ tasks, statuses, height, groupBy, onOpenTask }: TreeViewProps) {
   const { resolvedTheme } = usePreferences()
   const isDark = resolvedTheme === 'dark'
   const palette = useMemo(() => chartPalette(isDark), [isDark])
@@ -30,8 +31,8 @@ export function TreeView({ tasks, statuses, height, onOpenTask }: TreeViewProps)
   )
   const taskMap = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks])
   const data = useMemo(
-    () => buildTreeData(tasks, statuses, palette),
-    [tasks, statuses, palette],
+    () => buildTreeData(tasks, statuses, palette, groupBy),
+    [tasks, statuses, palette, groupBy],
   )
 
   const option = useMemo<EChartsOption>(

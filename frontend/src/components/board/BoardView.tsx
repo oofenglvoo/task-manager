@@ -15,7 +15,7 @@ import {
   rectSortingStrategy,
   sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable'
-import { LayoutGrid, Plus, Rows3 } from 'lucide-react'
+import { LayoutGrid, Layers, Plus, Rows3 } from 'lucide-react'
 import { errorMessage } from '../../lib/api'
 import type { Task, TaskQuery } from '../../lib/types'
 import {
@@ -57,8 +57,8 @@ const SIZE_OPTIONS: Array<{ value: CardSize; label: string }> = [
 const PAGE_SIZE = 60
 
 export function BoardView() {
-  const { search, priority, tagId, openCreate } = useUI()
-  const { cardSize, compact, setCardSize, setCompact } = usePreferences()
+  const { search, priority, tagId, openCreate, openTask, openEdit } = useUI()
+  const { cardSize, compact, groupBy, setCardSize, setCompact, setGroupBy } = usePreferences()
   const { data: statuses = [] } = useStatuses()
   const reorderTasks = useReorderTasks()
   const updateTask = useUpdateTask()
@@ -99,8 +99,35 @@ export function BoardView() {
   const doneStatus = statuses.find((item) => item.is_done)
   const openStatus = statuses.find((item) => !item.is_done)
   const truncated = visibleCount < tasks.length
-  const dragEnabled = manualOrder && !truncated
+  const dragEnabled = manualOrder && !truncated && !groupBy
   const visibleTasks = truncated ? tasks.slice(0, visibleCount) : tasks
+
+  const sections = useMemo(() => {
+    if (!groupBy) return []
+    const map = new Map<
+      string,
+      { key: string; name: string; color: string | null; tasks: Task[] }
+    >()
+    for (const task of visibleTasks) {
+      const key = task.group ? `g-${task.group.id}` : 'none'
+      let section = map.get(key)
+      if (!section) {
+        section = {
+          key,
+          name: task.group?.name ?? '未分组',
+          color: task.group?.color ?? null,
+          tasks: [],
+        }
+        map.set(key, section)
+      }
+      section.tasks.push(task)
+    }
+    const list = [...map.values()]
+    list.sort((a, b) =>
+      a.key === 'none' ? 1 : b.key === 'none' ? -1 : 0,
+    )
+    return list
+  }, [groupBy, visibleTasks])
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -157,7 +184,24 @@ export function BoardView() {
         {!manualOrder ? (
           <span className="text-xs text-muted">（切换「手动排序」后可拖拽）</span>
         ) : null}
+        {groupBy ? (
+          <span className="text-xs text-muted">（分组视图下不可拖拽）</span>
+        ) : null}
         <div className="ml-auto flex items-center gap-2">
+          <button
+            type="button"
+            aria-label={groupBy ? '切换为不分组' : '按分组查看'}
+            title={groupBy ? '不分组' : '按分组'}
+            onClick={() => setGroupBy(!groupBy)}
+            className={
+              'rounded border p-1.5 transition-colors ' +
+              (groupBy
+                ? 'border-accent/60 bg-accent-soft text-ink'
+                : 'border-line text-ink-soft hover:border-line-strong hover:text-ink')
+            }
+          >
+            <Layers className="h-4 w-4" />
+          </button>
           <button
             type="button"
             aria-label={compact ? '切换为宽松显示' : '切换为紧凑显示'}
@@ -239,57 +283,103 @@ export function BoardView() {
         </div>
       ) : (
         <div className="scrollbar-thin flex-1 overflow-y-auto p-4">
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext
-              items={visibleTasks.map((task) => task.id)}
-              strategy={rectSortingStrategy}
+          {groupBy ? (
+            <div className="space-y-6">
+              {sections.map((section) => (
+                <section key={section.key}>
+                  <div className="mb-3 flex items-center gap-2">
+                    <span
+                      className="h-3 w-3 rounded-sm"
+                      style={{
+                        backgroundColor:
+                          section.color ?? 'rgb(var(--c-line-strong))',
+                      }}
+                    />
+                    <h3 className="text-sm font-semibold text-ink">{section.name}</h3>
+                    <span className="text-xs text-muted">{section.tasks.length}</span>
+                  </div>
+                  <div
+                    className={`grid ${style.gap}`}
+                    style={{
+                      gridTemplateColumns: `repeat(auto-fill, minmax(${style.min}, 1fr))`,
+                    }}
+                  >
+                    {section.tasks.map((task) => (
+                      <TaskCard
+                        key={task.id}
+                        task={task}
+                        status={
+                          task.status_id != null
+                            ? statusMap.get(task.status_id)
+                            : undefined
+                        }
+                        statuses={statuses}
+                        style={style}
+                        compact={compact}
+                        onOpen={() => openTask(task.id)}
+                        onEdit={() => openEdit(task.id)}
+                        onStatusChange={(statusId) => changeStatus(task.id, statusId)}
+                        onPriorityChange={(priority) => changePriority(task.id, priority)}
+                        onToggleDone={() => toggleDone(task)}
+                      />
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+          ) : (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
             >
-              <div
-                className={`grid ${style.gap}`}
-                style={{
-                  gridTemplateColumns: `repeat(auto-fill, minmax(${style.min}, 1fr))`,
-                }}
+              <SortableContext
+                items={visibleTasks.map((task) => task.id)}
+                strategy={rectSortingStrategy}
               >
-                {visibleTasks.map((task) => (
-                  <SortableTaskCard
-                    key={task.id}
-                    task={task}
-                    status={
-                      task.status_id != null ? statusMap.get(task.status_id) : undefined
-                    }
-                    statuses={statuses}
-                    style={style}
-                    compact={compact}
-                    disabled={!dragEnabled}
-                    onStatusChange={changeStatus}
-                    onPriorityChange={changePriority}
-                    onToggleDone={toggleDone}
-                  />
-                ))}
-              </div>
-            </SortableContext>
-            <DragOverlay>
-              {activeTask ? (
-                <div className="w-72 rotate-2 opacity-90">
-                  <TaskCard
-                    task={activeTask}
-                    status={
-                      activeTask.status_id != null
-                        ? statusMap.get(activeTask.status_id)
-                        : undefined
-                    }
-                    style={style}
-                    compact={compact}
-                  />
+                <div
+                  className={`grid ${style.gap}`}
+                  style={{
+                    gridTemplateColumns: `repeat(auto-fill, minmax(${style.min}, 1fr))`,
+                  }}
+                >
+                  {visibleTasks.map((task) => (
+                    <SortableTaskCard
+                      key={task.id}
+                      task={task}
+                      status={
+                        task.status_id != null ? statusMap.get(task.status_id) : undefined
+                      }
+                      statuses={statuses}
+                      style={style}
+                      compact={compact}
+                      disabled={!dragEnabled}
+                      onStatusChange={changeStatus}
+                      onPriorityChange={changePriority}
+                      onToggleDone={toggleDone}
+                    />
+                  ))}
                 </div>
-              ) : null}
-            </DragOverlay>
-          </DndContext>
+              </SortableContext>
+              <DragOverlay>
+                {activeTask ? (
+                  <div className="w-72 rotate-2 opacity-90">
+                    <TaskCard
+                      task={activeTask}
+                      status={
+                        activeTask.status_id != null
+                          ? statusMap.get(activeTask.status_id)
+                          : undefined
+                      }
+                      style={style}
+                      compact={compact}
+                    />
+                  </div>
+                ) : null}
+              </DragOverlay>
+            </DndContext>
+          )}
 
           {truncated ? (
             <div className="mt-4 flex justify-center">
