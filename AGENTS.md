@@ -60,7 +60,7 @@ Frontend, run from `frontend/`:
 
 ## Frontend facts easy to get wrong
 - Stack: React 19 + Vite 8 + TypeScript 6 + Tailwind CSS 3.4, TanStack Query v5, react-router-dom,
-  @dnd-kit (task card grid drag-reorder), lucide-react. All UI text is Chinese.
+  @dnd-kit (task card grid drag-reorder), lucide-react, ECharts 6 (on-demand + lazy). All UI text is Chinese.
 - Theme colors are **CSS variables** in `src/index.css` (`--c-*`, `--shadow-panel`, plus sticky-note
   tokens `--c-note-base/low/medium/high` and `--shadow-note`), consumed by `tailwind.config.js` as
   `rgb(var(--c-x) / <alpha-value>)` (`note.base/low/medium/high`, `shadow-note`). Light mode = `.light`
@@ -75,14 +75,23 @@ Frontend, run from `frontend/`:
   Cards show title/description/status/priority/due/tags/subtasks **and created/updated timestamps**.
   The sidebar is an off-canvas drawer, hidden by default (`ui.sidebarOpen`); the topbar's `PanelLeft`
   button toggles it.
-- The board's top section is **`TaskMindMap`** (a hand-rolled SVG node-link diagram, zero deps):
-  four columns root → priority → status → task. Layout/data come from `src/lib/mindmap.ts`
-  (`buildMindMap`), a pure function over `Task[]` + `Status[]`; there is **no backend endpoint**.
-  Tasks within each (priority→status) branch are sorted by `taskScore` = priority weight +
-  recency weight (`PRIORITY_FACTOR`/`RECENCY_FACTOR`), capped at `BRANCH_LIMIT` (8) with the
-  remainder collapsed into a dashed "还有 N 个…" node. Layout must keep all node y ≥ 0 (the
-  offset is derived from real rect extents, not just branch centers). Clicking a task node calls
-  `openTask`; hovering a priority/status node highlights that branch's links.
+- The board's top section is **`TaskMindMap`** (ECharts-based, four switchable views):
+  `sankey` (default) / `radial` (sunburst) / `tree` / `swimlane` (CSS grid, not ECharts).
+  The view choice is persisted to `localStorage` key `task-manager:mindmap-view`, and the
+  collapse state to `task-manager:mindmap-collapsed`.
+- Chart data is built by pure functions in `src/lib/mindmap.ts` over `Task[]` + `Status[]`
+  (`buildTreeData` / `buildSunburstData` / `buildSankeyData` / `buildSwimlaneData`); there is
+  **no backend endpoint**. Tasks within each (priority→status) branch are sorted by `taskScore` =
+  priority weight + recency weight (`PRIORITY_FACTOR`/`RECENCY_FACTOR`), capped at `BRANCH_LIMIT`
+  (8) with the remainder collapsed into a "还有 N 个…" node.
+- **ECharts is registered on demand** in `src/lib/echarts.ts` (only Sankey/Sunburst/Tree + Tooltip
+  + CanvasRenderer) and the views are **lazy-loaded** via `React.lazy` in `TaskMindMap.tsx`, so the
+  initial bundle stays ~130KB gzip and ECharts sits in its own async chunk. Keep it that way: do
+  not import `echarts` eagerly, and never `import * as echarts from 'echarts'` (full build).
+- `MindMapChart.tsx` owns `echarts.init`/`dispose`, `ResizeObserver`, and the click handler
+  (task nodes are matched by `data.taskId` or an `id` of the form `task-<id>`).
+- Sankey node names must be unique: they use composite ids (`priority::N`, `status::N-ID`) and a
+  `displayName` helper strips the prefix for labels/tooltips.
 - Drag-reorder only works when board sort is `position` (手动排序); other sorts disable drag.
   Dragging uses an explicit `GripVertical` handle (`SortableTaskCard`), not the whole card, and
   is also disabled while the list is truncated by the 60-per-page "显示更多" pagination.
