@@ -1,0 +1,14 @@
+{
+  "name": "task-manager",
+  "private": true,
+  "description": "任务管理系统 - FastAPI + React",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "dev": "node scripts/run.mjs",
+    "start": "node scripts/run.mjs",
+    "serve": "node scripts/run.mjs --no-build",
+    "build": "node scripts/run.mjs --build-only"
+  }
+}
