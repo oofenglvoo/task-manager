@@ -60,6 +60,11 @@ Frontend, run from `frontend/`:
   (legacy payloads still containing `projects`/`project_id` are accepted and ignored).
 - Groups are a first-class entity (`groups` table, `/api/groups` CRUD + `/reorder`); a task has an
   optional `group_id`. The board/list/mindmap "group by" toggle is persisted as `preferences.group_by`.
+- `task_history` stores JSON snapshots (`TaskHistory.task_id` FK CASCADE, `snapshot` TEXT). A snapshot
+  is written on task **create** (v1) and from `crud.update_task` only when a main field actually
+  changed; `build_history_snapshot` stores **names** (status/group/tags) and strips `<img>` from
+  the description. Routes: `GET /api/tasks/{id}/history` (newest first, schema deserializes the JSON),
+  `DELETE /api/tasks/{id}/history/{history_id}`. History is included in export/import.
 
 ## E2E / verification safety
 - **Never** run a script that deletes all tasks against the real `data/tasks.db` — this has destroyed
@@ -115,9 +120,16 @@ Frontend, run from `frontend/`:
   drops call `/move` with `group_id`+`position` then re-flatten positions.
 - `Task.description` is HTML. The drawer edits it with the dependency-free `RichTextEditor`
   (`contentEditable` + `document.execCommand`, image paste/drop as base64 data URLs, toolbar in
-  `src/components/ui/RichTextEditor.tsx`). Everywhere else render plain text via
-  `htmlToText()` from `src/lib/richText.ts` (cards); never render `task.description` raw outside
-  the editor/detail view.
+  `src/components/ui/RichTextEditor.tsx`). Cards render the description as **sanitized HTML** via
+  `sanitizeDescription()` (`src/lib/sanitizeHtml.ts`, whitelist tags/attrs, images stripped), always
+  (both 宽松/紧凑). Never inject `task.description` without sanitizing. `htmlToText()` in
+  `src/lib/richText.ts` remains for any plain-text needs.
+- Card grid (宽松 mode, `compact === false`) lists up to 5 subtasks with working checkboxes and a
+  "还有 N 个" line; toggling uses `useUpdateSubtask` wired through `BoardView` → `SortableTaskCard` /
+  `GroupedTaskBoard`.
+- The detail drawer has a collapsible **历史修改** timeline (`TaskHistoryTimeline`, default open) fed by
+  `useTaskHistory`; each entry can be deleted via `ConfirmDialog`. Do not add a revert action (display
+  only by design).
 - There is **no edit modal**: `TaskForm` is create-only. Clicking a card / the row pencil / card
   pencil opens `TaskDetailDrawer`, where all fields (title/status/priority/group/due/tags/
   description) are staged in a local draft and only persisted by the footer 保存 button; closing

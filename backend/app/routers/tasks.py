@@ -121,3 +121,23 @@ def delete_task(task_id: int, db: Session = Depends(get_db)):
     task = _get_task(db, task_id)
     db.delete(task)
     db.commit()
+
+
+@router.get("/{task_id}/history", response_model=list[schemas.TaskHistoryOut])
+def list_history(task_id: int, db: Session = Depends(get_db)):
+    _get_task(db, task_id)
+    stmt = (
+        select(models.TaskHistory)
+        .where(models.TaskHistory.task_id == task_id)
+        .order_by(models.TaskHistory.created_at.desc(), models.TaskHistory.id.desc())
+    )
+    return list(db.scalars(stmt))
+
+
+@router.delete("/{task_id}/history/{history_id}", status_code=204)
+def delete_history(task_id: int, history_id: int, db: Session = Depends(get_db)):
+    entry = db.get(models.TaskHistory, history_id)
+    if entry is None or entry.task_id != task_id:
+        raise HTTPException(status_code=404, detail="历史记录不存在")
+    db.delete(entry)
+    db.commit()

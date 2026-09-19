@@ -1,3 +1,5 @@
+import json
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session, selectinload
@@ -28,6 +30,7 @@ def export_data(db: Session = Depends(get_db)):
             .options(
                 selectinload(models.Task.tags),
                 selectinload(models.Task.subtasks),
+                selectinload(models.Task.history),
             )
             .order_by(models.Task.position, models.Task.id)
         )
@@ -79,6 +82,13 @@ def export_data(db: Session = Depends(get_db)):
                     )
                     for subtask in task.subtasks
                 ],
+                history=[
+                    schemas.ExportHistory(
+                        created_at=entry.created_at,
+                        snapshot=schemas.TaskHistorySnapshot(**json.loads(entry.snapshot)),
+                    )
+                    for entry in task.history
+                ],
             )
             for task in tasks
         ],
@@ -111,6 +121,7 @@ def import_data(payload: schemas.ExportData, db: Session = Depends(get_db)):
     if len(group_names) != len(set(group_names)):
         raise HTTPException(status_code=400, detail="导入数据中分组名称重复")
 
+    db.execute(delete(models.TaskHistory))
     db.execute(delete(models.SubTask))
     db.execute(delete(models.task_tags))
     db.execute(delete(models.Task))
@@ -180,6 +191,13 @@ def import_data(payload: schemas.ExportData, db: Session = Depends(get_db)):
                     position=subtask.position,
                 )
             )
+        for entry in item.history:
+            history = models.TaskHistory(
+                snapshot=entry.snapshot.model_dump_json(),
+            )
+            if entry.created_at is not None:
+                history.created_at = entry.created_at
+            task.history.append(history)
         db.add(task)
         task_count += 1
         subtask_count += len(item.subtasks)

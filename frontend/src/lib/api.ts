@@ -7,6 +7,7 @@ import type {
   SubTask,
   Tag,
   Task,
+  TaskHistory,
   TaskInput,
   TaskQuery,
 } from './types'
@@ -117,6 +118,9 @@ export const api = {
       request<void>('/api/tasks/reorder', 'PUT', { ordered_ids: orderedIds }),
     archive: (id: number, isArchived = true) =>
       request<Task>(`/api/tasks/${id}/archive`, 'POST', { is_archived: isArchived }),
+    history: (id: number) => request<TaskHistory[]>(`/api/tasks/${id}/history`),
+    removeHistory: (id: number, historyId: number) =>
+      request<void>(`/api/tasks/${id}/history/${historyId}`, 'DELETE'),
   },
   subtasks: {
     list: (taskId: number) => request<SubTask[]>(`/api/tasks/${taskId}/subtasks`),

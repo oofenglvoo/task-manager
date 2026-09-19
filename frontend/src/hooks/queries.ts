@@ -8,6 +8,7 @@ export const keys = {
   groups: ['groups'] as const,
   tasks: (query: TaskQuery) => ['tasks', query] as const,
   task: (id: number) => ['task', id] as const,
+  history: (id: number) => ['history', id] as const,
   stats: ['stats'] as const,
 }
 
@@ -38,6 +39,25 @@ export function useTask(id: number | null) {
   })
 }
 
+export function useTaskHistory(id: number | null) {
+  return useQuery({
+    queryKey: keys.history(id ?? 0),
+    queryFn: () => api.tasks.history(id as number),
+    enabled: id != null,
+  })
+}
+
+export function useDeleteTaskHistory() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ taskId, historyId }: { taskId: number; historyId: number }) =>
+      api.tasks.removeHistory(taskId, historyId),
+    onSuccess: (_data, vars) => {
+      void qc.invalidateQueries({ queryKey: keys.history(vars.taskId) })
+    },
+  })
+}
+
 export function useStats() {
   return useQuery({ queryKey: keys.stats, queryFn: () => api.stats.get() })
 }
@@ -47,6 +67,7 @@ function useInvalidateTasks() {
   return () => {
     void qc.invalidateQueries({ queryKey: ['tasks'] })
     void qc.invalidateQueries({ queryKey: ['task'] })
+    void qc.invalidateQueries({ queryKey: ['history'] })
     void qc.invalidateQueries({ queryKey: ['stats'] })
   }
 }

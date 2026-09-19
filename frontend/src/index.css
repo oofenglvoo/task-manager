@@ -127,6 +127,17 @@
   margin: 0.25rem 0;
 }
 
+.rich-content p,
+.rich-content div,
+.rich-content ul,
+.rich-content ol {
+  margin: 0;
+}
+
+.rich-content li + li {
+  margin-top: 0.125rem;
+}
+
 .rich-editor a,
 .rich-content a {
   color: rgb(var(--c-accent));

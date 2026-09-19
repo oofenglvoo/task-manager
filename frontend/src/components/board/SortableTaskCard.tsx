@@ -16,6 +16,7 @@ interface SortableTaskCardProps {
   onStatusChange: (taskId: number, statusId: number | null) => void
   onPriorityChange: (taskId: number, priority: number) => void
   onToggleDone: (task: Task) => void
+  onToggleSubtask?: (taskId: number, subtaskId: number, isDone: boolean) => void
   disabled?: boolean
 }
 
@@ -28,6 +29,7 @@ export function SortableTaskCard({
   onStatusChange,
   onPriorityChange,
   onToggleDone,
+  onToggleSubtask,
   disabled,
 }: SortableTaskCardProps) {
   const { openTask } = useUI()
@@ -51,10 +53,7 @@ export function SortableTaskCard({
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={cn(
-        'h-full [content-visibility:auto] [contain-intrinsic-size:auto_180px]',
-        isDragging && 'z-10 opacity-40',
-      )}
+      className={cn('h-full', isDragging && 'z-10 opacity-40')}
     >
       <TaskCard
         task={task}
@@ -67,6 +66,11 @@ export function SortableTaskCard({
         onStatusChange={(statusId) => onStatusChange(task.id, statusId)}
         onPriorityChange={(priority) => onPriorityChange(task.id, priority)}
         onToggleDone={() => onToggleDone(task)}
+        onToggleSubtask={
+          onToggleSubtask
+            ? (subtaskId, isDone) => onToggleSubtask(task.id, subtaskId, isDone)
+            : undefined
+        }
       />
     </div>
   )

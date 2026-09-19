@@ -22,6 +22,7 @@ import {
   useReorderTasks,
   useStatuses,
   useTasks,
+  useUpdateSubtask,
   useUpdateTask,
 } from '../../hooks/queries'
 import { useToast } from '../../store/toast'
@@ -64,6 +65,7 @@ export function BoardView() {
   const { data: statuses = [] } = useStatuses()
   const reorderTasks = useReorderTasks()
   const updateTask = useUpdateTask()
+  const updateSubtask = useUpdateSubtask()
   const { push } = useToast()
 
   const [sortValue, setSortValue] = useState('position')
@@ -148,6 +150,13 @@ export function BoardView() {
     } else if (doneStatus) {
       changeStatus(task.id, doneStatus.id)
     }
+  }
+
+  function toggleSubtask(taskId: number, subtaskId: number, isDone: boolean) {
+    updateSubtask.mutate(
+      { taskId, id: subtaskId, data: { is_done: isDone } },
+      { onError },
+    )
   }
 
   function handleDragStart(event: DragStartEvent) {
@@ -298,6 +307,7 @@ export function BoardView() {
               onChangeStatus={changeStatus}
               onChangePriority={changePriority}
               onToggleDone={toggleDone}
+              onToggleSubtask={toggleSubtask}
             />
           ) : (
             <DndContext
@@ -330,6 +340,7 @@ export function BoardView() {
                       onStatusChange={changeStatus}
                       onPriorityChange={changePriority}
                       onToggleDone={toggleDone}
+                      onToggleSubtask={toggleSubtask}
                     />
                   ))}
                 </div>

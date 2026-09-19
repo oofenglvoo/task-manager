@@ -1,7 +1,8 @@
+import json
 from datetime import date, datetime, timezone
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field, PlainSerializer
+from pydantic import BaseModel, ConfigDict, Field, PlainSerializer, field_validator
 
 
 def _serialize_utc(value: datetime) -> str:
@@ -152,6 +153,31 @@ class TaskOut(BaseModel):
     subtasks: list[SubTaskOut] = Field(default_factory=list)
 
 
+class TaskHistorySnapshot(BaseModel):
+    title: str
+    status_name: str | None = None
+    group_name: str | None = None
+    priority: int = 2
+    due_date: date | None = None
+    tag_names: list[str] = Field(default_factory=list)
+    description: str | None = None
+
+
+class TaskHistoryOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    created_at: UtcDatetime
+    snapshot: TaskHistorySnapshot
+
+    @field_validator("snapshot", mode="before")
+    @classmethod
+    def _parse_snapshot(cls, value):
+        if isinstance(value, str):
+            return json.loads(value)
+        return value
+
+
 # --------------------------------------------------------------------------- #
 # Bulk operations
 # --------------------------------------------------------------------------- #
@@ -246,6 +272,11 @@ class ExportSubTask(BaseModel):
     position: int = 0
 
 
+class ExportHistory(BaseModel):
+    created_at: datetime | None = None
+    snapshot: TaskHistorySnapshot
+
+
 class ExportTask(BaseModel):
     id: int
     status_id: int | None = None
@@ -261,6 +292,7 @@ class ExportTask(BaseModel):
     completed_at: datetime | None = None
     tag_ids: list[int] = Field(default_factory=list)
     subtasks: list[ExportSubTask] = Field(default_factory=list)
+    history: list[ExportHistory] = Field(default_factory=list)
 
 
 class ExportData(BaseModel):

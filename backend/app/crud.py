@@ -1,9 +1,42 @@
+import json
+import re
+
 from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from . import models
 from .models import utcnow
+
+_IMG_TAG = re.compile(r"<img\b[^>]*>", re.IGNORECASE)
+
+
+def _strip_images(html: str | None) -> str | None:
+    if not html:
+        return html
+    return _IMG_TAG.sub("", html).strip() or None
+
+
+def build_history_snapshot(task: models.Task) -> dict:
+    """任务主字段的自包含快照（存名称而非外键，描述去除图片）。"""
+    return {
+        "title": task.title,
+        "status_name": task.status.name if task.status is not None else None,
+        "group_name": task.group.name if task.group is not None else None,
+        "priority": task.priority,
+        "due_date": task.due_date.isoformat() if task.due_date is not None else None,
+        "tag_names": [tag.name for tag in task.tags],
+        "description": _strip_images(task.description),
+    }
+
+
+def record_history(db: Session, task: models.Task) -> models.TaskHistory:
+    entry = models.TaskHistory(
+        task_id=task.id,
+        snapshot=json.dumps(build_history_snapshot(task), ensure_ascii=False),
+    )
+    db.add(entry)
+    return entry
 
 
 def next_position(db: Session, model) -> int:
@@ -75,6 +108,8 @@ def create_task(db: Session, payload) -> models.Task:
         task.completed_at = utcnow()
     task.tags = load_tags(db, payload.tag_ids)
     db.add(task)
+    db.flush()
+    record_history(db, task)  # 新建即写入初始快照 (v1)
     db.commit()
     db.refresh(task)
     return task
@@ -87,6 +122,8 @@ def update_task(db: Session, task: models.Task, payload) -> models.Task:
     new_status_id = data.pop("status_id", None)
     group_provided = "group_id" in data
     new_group_id = data.pop("group_id", None)
+
+    before = build_history_snapshot(task)
 
     if "title" in data and data["title"] is not None:
         data["title"] = _clean_title(data["title"])
@@ -109,6 +146,9 @@ def update_task(db: Session, task: models.Task, payload) -> models.Task:
 
     if tag_ids is not None:
         task.tags = load_tags(db, tag_ids)
+
+    if build_history_snapshot(task) != before:
+        record_history(db, task)
 
     db.commit()
     db.refresh(task)

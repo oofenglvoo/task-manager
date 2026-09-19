@@ -102,6 +102,25 @@ class Task(Base):
         cascade="all, delete-orphan",
         order_by="SubTask.position",
     )
+    history: Mapped[list["TaskHistory"]] = relationship(
+        back_populates="task",
+        cascade="all, delete-orphan",
+        order_by="TaskHistory.created_at",
+    )
+
+
+class TaskHistory(Base):
+    __tablename__ = "task_history"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    task_id: Mapped[int] = mapped_column(
+        ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    # 保存时的任务主字段快照（JSON，description 已去除图片）。
+    snapshot: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utcnow)
+
+    task: Mapped["Task"] = relationship(back_populates="history")
 
 
 class SubTask(Base):

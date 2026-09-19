@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useMemo } from 'react'
 import { CheckSquare, Clock, Pencil } from 'lucide-react'
 import type { CardSizeStyle } from '../../store/preferences'
 import type { Status, Task } from '../../lib/types'
@@ -10,11 +11,13 @@ import {
   noteSurfaceClass,
   noteTilt,
 } from '../../lib/utils'
-import { htmlToText } from '../../lib/richText'
+import { sanitizeDescription } from '../../lib/sanitizeHtml'
 import { TagChip } from '../ui/Badge'
 import { Checkbox } from '../ui/Checkbox'
 import { PriorityMenu } from './PriorityMenu'
 import { StatusMenu } from './StatusMenu'
+
+const SUBTASK_LIMIT = 5
 
 interface TaskCardProps {
   task: Task
@@ -27,6 +30,7 @@ interface TaskCardProps {
   onStatusChange?: (statusId: number | null) => void
   onPriorityChange?: (priority: number) => void
   onToggleDone?: () => void
+  onToggleSubtask?: (subtaskId: number, isDone: boolean) => void
 }
 
 export function TaskCard({
@@ -40,11 +44,17 @@ export function TaskCard({
   onStatusChange,
   onPriorityChange,
   onToggleDone,
+  onToggleSubtask,
 }: TaskCardProps) {
   const doneCount = task.subtasks.filter((item) => item.is_done).length
   const isDone = task.completed_at != null
   const tilt = noteTilt(task.id)
-  const descriptionText = htmlToText(task.description)
+  const descriptionHtml = useMemo(
+    () => sanitizeDescription(task.description, { allowImages: false }),
+    [task.description],
+  )
+  const visibleSubtasks = task.subtasks.slice(0, SUBTASK_LIMIT)
+  const hiddenSubtasks = task.subtasks.length - visibleSubtasks.length
 
   const hasFooter = Boolean(task.due_date) || task.subtasks.length > 0
 
@@ -133,10 +143,42 @@ export function TaskCard({
         </span>
       ) : null}
 
-      {!compact && descriptionText ? (
-        <p className={cn('mt-1.5 whitespace-pre-line text-xs leading-relaxed text-ink-soft/80', style.descLines)}>
-          {descriptionText}
-        </p>
+      {descriptionHtml ? (
+        <div
+          className={cn(
+            'rich-content mt-1.5 break-words text-xs leading-relaxed text-ink-soft/80',
+            style.descLines,
+          )}
+          dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+        />
+      ) : null}
+
+      {!compact && task.subtasks.length > 0 ? (
+        <ul className="mt-2.5 space-y-1" onClick={(event) => event.stopPropagation()}>
+          {visibleSubtasks.map((subtask) => (
+            <li key={subtask.id} className="flex items-center gap-1.5">
+              <Checkbox
+                checked={subtask.is_done}
+                ariaLabel={subtask.title}
+                disabled={!onToggleSubtask}
+                onChange={(checked) => onToggleSubtask?.(subtask.id, checked)}
+              />
+              <span
+                className={cn(
+                  'min-w-0 flex-1 truncate text-xs text-ink-soft',
+                  subtask.is_done && 'text-muted line-through',
+                )}
+              >
+                {subtask.title}
+              </span>
+            </li>
+          ))}
+          {hiddenSubtasks > 0 ? (
+            <li className="pl-[1.375rem] text-[11px] text-muted">
+              还有 {hiddenSubtasks} 个…
+            </li>
+          ) : null}
+        </ul>
       ) : null}
 
       {!compact && task.tags.length > 0 ? (

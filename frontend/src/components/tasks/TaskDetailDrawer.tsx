@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Archive, ArchiveRestore, Trash2, X } from 'lucide-react'
+import { Archive, ArchiveRestore, ChevronDown, ChevronUp, Trash2, X } from 'lucide-react'
 import { errorMessage } from '../../lib/api'
 import { formatDateTime } from '../../lib/utils'
 import {
@@ -21,6 +21,7 @@ import { RichTextEditor } from '../ui/RichTextEditor'
 import { Spinner } from '../ui/Spinner'
 import { TagPicker } from '../ui/TagPicker'
 import { SubTaskList } from './SubTaskList'
+import { TaskHistoryTimeline } from './TaskHistoryTimeline'
 
 interface Draft {
   title: string
@@ -75,6 +76,7 @@ export function TaskDetailDrawer() {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [confirmArchive, setConfirmArchive] = useState(false)
   const [confirmDiscard, setConfirmDiscard] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(true)
 
   const taskId = task?.id ?? null
   useEffect(() => {
@@ -275,6 +277,26 @@ export function TaskDetailDrawer() {
                   </div>
                 ) : null}
               </dl>
+
+              <div className="border-t border-line pt-4">
+                <button
+                  type="button"
+                  onClick={() => setHistoryOpen((prev) => !prev)}
+                  className="flex w-full items-center justify-between text-xs font-medium text-ink-soft"
+                >
+                  <span>历史修改</span>
+                  {historyOpen ? (
+                    <ChevronUp className="h-3.5 w-3.5" />
+                  ) : (
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  )}
+                </button>
+                {historyOpen ? (
+                  <div className="mt-3">
+                    <TaskHistoryTimeline taskId={task.id} />
+                  </div>
+                ) : null}
+              </div>
             </div>
 
             <footer className="flex items-center gap-2 border-t border-line px-5 py-3">

@@ -28,6 +28,22 @@ export interface SubTask {
   position: number
 }
 
+export interface TaskHistorySnapshot {
+  title: string
+  status_name: string | null
+  group_name: string | null
+  priority: number
+  due_date: string | null
+  tag_names: string[]
+  description: string | null
+}
+
+export interface TaskHistory {
+  id: number
+  created_at: string
+  snapshot: TaskHistorySnapshot
+}
+
 export interface Task {
   id: number
   status_id: number | null
