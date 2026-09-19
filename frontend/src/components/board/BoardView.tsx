@@ -119,6 +119,7 @@ export function BoardView() {
           name: task.group?.name ?? '未分组',
           color: task.group?.color ?? null,
           note: task.group?.note ?? null,
+          position: task.group?.position ?? null,
           tasks: [],
         }
         map.set(key, section)
@@ -126,7 +127,12 @@ export function BoardView() {
       section.tasks.push(task)
     }
     const list = [...map.values()]
-    list.sort((a, b) => (a.key === 'none' ? 1 : b.key === 'none' ? -1 : 0))
+    // 分组按 group.position 排序（与分组管理/脑图一致），「未分组」固定最后。
+    list.sort((a, b) => {
+      if (a.groupId == null) return 1
+      if (b.groupId == null) return -1
+      return (a.position ?? 0) - (b.position ?? 0) || a.groupId - b.groupId
+    })
     return list
   }, [groupBy, visibleTasks])
 
@@ -201,7 +207,7 @@ export function BoardView() {
             className={
               'rounded border p-1.5 transition-colors ' +
               (groupBy
-                ? 'border-accent/60 bg-accent-soft text-ink'
+                ? 'border-accent bg-accent text-white'
                 : 'border-line text-ink-soft hover:border-line-strong hover:text-ink')
             }
           >

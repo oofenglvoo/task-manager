@@ -109,7 +109,7 @@ export function TaskCard({
           ) : status ? (
             <span
               className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs"
-              style={{ color: status.color, backgroundColor: `${status.color}1f` }}
+              style={{ color: status.color, backgroundColor: `${status.color}26` }}
             >
               {status.name}
             </span>
@@ -135,7 +135,7 @@ export function TaskCard({
       {task.group ? (
         <span
           className="mt-1.5 inline-flex w-fit max-w-full items-center gap-1 rounded px-1.5 py-0.5 text-[11px]"
-          style={{ color: task.group.color, backgroundColor: `${task.group.color}1f` }}
+          style={{ color: task.group.color, backgroundColor: `${task.group.color}26` }}
         >
           <span
             className="h-1.5 w-1.5 shrink-0 rounded-sm"

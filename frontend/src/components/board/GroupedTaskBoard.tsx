@@ -34,6 +34,8 @@ export interface TaskSection {
   name: string
   color: string | null
   note: string | null
+  /** 分组排序位置（未分组为 null）。 */
+  position: number | null
   tasks: Task[]
 }
 
@@ -403,7 +405,7 @@ function Section({
           className={
             'grid min-h-[80px] rounded-md transition-colors ' +
             style.gap +
-            (isOver ? ' bg-accent-soft/40 ring-1 ring-accent/40' : '')
+            (isOver ? ' bg-accent-soft ring-1 ring-accent/40' : '')
           }
           style={{
             gridTemplateColumns: `repeat(auto-fill, minmax(${style.min}, 1fr))`,

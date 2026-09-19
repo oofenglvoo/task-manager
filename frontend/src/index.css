@@ -102,15 +102,22 @@
   .scrollbar-thin::-webkit-scrollbar-track {
     background: transparent;
   }
+
+  /* 选中态/提示底色：固定实色，不随透明度设置变化。 */
+  .bg-accent-soft {
+    background-color: color-mix(in srgb, rgb(var(--c-accent)) 18%, rgb(var(--c-surface)));
+  }
 }
 
-.has-app-bg .app-chrome {
+/* 系统面板底色（顶栏/侧栏/脉外面板等）：设置背景图后跟随面板不透明度。 */
+.has-app-bg .app-chrome,
+.has-app-bg .app-surface-panel {
   background-color: rgb(var(--c-surface) / var(--app-panel-alpha));
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
 
-/* 便签卡片底色：卡片透明度即最终不透明度，100% 为实心，优先级靠色相区分。 */
+/* 便签卡片底色：卡片不透明度即最终 alpha，100% 为实心，优先级靠色相区分。 */
 .note-surface-base {
   background-color: rgb(var(--c-note-base) / var(--app-card-alpha));
 }
@@ -127,7 +134,7 @@
   background-color: rgb(var(--c-note-high) / var(--app-card-alpha));
 }
 
-/* 面板类底色（脉络容器、泳道等）：跟随卡片透明度。 */
+/* 图元素底色（脉络泳道格、泳道任务条等）：跟随卡片不透明度。 */
 .app-surface-canvas {
   background-color: rgb(var(--c-canvas) / var(--app-card-alpha));
 }

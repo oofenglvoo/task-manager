@@ -33,7 +33,7 @@ export function TagPicker({
             )}
             style={
               active
-                ? { color: tag.color, borderColor: `${tag.color}88`, backgroundColor: `${tag.color}1f` }
+                ? { color: tag.color, borderColor: `${tag.color}99`, backgroundColor: `${tag.color}26` }
                 : undefined
             }
           >

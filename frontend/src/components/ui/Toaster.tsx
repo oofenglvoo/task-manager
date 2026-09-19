@@ -17,9 +17,9 @@ export function Toaster() {
           className={cn(
             'pointer-events-auto flex items-start gap-2 rounded-md border px-3 py-2 text-left text-sm shadow-panel transition-colors',
             toast.tone === 'error'
-              ? 'border-danger/40 bg-danger/10 text-danger'
+              ? 'border-danger bg-danger text-white'
               : toast.tone === 'success'
-                ? 'border-success/40 bg-success/10 text-success'
+                ? 'border-success bg-success text-white'
                 : 'border-line bg-elevated text-ink',
           )}
         >

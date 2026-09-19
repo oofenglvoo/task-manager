@@ -82,7 +82,7 @@ export function TaskHistoryTimeline({ taskId }: { taskId: number }) {
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
             </div>
-            <div className="mt-1 rounded border border-line bg-canvas/40 px-2.5 py-2">
+            <div className="mt-1 rounded border border-line bg-canvas px-2.5 py-2">
               <SnapshotContent entry={entry} />
             </div>
           </li>

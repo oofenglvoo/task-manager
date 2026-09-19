@@ -82,7 +82,14 @@ export function ListView() {
     if (!groupBy) return []
     const map = new Map<
       string,
-      { key: string; name: string; color: string | null; note: string | null; tasks: Task[] }
+      {
+        key: string
+        name: string
+        color: string | null
+        note: string | null
+        position: number | null
+        tasks: Task[]
+      }
     >()
     for (const task of tasks) {
       const key = task.group ? `g-${task.group.id}` : 'none'
@@ -93,6 +100,7 @@ export function ListView() {
           name: task.group?.name ?? '未分组',
           color: task.group?.color ?? null,
           note: task.group?.note ?? null,
+          position: task.group?.position ?? null,
           tasks: [],
         }
         map.set(key, section)
@@ -100,7 +108,12 @@ export function ListView() {
       section.tasks.push(task)
     }
     const list = [...map.values()]
-    list.sort((a, b) => (a.key === 'none' ? 1 : b.key === 'none' ? -1 : 0))
+    // 分组按 group.position 排序（与看板/脑图一致），「未分组」固定最后。
+    list.sort((a, b) => {
+      if (a.position == null) return 1
+      if (b.position == null) return -1
+      return a.position - b.position || a.key.localeCompare(b.key)
+    })
     return list
   }, [groupBy, tasks])
 
@@ -144,7 +157,7 @@ export function ListView() {
           {status ? (
             <span
               className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs"
-              style={{ color: status.color, backgroundColor: `${status.color}1f` }}
+              style={{ color: status.color, backgroundColor: `${status.color}26` }}
             >
               {status.name}
             </span>
@@ -156,7 +169,7 @@ export function ListView() {
           {task.group ? (
             <span
               className="inline-flex max-w-[10rem] items-center gap-1 rounded px-1.5 py-0.5 text-xs"
-              style={{ color: task.group.color, backgroundColor: `${task.group.color}1f` }}
+              style={{ color: task.group.color, backgroundColor: `${task.group.color}26` }}
             >
               <span
                 className="h-1.5 w-1.5 shrink-0 rounded-sm"
@@ -296,7 +309,7 @@ export function ListView() {
           className={
             'rounded border p-1.5 transition-colors ' +
             (groupBy
-              ? 'border-accent/60 bg-accent-soft text-ink'
+              ? 'border-accent bg-accent text-white'
               : 'border-line text-ink-soft hover:border-line-strong hover:text-ink')
           }
         >
@@ -347,7 +360,7 @@ export function ListView() {
               {groupBy
                 ? sections.map((section) => (
                     <Fragment key={section.key}>
-                      <tr className="bg-elevated/60">
+                      <tr className="bg-elevated">
                         <td colSpan={8} className="px-4 py-1.5">
                           <div className="flex items-center gap-2">
                             <span

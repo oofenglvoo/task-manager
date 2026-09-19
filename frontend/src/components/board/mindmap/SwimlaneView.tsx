@@ -123,7 +123,7 @@ function SwimlaneGrid({
         <div key={column.id ?? 'none'} className="flex w-56 shrink-0 flex-col gap-3">
           <div
             className="flex h-7 items-center gap-1.5 rounded-md px-2 text-xs font-semibold"
-            style={{ color: column.color, backgroundColor: `${column.color}1f` }}
+            style={{ color: column.color, backgroundColor: `${column.color}26` }}
           >
             <span
               className="h-2 w-2 rounded-full"

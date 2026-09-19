@@ -120,8 +120,8 @@ export function dueClass(dueDate: string | null, isDone: boolean): string {
 
 export function dueBadgeClass(dueDate: string | null, isDone: boolean): string {
   const state = dueState(dueDate, isDone)
-  if (state === 'overdue') return 'bg-danger/10 text-danger'
-  if (state === 'today') return 'bg-warning/10 text-warning'
+  if (state === 'overdue') return 'bg-danger text-white'
+  if (state === 'today') return 'bg-warning text-black'
   return ''
 }
 

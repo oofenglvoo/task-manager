@@ -13,8 +13,8 @@ const VARIANTS: Record<Variant, string> = {
   primary: 'bg-accent text-white hover:bg-accent-hover',
   secondary:
     'bg-elevated text-ink border border-line hover:border-line-strong hover:bg-surface',
-  ghost: 'text-ink-soft hover:text-ink hover:bg-elevated',
-  danger: 'bg-danger/10 text-danger border border-danger/30 hover:bg-danger/20',
+  ghost: 'bg-surface text-ink-soft border border-line hover:border-line-strong hover:text-ink',
+  danger: 'bg-danger text-white hover:brightness-110',
 }
 
 const SIZES: Record<Size, string> = {

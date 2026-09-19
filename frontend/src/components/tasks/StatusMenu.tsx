@@ -44,7 +44,7 @@ export function StatusMenu({ status, statuses, onChange }: StatusMenuProps) {
           setOpen((prev) => !prev)
         }}
         className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors hover:brightness-110"
-        style={{ color, borderColor: `${color}66`, backgroundColor: `${color}1f` }}
+        style={{ color, borderColor: `${color}99`, backgroundColor: `${color}26` }}
       >
         <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: color }} />
         {label}

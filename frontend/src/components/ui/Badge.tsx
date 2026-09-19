@@ -56,7 +56,7 @@ export function TagChip({
       )}
       style={
         solid
-          ? { color: tag.color, backgroundColor: `${tag.color}1f` }
+          ? { color: tag.color, backgroundColor: `${tag.color}26` }
           : { color: tag.color, borderColor: `${tag.color}44`, backgroundColor: 'transparent' }
       }
     >

@@ -116,7 +116,7 @@ export function StatusManager() {
               />
               <span className="flex-1 text-sm text-ink">{status.name}</span>
               {status.is_done ? (
-                <span className="rounded-full bg-success/15 px-2 py-0.5 text-xs text-success">
+                <span className="rounded-full bg-success px-2 py-0.5 text-xs text-white">
                   已完成
                 </span>
               ) : null}

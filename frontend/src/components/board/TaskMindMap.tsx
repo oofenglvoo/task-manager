@@ -140,7 +140,7 @@ export function TaskMindMap() {
             className={
               'rounded border p-1.5 transition-colors ' +
               (groupBy
-                ? 'border-accent/60 bg-accent-soft text-ink'
+                ? 'border-accent bg-accent text-white'
                 : 'border-line text-ink-soft hover:border-line-strong hover:text-ink')
             }
           >
@@ -184,7 +184,7 @@ export function TaskMindMap() {
           }
         />
       ) : (
-        <div className="app-surface-canvas rounded-lg border border-line p-3">
+        <div className="app-surface-panel rounded-lg border border-line bg-surface p-3">
           <Suspense
             fallback={
               <div

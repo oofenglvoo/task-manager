@@ -51,7 +51,7 @@ export function Sidebar() {
                 cn(
                   'flex items-center gap-2 rounded px-2.5 py-1.5 text-sm transition-colors',
                   isActive
-                    ? 'bg-accent-soft text-ink'
+                    ? 'bg-accent text-white'
                     : 'text-ink-soft hover:bg-elevated hover:text-ink',
                 )
               }
@@ -72,7 +72,7 @@ export function Sidebar() {
               cn(
                 'flex items-center gap-2 rounded px-2.5 py-1.5 text-sm transition-colors',
                 isActive
-                  ? 'bg-accent-soft text-ink'
+                  ? 'bg-accent text-white'
                   : 'text-ink-soft hover:bg-elevated hover:text-ink',
               )
             }
