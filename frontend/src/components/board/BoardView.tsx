@@ -171,10 +171,8 @@ export function BoardView() {
     activeId != null ? visibleTasks.find((task) => task.id === activeId) : undefined
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="scrollbar-thin shrink-0 overflow-y-auto">
-        <TaskMindMap />
-      </div>
+    <div className="scrollbar-thin h-full overflow-y-auto">
+      <TaskMindMap />
       <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
         <span className="text-sm font-semibold text-ink">任务</span>
         <span className="text-xs text-muted">{tasks.length}</span>
@@ -265,7 +263,7 @@ export function BoardView() {
       </div>
 
       {isLoading ? (
-        <div className="scrollbar-thin flex-1 overflow-y-auto p-4">
+        <div className="p-4">
           <div
             className={`grid ${style.gap}`}
             style={{
@@ -291,7 +289,7 @@ export function BoardView() {
           />
         </div>
       ) : (
-        <div className="scrollbar-thin flex-1 overflow-y-auto p-4">
+        <div className="p-4">
           {groupBy ? (
             <div className="space-y-6">
               {sections.map((section) => (
