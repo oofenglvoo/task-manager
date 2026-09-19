@@ -184,7 +184,7 @@ export function TaskMindMap() {
           }
         />
       ) : (
-        <div className="rounded-lg border border-line bg-canvas/30 p-3">
+        <div className="app-surface-canvas rounded-lg border border-line p-3">
           <Suspense
             fallback={
               <div

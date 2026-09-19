@@ -110,21 +110,30 @@
   -webkit-backdrop-filter: blur(10px);
 }
 
-/* 便签卡片底色：基础 alpha 再乘以用户设置的卡片透明度。 */
+/* 便签卡片底色：卡片透明度即最终不透明度，100% 为实心，优先级靠色相区分。 */
 .note-surface-base {
-  background-color: rgb(var(--c-note-base) / calc(1 * var(--app-card-alpha)));
+  background-color: rgb(var(--c-note-base) / var(--app-card-alpha));
 }
 
 .note-surface-low {
-  background-color: rgb(var(--c-note-low) / calc(0.4 * var(--app-card-alpha)));
+  background-color: rgb(var(--c-note-low) / var(--app-card-alpha));
 }
 
 .note-surface-medium {
-  background-color: rgb(var(--c-note-medium) / calc(0.6 * var(--app-card-alpha)));
+  background-color: rgb(var(--c-note-medium) / var(--app-card-alpha));
 }
 
 .note-surface-high {
-  background-color: rgb(var(--c-note-high) / calc(0.7 * var(--app-card-alpha)));
+  background-color: rgb(var(--c-note-high) / var(--app-card-alpha));
+}
+
+/* 面板类底色（脉络容器、泳道等）：跟随卡片透明度。 */
+.app-surface-canvas {
+  background-color: rgb(var(--c-canvas) / var(--app-card-alpha));
+}
+
+.app-surface-elevated {
+  background-color: rgb(var(--c-elevated) / var(--app-card-alpha));
 }
 
 .rich-editor ul,

@@ -222,7 +222,7 @@ export function AppearanceSettings() {
         </div>
 
         <div className="space-y-3 border-t border-line pt-4">
-          <span className="text-sm text-ink-soft">透明度</span>
+          <span className="text-sm text-ink-soft">不透明度</span>
           <OpacitySlider
             label="背景遮罩"
             value={bgOpacity}
@@ -231,7 +231,7 @@ export function AppearanceSettings() {
           <OpacitySlider label="卡片" value={cardOpacity} onChange={setCardOpacity} />
           <OpacitySlider label="面板" value={panelOpacity} onChange={setPanelOpacity} />
           <p className="text-xs text-muted">
-            背景遮罩越深、卡片与面板越不透明。仅在设置背景图片后遮罩才可见。
+            数值越大越不透明：100% 完全不透明，0% 全透明。背景遮罩仅在设置背景图片后可见。
           </p>
         </div>
       </div>

@@ -64,8 +64,12 @@ Frontend, run from `frontend/`:
 - All user-facing strings, seed data, and error messages are Chinese — keep new UI/messages Chinese.
 - Appearance preferences are a single `preferences` row (id=1) served by `/api/settings`; background
   files live in `DB_DIR/backgrounds/` (i.e. next to the SQLite file, so tests use the temp dir).
-  Opacity prefs `bg_opacity`/`card_opacity`/`panel_opacity` (0–1) drive CSS vars `--app-bg-scrim`,
-  `--app-card-alpha`, `--app-panel-alpha`.
+   Opacity prefs `bg_opacity`/`card_opacity`/`panel_opacity` (0–1, **不透明度**: 0 = 全透明, 1 = 完全
+   不透明) drive CSS vars `--app-bg-scrim`, `--app-card-alpha`, `--app-panel-alpha`. `--app-card-alpha`
+   is the **final** alpha of `.note-surface-*` (便签卡片) and of `.app-surface-canvas` /
+   `.app-surface-elevated` (任务脉络容器、泳道格与泳道任务条) — do not re-introduce per-priority
+   alpha multipliers, tints differ by hue only. `--app-panel-alpha` only affects `.app-chrome`
+   (顶栏/侧栏, 仅在设置了背景图时生效).
 - Schema migrations live in `database.ensure_schema()` (called from `main.py` after `create_all`):
   it adds new `preferences` columns (`compact`, `group_by`, `bg_opacity`, `card_opacity`,
   `panel_opacity`), runs `_drop_projects()` (rebuilds `tasks` without `project_id`, drops the
@@ -109,7 +113,10 @@ Frontend, run from `frontend/`:
 - `/board` is a **sticky-note wall**: a responsive card grid where cards tilt slightly and are tinted
   by priority (`noteSurfaceClassFor`/`noteTilt` in `src/lib/priority.ts` + `src/lib/utils.ts`); hover
   straightens the card. The note tone maps each priority to 低/中/高三档 by its `level`
-  (`note-surface-{low,medium,high}` classes in `index.css`, whose alpha is scaled by `--app-card-alpha`).
+   (`note-surface-{low,medium,high}` classes in `index.css`, whose alpha **is** `--app-card-alpha`;
+   100% 即实心，三档只差色相). 脉络容器与泳道用 `.app-surface-canvas`/`.app-surface-elevated`，
+   同样跟随 `--app-card-alpha`；不要再用 `bg-canvas/30`、`bg-elevated/40` 之类硬编码透明度。
+   `Button` 的基础类含 `shrink-0 whitespace-nowrap`：按钮文案不可折行，否则 `h-7` 的小按钮会溢出。
   Cards show title/description/status/priority/due/tags/subtasks **and created/updated timestamps**.
   The sidebar is an off-canvas drawer, hidden by default (`ui.sidebarOpen`); the topbar's `PanelLeft`
   button toggles it.

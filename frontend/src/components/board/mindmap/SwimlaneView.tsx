@@ -103,7 +103,7 @@ function SwimlaneGrid({
           <div
             key={priority}
             title={priorityNames.get(priority) ?? `优先级 ${priority}`}
-            className="flex min-h-[104px] w-16 items-center gap-2 rounded-md border border-line bg-elevated/60 px-2"
+            className="app-surface-elevated flex min-h-[104px] w-16 items-center gap-2 rounded-md border border-line px-2"
           >
             <span
               className="h-8 w-1.5 shrink-0 rounded-full"
@@ -193,7 +193,7 @@ function SwimlaneTask({
       onClick={onClick}
       title={task.title}
       className={cn(
-        'flex w-full items-center gap-1.5 rounded border border-line/60 bg-elevated/40 px-1.5 py-1 text-left text-[11px] leading-tight text-ink transition-colors hover:border-line-strong hover:bg-elevated',
+        'app-surface-elevated flex w-full items-center gap-1.5 rounded border border-line/60 px-1.5 py-1 text-left text-[11px] leading-tight text-ink transition-colors hover:border-line-strong hover:bg-elevated',
         isDone && 'text-muted',
       )}
     >
