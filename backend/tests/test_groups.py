@@ -57,6 +57,26 @@ def test_reorder_groups(client, make_group):
     assert [item["id"] for item in groups] == [second["id"], first["id"]]
 
 
+def test_group_note_roundtrip(client):
+    created = client.post(
+        "/api/groups", json={"name": "工作", "note": "本周目标"}
+    ).json()
+    assert created["note"] == "本周目标"
+
+    updated = client.put(
+        f"/api/groups/{created['id']}", json={"note": "改为下周"}
+    ).json()
+    assert updated["note"] == "改为下周"
+
+    cleared = client.put(f"/api/groups/{created['id']}", json={"note": "   "}).json()
+    assert cleared["note"] is None
+
+
+def test_group_without_note_defaults_to_none(client):
+    group = client.post("/api/groups", json={"name": "无备注"}).json()
+    assert group["note"] is None
+
+
 def test_get_missing_group_returns_404(client):
     assert client.put("/api/groups/99999", json={"name": "x"}).status_code == 404
     assert client.delete("/api/groups/99999").status_code == 404

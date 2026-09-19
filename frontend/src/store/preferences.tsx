@@ -53,6 +53,9 @@ interface Preferences {
   compact: boolean
   groupBy: boolean
   background: string | null
+  bgOpacity: number
+  cardOpacity: number
+  panelOpacity: number
 }
 
 interface PreferencesState extends Preferences {
@@ -62,6 +65,9 @@ interface PreferencesState extends Preferences {
   setCompact: (compact: boolean) => void
   setGroupBy: (groupBy: boolean) => void
   setBackground: (background: string | null) => void
+  setBgOpacity: (value: number) => void
+  setCardOpacity: (value: number) => void
+  setPanelOpacity: (value: number) => void
 }
 
 const STORAGE_KEY = 'task-manager:preferences'
@@ -72,6 +78,14 @@ const DEFAULTS: Preferences = {
   compact: false,
   groupBy: false,
   background: null,
+  bgOpacity: 0.7,
+  cardOpacity: 1,
+  panelOpacity: 0.82,
+}
+
+function clampOpacity(value: unknown, fallback: number): number {
+  if (typeof value !== 'number' || Number.isNaN(value)) return fallback
+  return Math.min(1, Math.max(0, value))
 }
 
 function loadPreferences(): Preferences {
@@ -91,6 +105,9 @@ function loadPreferences(): Preferences {
       compact: typeof parsed.compact === 'boolean' ? parsed.compact : DEFAULTS.compact,
       groupBy: typeof parsed.groupBy === 'boolean' ? parsed.groupBy : DEFAULTS.groupBy,
       background: typeof parsed.background === 'string' ? parsed.background : null,
+      bgOpacity: clampOpacity(parsed.bgOpacity, DEFAULTS.bgOpacity),
+      cardOpacity: clampOpacity(parsed.cardOpacity, DEFAULTS.cardOpacity),
+      panelOpacity: clampOpacity(parsed.panelOpacity, DEFAULTS.panelOpacity),
     }
   } catch {
     return DEFAULTS
@@ -130,6 +147,9 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
           compact: data.compact,
           groupBy: data.group_by,
           background: data.background_url,
+          bgOpacity: data.bg_opacity,
+          cardOpacity: data.card_opacity,
+          panelOpacity: data.panel_opacity,
         }
         const isServerDefault =
           data.theme === 'system' &&
@@ -146,6 +166,9 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
               compact: prefsRef.current.compact,
               group_by: prefsRef.current.groupBy,
               background_url: prefsRef.current.background,
+              bg_opacity: prefsRef.current.bgOpacity,
+              card_opacity: prefsRef.current.cardOpacity,
+              panel_opacity: prefsRef.current.panelOpacity,
             })
             .catch(() => {})
           return
@@ -165,7 +188,16 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     const root = document.documentElement
     root.classList.toggle('light', resolvedTheme === 'light')
     root.classList.toggle('has-app-bg', prefs.background != null)
-  }, [resolvedTheme, prefs.background])
+    root.style.setProperty('--app-bg-scrim', String(prefs.bgOpacity))
+    root.style.setProperty('--app-card-alpha', String(prefs.cardOpacity))
+    root.style.setProperty('--app-panel-alpha', String(prefs.panelOpacity))
+  }, [
+    resolvedTheme,
+    prefs.background,
+    prefs.bgOpacity,
+    prefs.cardOpacity,
+    prefs.panelOpacity,
+  ])
 
   const value = useMemo<PreferencesState>(
     () => ({
@@ -190,6 +222,18 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
       setBackground: (background) => {
         setPrefs((prev) => ({ ...prev, background }))
         void api.settings.update({ background_url: background }).catch(() => {})
+      },
+      setBgOpacity: (bgOpacity) => {
+        setPrefs((prev) => ({ ...prev, bgOpacity }))
+        void api.settings.update({ bg_opacity: bgOpacity }).catch(() => {})
+      },
+      setCardOpacity: (cardOpacity) => {
+        setPrefs((prev) => ({ ...prev, cardOpacity }))
+        void api.settings.update({ card_opacity: cardOpacity }).catch(() => {})
+      },
+      setPanelOpacity: (panelOpacity) => {
+        setPrefs((prev) => ({ ...prev, panelOpacity }))
+        void api.settings.update({ panel_opacity: panelOpacity }).catch(() => {})
       },
     }),
     [prefs, resolvedTheme],

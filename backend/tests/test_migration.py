@@ -176,3 +176,21 @@ def test_add_task_group_noop_when_existing(tmp_path):
         columns = [row[1] for row in connection.exec_driver_sql("PRAGMA table_info(tasks)")]
         assert columns == ["id", "group_id"]
 
+
+def test_add_group_note_is_idempotent(tmp_path):
+    from app import database
+
+    db_path = tmp_path / "legacy.db"
+    engine = create_engine(f"sqlite:///{db_path.as_posix()}", future=True)
+    with engine.begin() as connection:
+        connection.exec_driver_sql(
+            "CREATE TABLE groups (id INTEGER NOT NULL PRIMARY KEY, name VARCHAR(100) NOT NULL)"
+        )
+        database._add_group_note(connection)
+    with engine.begin() as connection:
+        database._add_group_note(connection)
+
+    with sqlite3.connect(db_path) as connection:
+        columns = [row[1] for row in connection.execute("PRAGMA table_info(groups)")]
+        assert columns.count("note") == 1
+

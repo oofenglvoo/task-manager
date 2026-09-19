@@ -25,6 +25,7 @@ def list_groups(db: Session = Depends(get_db)):
             id=group.id,
             name=group.name,
             color=group.color,
+            note=group.note,
             position=group.position,
             task_count=_task_count(db, group.id),
         )
@@ -39,9 +40,11 @@ def create_group(payload: schemas.GroupCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="分组名称不能为空")
     if db.scalar(select(models.Group).where(models.Group.name == name)) is not None:
         raise HTTPException(status_code=409, detail="分组名称已存在")
+    note = payload.note.strip() if payload.note else None
     group = models.Group(
         name=name,
         color=payload.color,
+        note=note or None,
         position=crud.next_position(db, models.Group),
     )
     db.add(group)
@@ -51,6 +54,7 @@ def create_group(payload: schemas.GroupCreate, db: Session = Depends(get_db)):
         id=group.id,
         name=group.name,
         color=group.color,
+        note=group.note,
         position=group.position,
         task_count=0,
     )
@@ -81,6 +85,9 @@ def update_group(
         if duplicated is not None:
             raise HTTPException(status_code=409, detail="分组名称已存在")
         data["name"] = name
+    if "note" in data:
+        note = data["note"]
+        data["note"] = note.strip() if isinstance(note, str) and note.strip() else None
     for key, value in data.items():
         setattr(group, key, value)
     db.commit()
@@ -89,6 +96,7 @@ def update_group(
         id=group.id,
         name=group.name,
         color=group.color,
+        note=group.note,
         position=group.position,
         task_count=_task_count(db, group.id),
     )

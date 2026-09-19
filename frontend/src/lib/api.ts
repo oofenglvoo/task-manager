@@ -2,6 +2,7 @@ import type {
   Group,
   ImportResult,
   Preferences,
+  Priority,
   Stats,
   Status,
   SubTask,
@@ -95,13 +96,27 @@ export const api = {
   },
   groups: {
     list: () => request<Group[]>('/api/groups'),
-    create: (data: { name: string; color?: string }) =>
+    create: (data: { name: string; color?: string; note?: string | null }) =>
       request<Group>('/api/groups', 'POST', data),
-    update: (id: number, data: Partial<{ name: string; color: string }>) =>
-      request<Group>(`/api/groups/${id}`, 'PUT', data),
+    update: (
+      id: number,
+      data: Partial<{ name: string; color: string; note: string | null }>,
+    ) => request<Group>(`/api/groups/${id}`, 'PUT', data),
     remove: (id: number) => request<void>(`/api/groups/${id}`, 'DELETE'),
     reorder: (orderedIds: number[]) =>
       request<void>('/api/groups/reorder', 'PUT', { ordered_ids: orderedIds }),
+  },
+  priorities: {
+    list: () => request<Priority[]>('/api/priorities'),
+    create: (data: { name: string; color?: string; level?: number }) =>
+      request<Priority>('/api/priorities', 'POST', data),
+    update: (
+      id: number,
+      data: Partial<{ name: string; color: string; level: number }>,
+    ) => request<Priority>(`/api/priorities/${id}`, 'PUT', data),
+    remove: (id: number) => request<void>(`/api/priorities/${id}`, 'DELETE'),
+    reorder: (orderedIds: number[]) =>
+      request<void>('/api/priorities/reorder', 'PUT', { ordered_ids: orderedIds }),
   },
   tasks: {
     list: (query: TaskQuery = {}) => request<Task[]>(`/api/tasks${qs(query)}`),

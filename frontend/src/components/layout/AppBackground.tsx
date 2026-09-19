@@ -11,7 +11,10 @@ export function AppBackground() {
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{ backgroundImage: `url(${JSON.stringify(background)})` }}
       />
-      <div className="absolute inset-0 bg-canvas/70" />
+      <div
+        className="absolute inset-0"
+        style={{ backgroundColor: 'rgb(var(--c-canvas) / var(--app-bg-scrim))' }}
+      />
     </div>
   )
 }

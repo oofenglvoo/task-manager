@@ -10,6 +10,7 @@ from .routers import (
     backgrounds,
     data,
     groups,
+    priorities,
     settings,
     stats,
     statuses,
@@ -43,6 +44,7 @@ app.add_middleware(
 app.include_router(statuses.router)
 app.include_router(tags.router)
 app.include_router(groups.router)
+app.include_router(priorities.router)
 app.include_router(tasks.router)
 app.include_router(subtasks.router)
 app.include_router(stats.router)

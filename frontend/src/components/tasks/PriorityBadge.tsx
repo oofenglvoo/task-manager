@@ -1,5 +1,4 @@
-import { PRIORITY_META } from '../../lib/utils'
-import { cn } from '../../lib/utils'
+import { usePrioritiesMeta } from '../../hooks/usePrioritiesMeta'
 
 export function PriorityBadge({
   priority,
@@ -8,11 +7,13 @@ export function PriorityBadge({
   priority: number
   showLabel?: boolean
 }) {
-  const meta = PRIORITY_META[priority] ?? PRIORITY_META[2]
+  const { byId } = usePrioritiesMeta()
+  const item = byId(priority)
+  const color = item?.color ?? '#6b7280'
   return (
-    <span className={cn('inline-flex items-center gap-1 text-xs', meta.text)}>
-      <span className={cn('h-1.5 w-1.5 rounded-full', meta.bg)} />
-      {showLabel ? meta.label : null}
+    <span className="inline-flex items-center gap-1 text-xs text-ink-soft">
+      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: color }} />
+      {showLabel ? item?.name ?? `优先级 ${priority}` : null}
     </span>
   )
 }

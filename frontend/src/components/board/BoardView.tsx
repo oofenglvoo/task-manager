@@ -118,6 +118,7 @@ export function BoardView() {
           groupId: task.group?.id ?? null,
           name: task.group?.name ?? '未分组',
           color: task.group?.color ?? null,
+          note: task.group?.note ?? null,
           tasks: [],
         }
         map.set(key, section)

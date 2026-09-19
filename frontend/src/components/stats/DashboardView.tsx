@@ -7,16 +7,9 @@ import {
   Layers,
 } from 'lucide-react'
 import { useStats } from '../../hooks/queries'
-import { priorityLabel } from '../../lib/utils'
 import { LoadingBlock } from '../ui/Spinner'
 import { BarRow } from './BarRow'
 import { StatCard } from './StatCard'
-
-const PRIORITY_COLORS: Record<number, string> = {
-  1: '#6b7280',
-  2: '#f59e0b',
-  3: '#ef4444',
-}
 
 export function DashboardView() {
   const { data: stats, isLoading } = useStats()
@@ -93,10 +86,10 @@ export function DashboardView() {
               {stats.by_priority.map((item) => (
                 <BarRow
                   key={item.priority}
-                  label={priorityLabel(item.priority)}
+                  label={item.name}
                   count={item.count}
                   total={total}
-                  color={PRIORITY_COLORS[item.priority] ?? '#94a3b8'}
+                  color={item.color}
                 />
               ))}
             </div>

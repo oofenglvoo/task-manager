@@ -1,7 +1,8 @@
 import { useMemo } from 'react'
-import type { Status, Task } from '../../../lib/types'
+import type { Priority, Status, Task } from '../../../lib/types'
 import type { EChartsOption } from '../../../lib/echarts'
-import { chartPalette, chartTooltipStyle } from '../../../lib/chartTheme'
+import type { ChartPalette } from '../../../lib/chartTheme'
+import { chartTooltipStyle } from '../../../lib/chartTheme'
 import { buildTreeData, formatTaskTooltip } from '../../../lib/mindmap'
 import { usePreferences } from '../../../store/preferences'
 import { MindMapChart } from './MindMapChart'
@@ -9,6 +10,8 @@ import { MindMapChart } from './MindMapChart'
 interface TreeViewProps {
   tasks: Task[]
   statuses: Status[]
+  priorities: Priority[]
+  palette: ChartPalette
   height: number
   groupBy: boolean
   onOpenTask: (taskId: number) => void
@@ -19,20 +22,31 @@ function taskIdFromNodeId(id: string): number | null {
   return match ? Number(match[1]) : null
 }
 
-export function TreeView({ tasks, statuses, height, groupBy, onOpenTask }: TreeViewProps) {
+export function TreeView({
+  tasks,
+  statuses,
+  priorities,
+  palette,
+  height,
+  groupBy,
+  onOpenTask,
+}: TreeViewProps) {
   const { resolvedTheme } = usePreferences()
   const isDark = resolvedTheme === 'dark'
-  const palette = useMemo(() => chartPalette(isDark), [isDark])
   const tooltipStyle = useMemo(() => chartTooltipStyle(isDark), [isDark])
 
   const statusMap = useMemo(
     () => new Map(statuses.map((status) => [status.id, status])),
     [statuses],
   )
+  const priorityNames = useMemo(
+    () => new Map(priorities.map((item) => [item.id, item.name])),
+    [priorities],
+  )
   const taskMap = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks])
   const data = useMemo(
-    () => buildTreeData(tasks, statuses, palette, groupBy),
-    [tasks, statuses, palette, groupBy],
+    () => buildTreeData(tasks, statuses, priorities, palette, groupBy),
+    [tasks, statuses, priorities, palette, groupBy],
   )
 
   const option = useMemo<EChartsOption>(
@@ -52,6 +66,7 @@ export function TreeView({ tasks, statuses, height, groupBy, onOpenTask }: TreeV
               return formatTaskTooltip({
                 task,
                 status: task.status_id != null ? statusMap.get(task.status_id) : undefined,
+                priorityName: priorityNames.get(task.priority),
               })
             }
           }
@@ -103,7 +118,7 @@ export function TreeView({ tasks, statuses, height, groupBy, onOpenTask }: TreeV
         },
       ],
     }),
-    [data, palette, taskMap, statusMap, tooltipStyle],
+    [data, palette, taskMap, statusMap, tooltipStyle, priorityNames],
   )
 
   return (

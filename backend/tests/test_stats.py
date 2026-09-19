@@ -14,7 +14,9 @@ def test_stats_counts_and_completion_rate(client, statuses, make_task):
     assert stats["overdue"] == 1
 
     by_priority = {item["priority"]: item["count"] for item in stats["by_priority"]}
-    assert by_priority == {1: 0, 2: 2, 3: 1}
+    # 默认优先级为第一条（低，id=1），另一条显式使用 id=3（高）。
+    assert by_priority == {1: 2, 2: 0, 3: 1}
+    assert [item["name"] for item in stats["by_priority"]] == ["低", "中", "高"]
 
     by_status = {item["status_id"]: item["count"] for item in stats["by_status"]}
     assert by_status[todo] == 2

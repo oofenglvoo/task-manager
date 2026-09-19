@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { ReactNode } from 'react'
 import {
   DndContext,
   DragOverlay,
@@ -14,11 +15,15 @@ import {
   SortableContext,
   rectSortingStrategy,
   sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { GripVertical } from 'lucide-react'
 import type { CardSizeStyle } from '../../store/preferences'
 import type { Status, Task } from '../../lib/types'
 import { errorMessage } from '../../lib/api'
-import { useMoveTask, useReorderTasks } from '../../hooks/queries'
+import { useMoveTask, useReorderGroups, useReorderTasks } from '../../hooks/queries'
 import { useToast } from '../../store/toast'
 import { TaskCard } from '../tasks/TaskCard'
 import { SortableTaskCard } from './SortableTaskCard'
@@ -28,6 +33,7 @@ export interface TaskSection {
   groupId: number | null
   name: string
   color: string | null
+  note: string | null
   tasks: Task[]
 }
 
@@ -60,6 +66,7 @@ export function GroupedTaskBoard({
 }: GroupedTaskBoardProps) {
   const reorderTasks = useReorderTasks()
   const moveTask = useMoveTask()
+  const reorderGroups = useReorderGroups()
   const { push } = useToast()
   const [activeId, setActiveId] = useState<number | null>(null)
 
@@ -69,6 +76,13 @@ export function GroupedTaskBoard({
   )
 
   const onError = (error: unknown) => push(errorMessage(error), 'error')
+
+  // 分组本身可拖拽排序（仅在有分组时；「未分组」固定末尾不可拖）。
+  const sortableSections = sections.filter((section) => section.groupId != null)
+  const taskSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
 
   const activeTask =
     activeId != null
@@ -88,6 +102,19 @@ export function GroupedTaskBoard({
       if (section.tasks.some((task) => task.id === taskId)) return section.key
     }
     return null
+  }
+
+  function handleGroupDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const orderedIds = sortableSections.map((section) => section.groupId as number)
+    const from = orderedIds.indexOf(Number(active.id))
+    const to = orderedIds.indexOf(Number(over.id))
+    if (from < 0 || to < 0) return
+    const next = [...orderedIds]
+    const [moved] = next.splice(from, 1)
+    next.splice(to, 0, moved)
+    reorderGroups.mutate(next, { onError })
   }
 
   function handleDragStart(event: DragStartEvent) {
@@ -159,45 +186,126 @@ export function GroupedTaskBoard({
   }
 
   return (
+    <>
+      {sortableSections.length > 1 ? (
+        <DndContext
+          sensors={taskSensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleGroupDragEnd}
+        >
+          <SortableContext
+            items={sortableSections.map((section) => section.groupId as number)}
+            strategy={verticalListSortingStrategy}
+          >
+            <TaskDndContext
+              sensors={sensors}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+            >
+              <div className="space-y-6">
+                {sections.map((section) => (
+                  <Section
+                    key={section.key}
+                    section={section}
+                    statuses={statuses}
+                    statusMap={statusMap}
+                    style={style}
+                    compact={compact}
+                    dragEnabled={dragEnabled}
+                    groupDraggable={section.groupId != null}
+                    onChangeStatus={onChangeStatus}
+                    onChangePriority={onChangePriority}
+                    onToggleDone={onToggleDone}
+                    onToggleSubtask={onToggleSubtask}
+                  />
+                ))}
+              </div>
+              {activeTask ? (
+                <DragOverlay>
+                  <div className="w-72 rotate-2 opacity-90">
+                    <TaskCard
+                      task={activeTask}
+                      status={
+                        activeTask.status_id != null
+                          ? statusMap.get(activeTask.status_id)
+                          : undefined
+                      }
+                      style={style}
+                      compact={compact}
+                    />
+                  </div>
+                </DragOverlay>
+              ) : null}
+            </TaskDndContext>
+          </SortableContext>
+        </DndContext>
+      ) : (
+        <TaskDndContext
+          sensors={sensors}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="space-y-6">
+            {sections.map((section) => (
+              <Section
+                key={section.key}
+                section={section}
+                statuses={statuses}
+                statusMap={statusMap}
+                style={style}
+                compact={compact}
+                dragEnabled={dragEnabled}
+                groupDraggable={false}
+                onChangeStatus={onChangeStatus}
+                onChangePriority={onChangePriority}
+                onToggleDone={onToggleDone}
+                onToggleSubtask={onToggleSubtask}
+              />
+            ))}
+          </div>
+          {activeTask ? (
+            <DragOverlay>
+              <div className="w-72 rotate-2 opacity-90">
+                <TaskCard
+                  task={activeTask}
+                  status={
+                    activeTask.status_id != null
+                      ? statusMap.get(activeTask.status_id)
+                      : undefined
+                  }
+                  style={style}
+                  compact={compact}
+                />
+              </div>
+            </DragOverlay>
+          ) : null}
+        </TaskDndContext>
+      )}
+    </>
+  )
+}
+
+interface TaskDndContextProps {
+  sensors: ReturnType<typeof useSensors>
+  onDragStart: (event: DragStartEvent) => void
+  onDragEnd: (event: DragEndEvent) => void
+  children: ReactNode
+}
+
+function TaskDndContext({
+  sensors,
+  onDragStart,
+  onDragEnd,
+  children,
+}: TaskDndContextProps) {
+  return (
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
     >
-      <div className="space-y-6">
-        {sections.map((section) => (
-          <Section
-            key={section.key}
-            section={section}
-            statuses={statuses}
-            statusMap={statusMap}
-            style={style}
-            compact={compact}
-            dragEnabled={dragEnabled}
-            onChangeStatus={onChangeStatus}
-            onChangePriority={onChangePriority}
-            onToggleDone={onToggleDone}
-            onToggleSubtask={onToggleSubtask}
-          />
-        ))}
-      </div>
-      <DragOverlay>
-        {activeTask ? (
-          <div className="w-72 rotate-2 opacity-90">
-            <TaskCard
-              task={activeTask}
-              status={
-                activeTask.status_id != null
-                  ? statusMap.get(activeTask.status_id)
-                  : undefined
-              }
-              style={style}
-              compact={compact}
-            />
-          </div>
-        ) : null}
-      </DragOverlay>
+      {children}
     </DndContext>
   )
 }
@@ -213,6 +321,7 @@ interface SectionProps {
   style: CardSizeStyle
   compact: boolean
   dragEnabled: boolean
+  groupDraggable: boolean
   onChangeStatus: (taskId: number, statusId: number | null) => void
   onChangePriority: (taskId: number, priority: number) => void
   onToggleDone: (task: Task) => void
@@ -226,16 +335,48 @@ function Section({
   style,
   compact,
   dragEnabled,
+  groupDraggable,
   onChangeStatus,
   onChangePriority,
   onToggleDone,
   onToggleSubtask,
 }: SectionProps) {
   const { setNodeRef, isOver } = useDroppable({ id: `section:${section.key}` })
+  const {
+    attributes,
+    listeners,
+    setNodeRef: setSortableRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: section.groupId ?? `none-${section.key}`,
+    disabled: !groupDraggable,
+    data: { type: 'group' },
+  })
+
+  const style_ = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : undefined,
+  }
 
   return (
-    <section>
-      <div className="mb-3 flex items-center gap-2">
+    <section ref={setSortableRef} style={style_} className="bg-transparent">
+      <div className="mb-1 flex items-center gap-2">
+        {groupDraggable ? (
+          <button
+            type="button"
+            title="拖动排序"
+            {...attributes}
+            {...listeners}
+            className="cursor-grab touch-none rounded p-0.5 text-muted/60 transition-colors hover:bg-elevated hover:text-ink active:cursor-grabbing"
+          >
+            <GripVertical className="h-3.5 w-3.5" />
+          </button>
+        ) : (
+          <span className="w-[18px]" />
+        )}
         <span
           className="h-3 w-3 rounded-sm"
           style={{
@@ -245,6 +386,13 @@ function Section({
         <h3 className="text-sm font-semibold text-ink">{section.name}</h3>
         <span className="text-xs text-muted">{section.tasks.length}</span>
       </div>
+      {section.note ? (
+        <p className="mb-3 pl-[26px] text-xs leading-relaxed text-muted whitespace-pre-wrap">
+          {section.note}
+        </p>
+      ) : (
+        <div className="mb-2" />
+      )}
       <SortableContext
         id={section.key}
         items={section.tasks.map((task) => task.id)}
@@ -265,7 +413,9 @@ function Section({
             <SortableTaskCard
               key={task.id}
               task={task}
-              status={task.status_id != null ? statusMap.get(task.status_id) : undefined}
+              status={
+                task.status_id != null ? statusMap.get(task.status_id) : undefined
+              }
               statuses={statuses}
               style={style}
               compact={compact}

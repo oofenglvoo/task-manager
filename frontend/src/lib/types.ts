@@ -16,6 +16,7 @@ export interface Group {
   id: number
   name: string
   color: string
+  note: string | null
   position: number
   task_count: number
 }
@@ -26,6 +27,15 @@ export interface SubTask {
   title: string
   is_done: boolean
   position: number
+}
+
+export interface Priority {
+  id: number
+  name: string
+  color: string
+  level: number
+  position: number
+  task_count: number
 }
 
 export interface TaskHistorySnapshot {
@@ -72,6 +82,9 @@ export interface StatusStat {
 
 export interface PriorityStat {
   priority: number
+  name: string
+  color: string
+  level: number
   count: number
 }
 
@@ -118,12 +131,16 @@ export interface Preferences {
   compact: boolean
   group_by: boolean
   background_url: string | null
+  bg_opacity: number
+  card_opacity: number
+  panel_opacity: number
 }
 
 export interface ImportResult {
   statuses: number
   tags: number
   groups: number
+  priorities: number
   tasks: number
   subtasks: number
 }

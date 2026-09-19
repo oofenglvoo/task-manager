@@ -27,6 +27,9 @@
     --shadow-note: 0 1px 2px rgba(0, 0, 0, 0.45), 0 6px 14px rgba(0, 0, 0, 0.3);
     --shadow-panel: 0 1px 0 rgba(255, 255, 255, 0.03), 0 8px 24px rgba(0, 0, 0, 0.35);
     --scroll-thumb: #2c2c34;
+    --app-bg-scrim: 0.7;
+    --app-card-alpha: 1;
+    --app-panel-alpha: 0.82;
     color-scheme: dark;
   }
 
@@ -102,9 +105,26 @@
 }
 
 .has-app-bg .app-chrome {
-  background-color: rgb(var(--c-surface) / 0.82);
+  background-color: rgb(var(--c-surface) / var(--app-panel-alpha));
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+}
+
+/* 便签卡片底色：基础 alpha 再乘以用户设置的卡片透明度。 */
+.note-surface-base {
+  background-color: rgb(var(--c-note-base) / calc(1 * var(--app-card-alpha)));
+}
+
+.note-surface-low {
+  background-color: rgb(var(--c-note-low) / calc(0.4 * var(--app-card-alpha)));
+}
+
+.note-surface-medium {
+  background-color: rgb(var(--c-note-medium) / calc(0.6 * var(--app-card-alpha)));
+}
+
+.note-surface-high {
+  background-color: rgb(var(--c-note-high) / calc(0.7 * var(--app-card-alpha)));
 }
 
 .rich-editor ul,

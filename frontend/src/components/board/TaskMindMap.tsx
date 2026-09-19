@@ -1,7 +1,8 @@
 import { Suspense, lazy, useMemo, useState } from 'react'
 import { ChevronDown, ChevronUp, Layers, Plus } from 'lucide-react'
 import { useStatuses, useTasks } from '../../hooks/queries'
-import { cn } from '../../lib/utils'
+import { usePrioritiesMeta } from '../../hooks/usePrioritiesMeta'
+import { chartPalette, priorityColorMap } from '../../lib/chartTheme'
 import { usePreferences } from '../../store/preferences'
 import { useUI } from '../../store/ui'
 import { EmptyState } from '../ui/EmptyState'
@@ -40,12 +41,6 @@ const CHART_HEIGHTS: Record<MindMapView, number> = {
   swimlane: 440,
 }
 
-const LEGEND: Array<{ priority: number; label: string; className: string }> = [
-  { priority: 3, label: '高', className: 'bg-priority-high' },
-  { priority: 2, label: '中', className: 'bg-priority-medium' },
-  { priority: 1, label: '低', className: 'bg-priority-low' },
-]
-
 function loadView(): MindMapView {
   try {
     const raw = window.localStorage.getItem(VIEW_STORAGE_KEY)
@@ -68,15 +63,29 @@ export function TaskMindMap() {
   const { data: statuses = [] } = useStatuses()
   const { data: tasks = [], isLoading } = useTasks({ sort: 'position', order: 'asc' })
   const { openTask, openCreate } = useUI()
-  const { groupBy, setGroupBy } = usePreferences()
+  const { groupBy, setGroupBy, resolvedTheme } = usePreferences()
+  const { priorities, sorted } = usePrioritiesMeta()
   const [view, setView] = useState<MindMapView>(loadView)
   const [collapsed, setCollapsed] = useState<boolean>(loadCollapsed)
 
   const chartHeight = CHART_HEIGHTS[view]
 
+  const palette = useMemo(() => {
+    const base = chartPalette(resolvedTheme === 'dark')
+    return { ...base, priority: priorityColorMap(priorities, resolvedTheme === 'dark') }
+  }, [priorities, resolvedTheme])
+
   const viewProps = useMemo(
-    () => ({ tasks, statuses, height: chartHeight, groupBy, onOpenTask: openTask }),
-    [tasks, statuses, chartHeight, groupBy, openTask],
+    () => ({
+      tasks,
+      statuses,
+      priorities,
+      palette,
+      height: chartHeight,
+      groupBy,
+      onOpenTask: openTask,
+    }),
+    [tasks, statuses, priorities, palette, chartHeight, groupBy, openTask],
   )
 
   function changeView(next: MindMapView) {
@@ -112,10 +121,13 @@ export function TaskMindMap() {
             : '按优先级与最近更新时间综合排序，每分支最多展示 8 个'}
         </span>
         <div className="ml-2 hidden items-center gap-2 sm:flex">
-          {LEGEND.map((item) => (
-            <span key={item.priority} className="inline-flex items-center gap-1 text-xs text-muted">
-              <span className={cn('h-2 w-2 rounded-full', item.className)} />
-              {item.label}
+          {sorted.map((item) => (
+            <span key={item.id} className="inline-flex items-center gap-1 text-xs text-muted">
+              <span
+                className="h-2 w-2 rounded-full"
+                style={{ backgroundColor: palette.priority[item.id] ?? item.color }}
+              />
+              {item.name}
             </span>
           ))}
         </div>

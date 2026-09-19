@@ -11,6 +11,7 @@ import {
   useTask,
   useUpdateTask,
 } from '../../hooks/queries'
+import { usePrioritiesMeta } from '../../hooks/usePrioritiesMeta'
 import { useToast } from '../../store/toast'
 import { useUI } from '../../store/ui'
 import { Button } from '../ui/Button'
@@ -66,6 +67,7 @@ export function TaskDetailDrawer() {
   const { data: statuses = [] } = useStatuses()
   const { data: tags = [] } = useTags()
   const { data: groups = [] } = useGroups()
+  const { sorted: sortedPriorities } = usePrioritiesMeta()
   const updateTask = useUpdateTask()
   const archiveTask = useArchiveTask()
   const deleteTask = useDeleteTask()
@@ -203,9 +205,11 @@ export function TaskDetailDrawer() {
                     value={draft.priority}
                     onChange={(event) => patch({ priority: Number(event.target.value) })}
                   >
-                    <option value={1}>低</option>
-                    <option value={2}>中</option>
-                    <option value={3}>高</option>
+                    {sortedPriorities.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                      </option>
+                    ))}
                   </Select>
                 </label>
               </div>

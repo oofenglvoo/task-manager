@@ -56,9 +56,53 @@ function Segmented<T extends string>({
   )
 }
 
+function OpacitySlider({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value: number
+  onChange: (value: number) => void
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <span className="text-sm text-ink-soft">{label}</span>
+      <div className="flex items-center gap-3">
+        <input
+          type="range"
+          min={0}
+          max={1}
+          step={0.05}
+          value={value}
+          onChange={(event) => onChange(Number(event.target.value))}
+          className="h-1.5 w-40 cursor-pointer appearance-none rounded-full bg-line-strong accent-accent"
+        />
+        <span className="w-10 text-right text-xs tabular-nums text-muted">
+          {Math.round(value * 100)}%
+        </span>
+      </div>
+    </div>
+  )
+}
+
 export function AppearanceSettings() {
-  const { theme, cardSize, compact, background, setTheme, setCardSize, setCompact, setBackground } =
-    usePreferences()
+  const {
+    theme,
+    cardSize,
+    compact,
+    background,
+    bgOpacity,
+    cardOpacity,
+    panelOpacity,
+    setTheme,
+    setCardSize,
+    setCompact,
+    setBackground,
+    setBgOpacity,
+    setCardOpacity,
+    setPanelOpacity,
+  } = usePreferences()
   const { push } = useToast()
   const [url, setUrl] = useState('')
   const [uploading, setUploading] = useState(false)
@@ -175,6 +219,20 @@ export function AppearanceSettings() {
               本地上传的图片会保存到后端（data/backgrounds/），偏好同步到后端；也可直接填图片链接。
             </p>
           )}
+        </div>
+
+        <div className="space-y-3 border-t border-line pt-4">
+          <span className="text-sm text-ink-soft">透明度</span>
+          <OpacitySlider
+            label="背景遮罩"
+            value={bgOpacity}
+            onChange={setBgOpacity}
+          />
+          <OpacitySlider label="卡片" value={cardOpacity} onChange={setCardOpacity} />
+          <OpacitySlider label="面板" value={panelOpacity} onChange={setPanelOpacity} />
+          <p className="text-xs text-muted">
+            背景遮罩越深、卡片与面板越不透明。仅在设置背景图片后遮罩才可见。
+          </p>
         </div>
       </div>
     </section>

@@ -47,8 +47,31 @@ def ensure_schema() -> None:
             connection.exec_driver_sql(
                 "ALTER TABLE preferences ADD COLUMN group_by BOOLEAN NOT NULL DEFAULT 0"
             )
+        if columns and "bg_opacity" not in columns:
+            connection.exec_driver_sql(
+                "ALTER TABLE preferences ADD COLUMN bg_opacity FLOAT NOT NULL DEFAULT 0.7"
+            )
+        if columns and "card_opacity" not in columns:
+            connection.exec_driver_sql(
+                "ALTER TABLE preferences ADD COLUMN card_opacity FLOAT NOT NULL DEFAULT 1.0"
+            )
+        if columns and "panel_opacity" not in columns:
+            connection.exec_driver_sql(
+                "ALTER TABLE preferences ADD COLUMN panel_opacity FLOAT NOT NULL DEFAULT 0.82"
+            )
         _drop_projects(connection)
         _add_task_group(connection)
+        _add_group_note(connection)
+
+
+def _add_group_note(connection) -> None:
+    """Add `groups.note` to existing databases. Idempotent (PRAGMA guarded)."""
+    group_columns = {
+        row[1] for row in connection.exec_driver_sql("PRAGMA table_info(groups)")
+    }
+    if not group_columns or "note" in group_columns:
+        return
+    connection.exec_driver_sql("ALTER TABLE groups ADD COLUMN note TEXT")
 
 
 def _add_task_group(connection) -> None:

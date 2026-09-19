@@ -63,12 +63,22 @@ def get_stats(db: Session = Depends(get_db)):
             )
         )
 
+    priorities = list(
+        db.scalars(
+            select(models.Priority).order_by(
+                models.Priority.position, models.Priority.id
+            )
+        )
+    )
     by_priority = [
         schemas.PriorityStat(
-            priority=level,
-            count=sum(1 for task in active if task.priority == level),
+            priority=priority.id,
+            name=priority.name,
+            color=priority.color,
+            level=priority.level,
+            count=sum(1 for task in active if task.priority == priority.id),
         )
-        for level in (1, 2, 3)
+        for priority in priorities
     ]
 
     completion_rate = (

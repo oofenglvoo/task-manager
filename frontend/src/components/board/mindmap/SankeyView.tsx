@@ -1,8 +1,9 @@
 import { useMemo } from 'react'
 import type { DefaultLabelFormatterCallbackParams } from 'echarts'
-import type { Status, Task } from '../../../lib/types'
+import type { Priority, Status, Task } from '../../../lib/types'
 import type { EChartsOption } from '../../../lib/echarts'
-import { chartPalette, chartTooltipStyle, withAlpha } from '../../../lib/chartTheme'
+import type { ChartPalette } from '../../../lib/chartTheme'
+import { chartTooltipStyle, withAlpha } from '../../../lib/chartTheme'
 import { buildSankeyData, formatTaskTooltip } from '../../../lib/mindmap'
 import { usePreferences } from '../../../store/preferences'
 import { MindMapChart } from './MindMapChart'
@@ -10,6 +11,8 @@ import { MindMapChart } from './MindMapChart'
 interface SankeyViewProps {
   tasks: Task[]
   statuses: Status[]
+  priorities: Priority[]
+  palette: ChartPalette
   height: number
   groupBy: boolean
   onOpenTask: (taskId: number) => void
@@ -25,20 +28,31 @@ function nodeOf(data: DefaultLabelFormatterCallbackParams['data']): SankeyNodeSh
   return {}
 }
 
-export function SankeyView({ tasks, statuses, height, groupBy, onOpenTask }: SankeyViewProps) {
+export function SankeyView({
+  tasks,
+  statuses,
+  priorities,
+  palette,
+  height,
+  groupBy,
+  onOpenTask,
+}: SankeyViewProps) {
   const { resolvedTheme } = usePreferences()
   const isDark = resolvedTheme === 'dark'
-  const palette = useMemo(() => chartPalette(isDark), [isDark])
   const tooltipStyle = useMemo(() => chartTooltipStyle(isDark), [isDark])
 
   const statusMap = useMemo(
     () => new Map(statuses.map((status) => [status.id, status])),
     [statuses],
   )
+  const priorityNames = useMemo(
+    () => new Map(priorities.map((item) => [item.id, item.name])),
+    [priorities],
+  )
   const taskMap = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks])
   const data = useMemo(
-    () => buildSankeyData(tasks, statuses, palette, groupBy),
-    [tasks, statuses, palette, groupBy],
+    () => buildSankeyData(tasks, statuses, priorities, palette, groupBy),
+    [tasks, statuses, priorities, palette, groupBy],
   )
 
   const option = useMemo<EChartsOption>(
@@ -63,6 +77,7 @@ export function SankeyView({ tasks, statuses, height, groupBy, onOpenTask }: San
               return formatTaskTooltip({
                 task,
                 status: task.status_id != null ? statusMap.get(task.status_id) : undefined,
+                priorityName: priorityNames.get(task.priority),
               })
             }
           }
@@ -104,7 +119,7 @@ export function SankeyView({ tasks, statuses, height, groupBy, onOpenTask }: San
         },
       ],
     }),
-    [data, palette, taskMap, statusMap, tooltipStyle],
+    [data, palette, taskMap, statusMap, tooltipStyle, priorityNames],
   )
 
   return (

@@ -37,29 +37,43 @@ Frontend, run from `frontend/`:
   autouse fixture drops/recreates tables per test. Preserve that import order if editing it.
 - Datetimes are stored naive UTC and serialized with a trailing `Z` (`schemas._serialize_utc`).
 - `Task` has `created_at` (insert), `updated_at` (SQLAlchemy `onupdate=utcnow`, auto), `completed_at`.
-- `priority` is an int 1/2/3 (low/medium/high), validated 1–3.
+- `Task.priority` is an int (a **`priorities.id`**, not a fixed 1/2/3) with no range validation; the
+  value must reference an existing `priorities` row or the write returns 404. `Priority` rows carry
+  `name/color/level/position`; `level` is the weight (higher = more important) and `position` is the
+  display order. Default three are seeded 低/中/高 with level 1/2/3 and ids 1/2/3, so legacy
+  `tasks.priority` values still map correctly.
 - `Task.description` stores **HTML** (rich text from the frontend); the API treats it as an opaque
   string (no validation/sanitization). Plain-text consumers use `frontend/src/lib/richText.ts`.
 - Moving a task to a status with `is_done=True` auto-sets `completed_at`; moving off clears it.
 - Creating a task with no `status_id` assigns the first status by `position`; position is now global
-  (`crud.next_task_position(db)`, no project scoping).
-- API is under `/api/*`; subtask routes share the `/api/tasks` prefix. Group routes are `/api/groups`.
+  (`crud.next_task_position(db)`, no project scoping). No `priority` assigns the first priority by
+  position (`crud.resolve_priority`).
+- API is under `/api/*`; subtask routes share the `/api/tasks` prefix. Group routes are `/api/groups`,
+  priority routes are `/api/priorities`.
 - `PUT /api/tasks/{id}/move` uses `exclude_unset` semantics: `group_id: null` **clears** the group,
   omitting `group_id` leaves it unchanged (the frontend cross-group drag relies on this).
 - Deleting a group keeps its tasks but sets `group_id` to NULL (SQLAlchemy nulls the FK on delete).
-- Deleting an in-use status returns 400; duplicate status/tag/group names return 409.
+  `Group.note` is an optional plain-text note shown under the group header.
+- Deleting an in-use status/priority returns 400 (a priority that is the last remaining one also 400);
+  duplicate status/tag/group/priority names return 409.
 - All user-facing strings, seed data, and error messages are Chinese — keep new UI/messages Chinese.
 - Appearance preferences are a single `preferences` row (id=1) served by `/api/settings`; background
   files live in `DB_DIR/backgrounds/` (i.e. next to the SQLite file, so tests use the temp dir).
+  Opacity prefs `bg_opacity`/`card_opacity`/`panel_opacity` (0–1) drive CSS vars `--app-bg-scrim`,
+  `--app-card-alpha`, `--app-panel-alpha`.
 - Schema migrations live in `database.ensure_schema()` (called from `main.py` after `create_all`):
-  it adds new `preferences` columns (`compact`, `group_by`) **and** runs `_drop_projects()` (rebuilds
-  `tasks` without `project_id`, drops the `projects` table, preserving every task row) plus
-  `_add_task_group()` (adds `tasks.group_id` + index). `create_all` never drops columns/tables, so
-  rebuild-style migrations must stay idempotent.
-- `/api/export` dumps all data; `POST /api/import` **wipes and replaces** statuses/tags/tasks
-  (legacy payloads still containing `projects`/`project_id` are accepted and ignored).
+  it adds new `preferences` columns (`compact`, `group_by`, `bg_opacity`, `card_opacity`,
+  `panel_opacity`), runs `_drop_projects()` (rebuilds `tasks` without `project_id`, drops the
+  `projects` table, preserving every task row), `_add_task_group()` (adds `tasks.group_id` + index)
+  and `_add_group_note()` (adds `groups.note`). The `priorities` table is created by `create_all` and
+  seeded by `seed.seed_defaults`. `create_all` never drops columns/tables, so rebuild-style
+  migrations must stay idempotent.
+- `/api/export` dumps all data; `POST /api/import` **wipes and replaces** statuses/tags/groups/
+  priorities/tasks (legacy payloads still containing `projects`/`project_id` are accepted and ignored;
+  a legacy payload with no `priorities` re-seeds the default three and keeps task priority values).
 - Groups are a first-class entity (`groups` table, `/api/groups` CRUD + `/reorder`); a task has an
-  optional `group_id`. The board/list/mindmap "group by" toggle is persisted as `preferences.group_by`.
+  optional `group_id`. Priorities are likewise first-class (`priorities` table, `/api/priorities`
+  CRUD + `/reorder`). The board/list/mindmap "group by" toggle is persisted as `preferences.group_by`.
 - `task_history` stores JSON snapshots (`TaskHistory.task_id` FK CASCADE, `snapshot` TEXT). A snapshot
   is written on task **create** (v1) and from `crud.update_task` only when a main field actually
   changed; `build_history_snapshot` stores **names** (status/group/tags) and strips `<img>` from
@@ -78,24 +92,33 @@ Frontend, run from `frontend/`:
   tokens `--c-note-base/low/medium/high` and `--shadow-note`), consumed by `tailwind.config.js` as
   `rgb(var(--c-x) / <alpha-value>)` (`note.base/low/medium/high`, `shadow-note`). Light mode = `.light`
   class on `<html>` overriding those vars; there is no `dark:` variant and no hardcoded hex in the config.
-- Appearance preferences (theme dark/light/system, card size sm/md/lg, background image) live in
-  `src/store/preferences.tsx`, persisted to `localStorage` key `task-manager:preferences`.
-  `index.html` has an inline script that applies theme/background before React to avoid a flash.
+- Appearance preferences (theme dark/light/system, card size sm/md/lg, background image, and the
+  three opacity sliders `bgOpacity`/`cardOpacity`/`panelOpacity`) live in `src/store/preferences.tsx`,
+  persisted to `localStorage` key `task-manager:preferences`; opacity values are written to `:root` as
+  `--app-bg-scrim`/`--app-card-alpha`/`--app-panel-alpha`.
+  `index.html` has an inline script that applies theme/background/opacity before React to avoid a flash.
 - Routes: `/board`, `/list`, `/dashboard`, `/settings` (all wrapped by `AppShell`). There is no
   `/projects` route or project UI anymore.
 - `/board` is a **sticky-note wall**: a responsive card grid where cards tilt slightly and are tinted
-  by priority (`noteSurfaceClass`/`noteTilt` in `src/lib/utils.ts`); hover straightens the card.
+  by priority (`noteSurfaceClassFor`/`noteTilt` in `src/lib/priority.ts` + `src/lib/utils.ts`); hover
+  straightens the card. The note tone maps each priority to 低/中/高三档 by its `level`
+  (`note-surface-{low,medium,high}` classes in `index.css`, whose alpha is scaled by `--app-card-alpha`).
   Cards show title/description/status/priority/due/tags/subtasks **and created/updated timestamps**.
   The sidebar is an off-canvas drawer, hidden by default (`ui.sidebarOpen`); the topbar's `PanelLeft`
   button toggles it.
+- **Priorities are data-driven**: `usePriorities()` (query key `priorities`) + `usePrioritiesMeta()`
+  (`src/hooks/usePrioritiesMeta.ts`) expose `{ priorities, sorted, byId, label, color }`, falling back
+  to `FALLBACK_PRIORITIES` (`src/lib/priority.ts`) while loading. Use these instead of any hardcoded
+  label/color map. `PriorityManager.tsx` (settings page) does CRUD by name/color/level + up/down reorder.
 - The board's top section is **`TaskMindMap`** (ECharts-based, four switchable views):
   `sankey` (default) / `radial` (sunburst) / `tree` / `swimlane` (CSS grid, not ECharts).
   The view choice is persisted to `localStorage` key `task-manager:mindmap-view`, and the
   collapse state to `task-manager:mindmap-collapsed`.
-- Chart data is built by pure functions in `src/lib/mindmap.ts` over `Task[]` + `Status[]`
-  (`buildTreeData` / `buildSunburstData` / `buildSankeyData` / `buildSwimlaneData`); there is
-  **no backend endpoint**. Tasks within each (priority→status) branch are sorted by `taskScore` =
-  priority weight + recency weight (`PRIORITY_FACTOR`/`RECENCY_FACTOR`), capped at `BRANCH_LIMIT`
+- Chart data is built by pure functions in `src/lib/mindmap.ts` over `Task[]` + `Status[]` +
+  `Priority[]` (`buildTreeData` / `buildSunburstData` / `buildSankeyData` / `buildSwimlaneData`); there
+  is **no backend endpoint**. `Priority[]` is threaded through and drives ordering (by `level` desc),
+  labels and colors. Tasks within each (priority→status) branch are sorted by `taskScore` =
+  priority `level` + recency weight (`PRIORITY_FACTOR`/`RECENCY_FACTOR`), capped at `BRANCH_LIMIT`
   (8) with the remainder collapsed into a "还有 N 个…" node.
 - **ECharts is registered on demand** in `src/lib/echarts.ts` (only Sankey/Sunburst/Tree + Tooltip
   + CanvasRenderer) and the views are **lazy-loaded** via `React.lazy` in `TaskMindMap.tsx`, so the
@@ -106,10 +129,10 @@ Frontend, run from `frontend/`:
 - Sankey node names must be unique: they use composite ids (`root::all`, `priority::N`,
   `status::N-ID`, `task::ID`, `more::N-ID`) while the visible text comes from a `display` field
   (so `label.formatter` reads `params.data.display`).
-- `lib/chartTheme.ts` provides `chartPalette(isDark)` / `chartTextStyle` / `chartTooltipStyle` /
-  `withAlpha`. Chart builders take the palette as an argument (they are pure); views rebuild
-  their option via `useMemo` on `resolvedTheme` so colors follow the theme. Do not reintroduce
-  hardcoded hex colors or `priorityColor()`.
+- `lib/chartTheme.ts` provides `chartPalette(isDark)` / `chartTooltipStyle` / `withAlpha` /
+  `isDarkColor` / `priorityColorMap(priorities, isDark)`. `TaskMindMap` builds the palette once and
+  passes it to each lazy view (they no longer call `chartPalette` themselves); the map is rebuilt on
+  `priorities`/`resolvedTheme` change. Do not reintroduce hardcoded hex colors or `priorityColor()`.
 - Sankey / tree / sunburst all render **task titles on canvas** (truncated, full text in the
   tooltip); swimlane renders them as chips with overdue / subtask-progress signals.
 - Drag-reorder only works when board sort is `position` (手动排序); other sorts disable drag.
@@ -117,7 +140,12 @@ Frontend, run from `frontend/`:
   is also disabled while the list is truncated by the 60-per-page "显示更多" pagination.
   In the grouped board (`GroupedTaskBoard.tsx`, used when `groupBy` is on) each group is its own
   `SortableContext` + droppable container; same-group drops reorder via `/reorder`, cross-group
-  drops call `/move` with `group_id`+`position` then re-flatten positions.
+  drops call `/move` with `group_id`+`position` then re-flatten positions. Group headers carry a
+  `GripVertical` handle that reorders the groups themselves via an outer `SortableContext` +
+  `/api/groups/reorder` (the "未分组" section is fixed last and not draggable). The same reorder is
+  available in `GroupManager.tsx`.
+- Group headers (`GroupedTaskBoard`) and the list's group rows render `section.note` under the title
+  when set; the note is edited in `GroupManager.tsx`.
 - `Task.description` is HTML. The drawer edits it with the dependency-free `RichTextEditor`
   (`contentEditable` + `document.execCommand`, image paste/drop as base64 data URLs, toolbar in
   `src/components/ui/RichTextEditor.tsx`). Cards render the description as **sanitized HTML** via

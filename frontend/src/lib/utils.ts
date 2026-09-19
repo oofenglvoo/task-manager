@@ -2,23 +2,6 @@ export function cn(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(' ')
 }
 
-export interface PriorityMeta {
-  label: string
-  color: string
-  text: string
-  bg: string
-}
-
-export const PRIORITY_META: Record<number, PriorityMeta> = {
-  1: { label: '低', color: '#6b7280', text: 'text-priority-low', bg: 'bg-priority-low' },
-  2: { label: '中', color: '#f59e0b', text: 'text-priority-medium', bg: 'bg-priority-medium' },
-  3: { label: '高', color: '#ef4444', text: 'text-priority-high', bg: 'bg-priority-high' },
-}
-
-export function priorityLabel(priority: number): string {
-  return PRIORITY_META[priority]?.label ?? '中'
-}
-
 export function todayISO(): string {
   const now = new Date()
   return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10)
@@ -104,13 +87,6 @@ export function dueBadgeClass(dueDate: string | null, isDone: boolean): string {
   if (state === 'overdue') return 'bg-danger/10 text-danger'
   if (state === 'today') return 'bg-warning/10 text-warning'
   return ''
-}
-
-export function noteSurfaceClass(priority: number, isDone: boolean): string {
-  if (isDone) return 'bg-note-low/40'
-  if (priority >= 3) return 'bg-note-high/70'
-  if (priority === 2) return 'bg-note-medium/60'
-  return 'bg-note-base'
 }
 
 export function noteTilt(id: number): number {

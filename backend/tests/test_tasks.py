@@ -1,7 +1,8 @@
 def test_create_task_uses_defaults(client, statuses, make_task):
     task = make_task()
     assert task["title"] == "任务"
-    assert task["priority"] == 2
+    # 默认使用第一条优先级（低，level 1）。
+    assert task["priority"] == 1
     assert task["status_id"] == statuses[0]["id"]
     assert task["completed_at"] is None
     assert task["due_date"] is None
@@ -26,9 +27,10 @@ def test_create_task_with_all_fields(client, make_task):
     assert [item["name"] for item in task["tags"]] == ["紧急"]
 
 
-def test_priority_must_be_between_one_and_three(client):
-    response = client.post("/api/tasks", json={"title": "任务", "priority": 5})
-    assert response.status_code == 422
+def test_unknown_priority_is_rejected(client):
+    # 优先级已成为数据表，引用不存在的 id 返回 404。
+    response = client.post("/api/tasks", json={"title": "任务", "priority": 999})
+    assert response.status_code == 404
 
 
 def test_marking_done_sets_completed_at_and_back_clears_it(client, statuses, make_task):

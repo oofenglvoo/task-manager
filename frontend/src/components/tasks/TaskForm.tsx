@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { errorMessage } from '../../lib/api'
 import { useCreateTask, useGroups, useStatuses, useTags } from '../../hooks/queries'
+import { usePrioritiesMeta } from '../../hooks/usePrioritiesMeta'
 import { useToast } from '../../store/toast'
 import { Button } from '../ui/Button'
 import { Field, Input, Select, Textarea } from '../ui/Input'
@@ -37,6 +38,7 @@ export function TaskForm({ open, onClose, defaultStatusId }: TaskFormProps) {
   const { data: statuses = [] } = useStatuses()
   const { data: groups = [] } = useGroups()
   const { data: tags = [] } = useTags()
+  const { sorted: sortedPriorities } = usePrioritiesMeta()
   const createTask = useCreateTask()
   const { push } = useToast()
   const [form, setForm] = useState<FormState>(EMPTY)
@@ -47,9 +49,13 @@ export function TaskForm({ open, onClose, defaultStatusId }: TaskFormProps) {
     setError('')
     setForm({
       ...EMPTY,
+      // 默认使用中档优先级（排序后取中间项），列表未就绪时回退到 2。
+      priority: sortedPriorities.length
+        ? sortedPriorities[Math.floor((sortedPriorities.length - 1) / 2)].id
+        : EMPTY.priority,
       statusId: defaultStatusId ?? '',
     })
-  }, [open, defaultStatusId])
+  }, [open, defaultStatusId, sortedPriorities])
 
   useEffect(() => {
     if (!open) return
@@ -161,9 +167,11 @@ export function TaskForm({ open, onClose, defaultStatusId }: TaskFormProps) {
               value={form.priority}
               onChange={(event) => setForm({ ...form, priority: Number(event.target.value) })}
             >
-              <option value={1}>低</option>
-              <option value={2}>中</option>
-              <option value={3}>高</option>
+              {sortedPriorities.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
             </Select>
           </Field>
           <Field label="截止日期">

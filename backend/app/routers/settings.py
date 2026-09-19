@@ -20,6 +20,9 @@ def get_or_create(db: Session) -> models.Preference:
             compact=False,
             group_by=False,
             background_url=None,
+            bg_opacity=0.7,
+            card_opacity=1.0,
+            panel_opacity=0.82,
         )
         db.add(preference)
         db.commit()

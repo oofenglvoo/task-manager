@@ -1,5 +1,6 @@
 import { Moon, PanelLeft, Plus, Search, Sun } from 'lucide-react'
 import { useTags } from '../../hooks/queries'
+import { usePrioritiesMeta } from '../../hooks/usePrioritiesMeta'
 import { usePreferences } from '../../store/preferences'
 import { useUI } from '../../store/ui'
 import { Button } from '../ui/Button'
@@ -17,6 +18,7 @@ export function Topbar() {
     toggleSidebar,
   } = useUI()
   const { data: tags = [] } = useTags()
+  const { sorted: sortedPriorities } = usePrioritiesMeta()
   const { resolvedTheme, setTheme } = usePreferences()
 
   return (
@@ -50,9 +52,11 @@ export function Topbar() {
         }
       >
         <option value="">优先级</option>
-        <option value={3}>高</option>
-        <option value={2}>中</option>
-        <option value={1}>低</option>
+        {sortedPriorities.map((item) => (
+          <option key={item.id} value={item.id}>
+            {item.name}
+          </option>
+        ))}
       </Select>
 
       <Select

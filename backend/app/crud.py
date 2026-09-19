@@ -92,15 +92,28 @@ def resolve_group(db: Session, group_id: int | None) -> models.Group | None:
     return group
 
 
+def resolve_priority(db: Session, priority: int | None) -> int:
+    """Return a valid priority id; default to the first one when unspecified."""
+    if priority is None:
+        first = db.scalar(
+            select(models.Priority).order_by(models.Priority.position, models.Priority.id)
+        )
+        return first.id if first is not None else 1
+    if db.get(models.Priority, priority) is None:
+        raise HTTPException(status_code=404, detail="优先级不存在")
+    return priority
+
+
 def create_task(db: Session, payload) -> models.Task:
     status = resolve_status(db, payload.status_id)
     resolve_group(db, payload.group_id)
+    priority = resolve_priority(db, payload.priority)
     task = models.Task(
         status_id=status.id if status is not None else None,
         group_id=payload.group_id,
         title=_clean_title(payload.title),
         description=payload.description,
-        priority=payload.priority,
+        priority=priority,
         due_date=payload.due_date,
         position=next_task_position(db),
     )
@@ -127,6 +140,9 @@ def update_task(db: Session, task: models.Task, payload) -> models.Task:
 
     if "title" in data and data["title"] is not None:
         data["title"] = _clean_title(data["title"])
+
+    if "priority" in data and data["priority"] is not None:
+        data["priority"] = resolve_priority(db, data["priority"])
 
     for key, value in data.items():
         setattr(task, key, value)

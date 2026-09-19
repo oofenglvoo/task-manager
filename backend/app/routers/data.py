@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, selectinload
 from .. import models, schemas
 from ..database import get_db
 from ..models import utcnow
+from ..seed import DEFAULT_PRIORITIES
 
 router = APIRouter(prefix="/api", tags=["data"])
 
@@ -22,6 +23,11 @@ def export_data(db: Session = Depends(get_db)):
     groups = list(
         db.scalars(
             select(models.Group).order_by(models.Group.position, models.Group.id)
+        )
+    )
+    priorities = list(
+        db.scalars(
+            select(models.Priority).order_by(models.Priority.position, models.Priority.id)
         )
     )
     tasks = list(
@@ -55,9 +61,23 @@ def export_data(db: Session = Depends(get_db)):
         ],
         groups=[
             schemas.ExportGroup(
-                id=group.id, name=group.name, color=group.color, position=group.position
+                id=group.id,
+                name=group.name,
+                color=group.color,
+                note=group.note,
+                position=group.position,
             )
             for group in groups
+        ],
+        priorities=[
+            schemas.ExportPriority(
+                id=priority.id,
+                name=priority.name,
+                color=priority.color,
+                level=priority.level,
+                position=priority.position,
+            )
+            for priority in priorities
         ],
         tasks=[
             schemas.ExportTask(
@@ -99,6 +119,7 @@ def export_data(db: Session = Depends(get_db)):
 def import_data(payload: schemas.ExportData, db: Session = Depends(get_db)):
     tag_ids = {tag.id for tag in payload.tags}
     group_ids = {group.id for group in payload.groups}
+    priority_ids = {priority.id for priority in payload.priorities}
 
     for task in payload.tasks:
         for tag_id in task.tag_ids:
@@ -110,6 +131,11 @@ def import_data(payload: schemas.ExportData, db: Session = Depends(get_db)):
             raise HTTPException(
                 status_code=400, detail=f"任务「{task.title}」引用了不存在的分组"
             )
+        # 旧备份可能没有 priorities，此时任务的 priority 值需要落在默认三条里。
+        if priority_ids and task.priority not in priority_ids:
+            raise HTTPException(
+                status_code=400, detail=f"任务「{task.title}」引用了不存在的优先级"
+            )
 
     status_names = [status.name for status in payload.statuses]
     if len(status_names) != len(set(status_names)):
@@ -120,6 +146,9 @@ def import_data(payload: schemas.ExportData, db: Session = Depends(get_db)):
     group_names = [group.name for group in payload.groups]
     if len(group_names) != len(set(group_names)):
         raise HTTPException(status_code=400, detail="导入数据中分组名称重复")
+    priority_names = [priority.name for priority in payload.priorities]
+    if len(priority_names) != len(set(priority_names)):
+        raise HTTPException(status_code=400, detail="导入数据中优先级名称重复")
 
     db.execute(delete(models.TaskHistory))
     db.execute(delete(models.SubTask))
@@ -127,6 +156,7 @@ def import_data(payload: schemas.ExportData, db: Session = Depends(get_db)):
     db.execute(delete(models.Task))
     db.execute(delete(models.Tag))
     db.execute(delete(models.Group))
+    db.execute(delete(models.Priority))
     db.execute(delete(models.Status))
     db.flush()
 
@@ -151,10 +181,39 @@ def import_data(payload: schemas.ExportData, db: Session = Depends(get_db)):
 
     group_map: dict[int, int] = {}
     for item in payload.groups:
-        group = models.Group(name=item.name, color=item.color, position=item.position)
+        group = models.Group(
+            name=item.name,
+            color=item.color,
+            note=item.note,
+            position=item.position,
+        )
         db.add(group)
         db.flush()
         group_map[item.id] = group.id
+
+    priority_map: dict[int, int] = {}
+    if payload.priorities:
+        for item in payload.priorities:
+            priority = models.Priority(
+                name=item.name,
+                color=item.color,
+                level=item.level,
+                position=item.position,
+            )
+            db.add(priority)
+            db.flush()
+            priority_map[item.id] = priority.id
+    else:
+        # 旧备份没有优先级数据：重建默认三条，并将任务 priority 直接沿用。
+        for index, (name, color, level) in enumerate(DEFAULT_PRIORITIES, start=1):
+            priority = models.Priority(
+                name=name, color=color, level=level, position=index
+            )
+            db.add(priority)
+            db.flush()
+            priority_map[index] = priority.id
+
+    fallback_priority = next(iter(priority_map.values()))
 
     task_count = 0
     subtask_count = 0
@@ -168,7 +227,7 @@ def import_data(payload: schemas.ExportData, db: Session = Depends(get_db)):
             else None,
             title=item.title,
             description=item.description,
-            priority=item.priority,
+            priority=priority_map.get(item.priority, fallback_priority),
             due_date=item.due_date,
             position=item.position,
             is_archived=item.is_archived,
@@ -207,6 +266,7 @@ def import_data(payload: schemas.ExportData, db: Session = Depends(get_db)):
         statuses=len(payload.statuses),
         tags=len(payload.tags),
         groups=len(payload.groups),
+        priorities=len(priority_map),
         tasks=task_count,
         subtasks=subtask_count,
     )

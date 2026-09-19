@@ -8,9 +8,10 @@ import {
   dueBadgeClass,
   dueLabel,
   formatDateTime,
-  noteSurfaceClass,
   noteTilt,
 } from '../../lib/utils'
+import { noteSurfaceClassFor } from '../../lib/priority'
+import { usePrioritiesMeta } from '../../hooks/usePrioritiesMeta'
 import { sanitizeDescription } from '../../lib/sanitizeHtml'
 import { TagChip } from '../ui/Badge'
 import { Checkbox } from '../ui/Checkbox'
@@ -49,6 +50,7 @@ export function TaskCard({
   const doneCount = task.subtasks.filter((item) => item.is_done).length
   const isDone = task.completed_at != null
   const tilt = noteTilt(task.id)
+  const { priorities } = usePrioritiesMeta()
   const descriptionHtml = useMemo(
     () => sanitizeDescription(task.description, { allowImages: false }),
     [task.description],
@@ -64,7 +66,7 @@ export function TaskCard({
       style={{ transform: `rotate(${tilt}deg)` }}
       className={cn(
         'group relative flex h-full flex-col rounded-md border border-line/60 shadow-note transition-all duration-150',
-        noteSurfaceClass(task.priority, isDone),
+        noteSurfaceClassFor(priorities, task.priority, isDone),
         style.padding,
         onOpen && 'cursor-pointer hover:z-10 hover:-translate-y-0.5 hover:rotate-0 hover:shadow-panel',
         'motion-reduce:rotate-0 motion-reduce:transform-none',

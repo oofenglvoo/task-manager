@@ -16,6 +16,12 @@
         var root = document.documentElement
         if (!dark) root.classList.add('light')
         if (prefs.background) root.classList.add('has-app-bg')
+        if (typeof prefs.bgOpacity === 'number')
+          root.style.setProperty('--app-bg-scrim', String(prefs.bgOpacity))
+        if (typeof prefs.cardOpacity === 'number')
+          root.style.setProperty('--app-card-alpha', String(prefs.cardOpacity))
+        if (typeof prefs.panelOpacity === 'number')
+          root.style.setProperty('--app-panel-alpha', String(prefs.panelOpacity))
       } catch (error) {}
     </script>
   </head>

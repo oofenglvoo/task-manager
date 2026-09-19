@@ -6,6 +6,7 @@ export const keys = {
   statuses: ['statuses'] as const,
   tags: ['tags'] as const,
   groups: ['groups'] as const,
+  priorities: ['priorities'] as const,
   tasks: (query: TaskQuery) => ['tasks', query] as const,
   task: (id: number) => ['task', id] as const,
   history: (id: number) => ['history', id] as const,
@@ -14,6 +15,10 @@ export const keys = {
 
 export function useStatuses() {
   return useQuery({ queryKey: keys.statuses, queryFn: () => api.statuses.list() })
+}
+
+export function usePriorities() {
+  return useQuery({ queryKey: keys.priorities, queryFn: () => api.priorities.list() })
 }
 
 export function useTags() {
@@ -225,7 +230,8 @@ export function useDeleteTag() {
 export function useCreateGroup() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (data: { name: string; color?: string }) => api.groups.create(data),
+    mutationFn: (data: { name: string; color?: string; note?: string | null }) =>
+      api.groups.create(data),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['groups'] }),
   })
 }
@@ -238,8 +244,19 @@ export function useUpdateGroup() {
       data,
     }: {
       id: number
-      data: Partial<{ name: string; color: string }>
+      data: Partial<{ name: string; color: string; note: string | null }>
     }) => api.groups.update(id, data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['groups'] })
+      void qc.invalidateQueries({ queryKey: ['tasks'] })
+    },
+  })
+}
+
+export function useReorderGroups() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (orderedIds: number[]) => api.groups.reorder(orderedIds),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['groups'] })
       void qc.invalidateQueries({ queryKey: ['tasks'] })
@@ -254,6 +271,59 @@ export function useDeleteGroup() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['groups'] })
       void qc.invalidateQueries({ queryKey: ['tasks'] })
+      void qc.invalidateQueries({ queryKey: ['stats'] })
+    },
+  })
+}
+
+export function useCreatePriority() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { name: string; color?: string; level?: number }) =>
+      api.priorities.create(data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['priorities'] })
+      void qc.invalidateQueries({ queryKey: ['stats'] })
+    },
+  })
+}
+
+export function useUpdatePriority() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number
+      data: Partial<{ name: string; color: string; level: number }>
+    }) => api.priorities.update(id, data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['priorities'] })
+      void qc.invalidateQueries({ queryKey: ['tasks'] })
+      void qc.invalidateQueries({ queryKey: ['stats'] })
+    },
+  })
+}
+
+export function useDeletePriority() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => api.priorities.remove(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['priorities'] })
+      void qc.invalidateQueries({ queryKey: ['tasks'] })
+      void qc.invalidateQueries({ queryKey: ['stats'] })
+    },
+  })
+}
+
+export function useReorderPriorities() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (orderedIds: number[]) => api.priorities.reorder(orderedIds),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['priorities'] })
       void qc.invalidateQueries({ queryKey: ['stats'] })
     },
   })

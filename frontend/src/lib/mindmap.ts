@@ -1,10 +1,6 @@
-﻿import type { Group, Status, Task } from './types'
+﻿import type { Group, Priority, Status, Task } from './types'
 import { withAlpha } from './chartTheme'
 import type { ChartPalette } from './chartTheme'
-
-export const PRIORITY_LEVELS = [3, 2, 1] as const
-
-export const PRIORITY_WEIGHT: Record<number, number> = { 1: 1, 2: 2, 3: 3 }
 
 // 综合评分：优先级权重与最近更新时间权重的占比。
 export const PRIORITY_FACTOR = 1
@@ -13,16 +9,26 @@ export const RECENCY_FACTOR = 1
 // 每个「优先级 → 状态」分支最多展开的任务节点数。
 export const BRANCH_LIMIT = 8
 
-export function priorityLabel(priority: number): string {
-  if (priority >= 3) return '高优先级'
-  if (priority === 2) return '中优先级'
-  return '低优先级'
+/** 按 level 降序排列的优先级列表（高优先级在前）。 */
+function orderedPriorities(priorities: Priority[]): Priority[] {
+  return [...priorities].sort(
+    (a, b) => b.level - a.level || a.position - b.position || a.id - b.id,
+  )
 }
 
-export function priorityShortLabel(priority: number): string {
-  if (priority >= 3) return '高'
-  if (priority === 2) return '中'
-  return '低'
+function priorityById(priorities: Priority[], id: number): Priority | undefined {
+  return priorities.find((item) => item.id === id)
+}
+
+/** 图表中的短标签，例如「高」。 */
+function shortLabel(priorities: Priority[], id: number): string {
+  return priorityById(priorities, id)?.name ?? `P${id}`
+}
+
+/** 图表中的长标签，例如「高优先级」。 */
+function longLabel(priorities: Priority[], id: number): string {
+  const name = priorityById(priorities, id)?.name ?? `P${id}`
+  return `${name}优先级`
 }
 
 function recencyScore(updatedAt: string): number {
@@ -35,9 +41,10 @@ function recencyScore(updatedAt: string): number {
   return 0
 }
 
-export function taskScore(task: Task): number {
-  const priority = PRIORITY_WEIGHT[task.priority] ?? 0
-  return priority * PRIORITY_FACTOR + recencyScore(task.updated_at) * RECENCY_FACTOR
+/** 优先级权重直接使用其 level（数值越大越优先）。 */
+export function taskScore(task: Task, priorities: Priority[]): number {
+  const level = priorityById(priorities, task.priority)?.level ?? 0
+  return level * PRIORITY_FACTOR + recencyScore(task.updated_at) * RECENCY_FACTOR
 }
 
 export interface Branch {
@@ -55,48 +62,54 @@ export interface PriorityGroup {
   count: number
 }
 
-export function groupTasks(tasks: Task[], statuses: Status[]): PriorityGroup[] {
+export function groupTasks(
+  tasks: Task[],
+  statuses: Status[],
+  priorities: Priority[],
+): PriorityGroup[] {
   const sortedStatuses = [...statuses].sort(
     (a, b) => a.position - b.position || a.id - b.id,
   )
   const hasUnassigned = tasks.some((task) => task.status_id == null)
 
-  return PRIORITY_LEVELS.map((priority) => {
-    const inPriority = tasks.filter((task) => task.priority === priority)
-    const branches: Branch[] = []
+  return orderedPriorities(priorities)
+    .map((priority) => {
+      const inPriority = tasks.filter((task) => task.priority === priority.id)
+      const branches: Branch[] = []
 
-    const pushBranch = (statusId: number | null, name: string, color: string) => {
-      const items = inPriority
-        .filter((task) => task.status_id === statusId)
-        .sort((a, b) => {
-          const diff = taskScore(b) - taskScore(a)
-          if (diff !== 0) return diff
-          return b.updated_at.localeCompare(a.updated_at)
+      const pushBranch = (statusId: number | null, name: string, color: string) => {
+        const items = inPriority
+          .filter((task) => task.status_id === statusId)
+          .sort((a, b) => {
+            const diff = taskScore(b, priorities) - taskScore(a, priorities)
+            if (diff !== 0) return diff
+            return b.updated_at.localeCompare(a.updated_at)
+          })
+        if (items.length === 0) return
+        branches.push({
+          statusId,
+          name,
+          color,
+          tasks: items.slice(0, BRANCH_LIMIT),
+          hidden: Math.max(0, items.length - BRANCH_LIMIT),
+          total: items.length,
         })
-      if (items.length === 0) return
-      branches.push({
-        statusId,
-        name,
-        color,
-        tasks: items.slice(0, BRANCH_LIMIT),
-        hidden: Math.max(0, items.length - BRANCH_LIMIT),
-        total: items.length,
-      })
-    }
+      }
 
-    for (const status of sortedStatuses) {
-      pushBranch(status.id, status.name, status.color)
-    }
-    if (hasUnassigned) {
-      pushBranch(null, '未分配', '#94a3b8')
-    }
+      for (const status of sortedStatuses) {
+        pushBranch(status.id, status.name, status.color)
+      }
+      if (hasUnassigned) {
+        pushBranch(null, '未分配', '#94a3b8')
+      }
 
-    return {
-      priority,
-      branches,
-      count: inPriority.length,
-    }
-  }).filter((group) => group.count > 0)
+      return {
+        priority: priority.id,
+        branches,
+        count: inPriority.length,
+      }
+    })
+    .filter((group) => group.count > 0)
 }
 
 export const UNGROUPED_COLOR = '#94a3b8'
@@ -112,7 +125,11 @@ export interface TaskGroupSection {
 }
 
 // 按任务分组拆分为区块，组按 position 排序，未分组固定排在最后。
-export function groupSections(tasks: Task[], statuses: Status[]): TaskGroupSection[] {
+export function groupSections(
+  tasks: Task[],
+  statuses: Status[],
+  priorities: Priority[],
+): TaskGroupSection[] {
   const byGroup = new Map<number | null, Task[]>()
   const meta = new Map<number, Group>()
 
@@ -137,7 +154,7 @@ export function groupSections(tasks: Task[], statuses: Status[]): TaskGroupSecti
       color: group.color,
       count: items.length,
       tasks: items,
-      priorities: groupTasks(items, statuses),
+      priorities: groupTasks(items, statuses, priorities),
     })
   }
 
@@ -149,7 +166,7 @@ export function groupSections(tasks: Task[], statuses: Status[]): TaskGroupSecti
       color: UNGROUPED_COLOR,
       count: ungrouped.length,
       tasks: ungrouped,
-      priorities: groupTasks(ungrouped, statuses),
+      priorities: groupTasks(ungrouped, statuses, priorities),
     })
   }
 
@@ -159,10 +176,15 @@ export function groupSections(tasks: Task[], statuses: Status[]): TaskGroupSecti
 export interface MindMapTooltipMeta {
   task: Task
   status?: Status
+  priorityName?: string
 }
 
-export function formatTaskTooltip({ task, status }: MindMapTooltipMeta): string {
-  const priority = priorityShortLabel(task.priority)
+export function formatTaskTooltip({
+  task,
+  status,
+  priorityName,
+}: MindMapTooltipMeta): string {
+  const priority = priorityName ?? `优先级 ${task.priority}`
   const statusName = status?.name ?? '未分配'
   const overdue = !task.completed_at && task.due_date != null && task.due_date < todayISO()
   const due = task.due_date
@@ -219,11 +241,12 @@ export interface EChartsTreeNode {
 function priorityNodes(
   groups: PriorityGroup[],
   palette: ChartPalette,
+  priorities: Priority[],
   idPrefix: string,
 ): EChartsTreeNode[] {
   return groups.map((group) => ({
     id: `${idPrefix}priority-${group.priority}`,
-    name: `${priorityShortLabel(group.priority)}优先级`,
+    name: longLabel(priorities, group.priority),
     value: group.count,
     itemStyle: { color: palette.priority[group.priority] },
     symbolSize: 11,
@@ -246,11 +269,12 @@ function priorityNodes(
 function sunburstPriorityNodes(
   groups: PriorityGroup[],
   palette: ChartPalette,
+  priorities: Priority[],
   idPrefix: string,
 ): EChartsTreeNode[] {
   return groups.map((group) => ({
     id: `${idPrefix}priority-${group.priority}`,
-    name: `${priorityShortLabel(group.priority)}优先级`,
+    name: longLabel(priorities, group.priority),
     value: group.count,
     itemStyle: { color: palette.priority[group.priority] },
     children: group.branches.map((branch) => ({
@@ -274,20 +298,26 @@ function sunburstPriorityNodes(
 export function buildTreeData(
   tasks: Task[],
   statuses: Status[],
+  priorities: Priority[],
   palette: ChartPalette,
   groupBy = false,
 ): EChartsTreeNode {
   const children = groupBy
-    ? groupSections(tasks, statuses).map((section) => ({
+    ? groupSections(tasks, statuses, priorities).map((section) => ({
         id: `group-${section.id ?? 'none'}`,
         name: section.name,
         value: section.count,
         itemStyle: { color: section.color },
         symbolSize: 12,
         lineStyle: { color: withAlpha(section.color, 0.55) },
-        children: priorityNodes(section.priorities, palette, `group-${section.id ?? 'none'}-`),
+        children: priorityNodes(
+          section.priorities,
+          palette,
+          priorities,
+          `group-${section.id ?? 'none'}-`,
+        ),
       }))
-    : priorityNodes(groupTasks(tasks, statuses), palette, '')
+    : priorityNodes(groupTasks(tasks, statuses, priorities), palette, priorities, '')
 
   return {
     id: ROOT_ID,
@@ -302,11 +332,12 @@ export function buildTreeData(
 export function buildSunburstData(
   tasks: Task[],
   statuses: Status[],
+  priorities: Priority[],
   palette: ChartPalette,
   groupBy = false,
 ): EChartsTreeNode[] {
   const children = groupBy
-    ? groupSections(tasks, statuses).map((section) => ({
+    ? groupSections(tasks, statuses, priorities).map((section) => ({
         id: `group-${section.id ?? 'none'}`,
         name: section.name,
         value: section.count,
@@ -314,10 +345,16 @@ export function buildSunburstData(
         children: sunburstPriorityNodes(
           section.priorities,
           palette,
+          priorities,
           `group-${section.id ?? 'none'}-`,
         ),
       }))
-    : sunburstPriorityNodes(groupTasks(tasks, statuses), palette, '')
+    : sunburstPriorityNodes(
+        groupTasks(tasks, statuses, priorities),
+        palette,
+        priorities,
+        '',
+      )
 
   return [
     {
@@ -389,6 +426,7 @@ export function sankeyNodeId(prefix: string, key: string): string {
 export function buildSankeyData(
   tasks: Task[],
   statuses: Status[],
+  priorities: Priority[],
   palette: ChartPalette,
   groupBy = false,
 ): SankeyData {
@@ -420,7 +458,7 @@ export function buildSankeyData(
       nodes.push({
         name: priorityId,
         depth,
-        display: `${priorityShortLabel(group.priority)}优先级 · ${groupDone}/${group.count}`,
+        display: `${shortLabel(priorities, group.priority)}优先级 · ${groupDone}/${group.count}`,
         itemStyle: { color },
         label: { fontWeight: 600 },
         completed: groupDone,
@@ -498,7 +536,7 @@ export function buildSankeyData(
   }
 
   if (groupBy) {
-    for (const section of groupSections(tasks, statuses)) {
+    for (const section of groupSections(tasks, statuses, priorities)) {
       const groupId = sankeyNodeId('group', String(section.id ?? 'none'))
       const groupDone = section.tasks.filter(
         (task) => task.completed_at != null,
@@ -526,7 +564,7 @@ export function buildSankeyData(
       )
     }
   } else {
-    emitPriorities(groupTasks(tasks, statuses), rootName, 1, '')
+    emitPriorities(groupTasks(tasks, statuses, priorities), rootName, 1, '')
   }
 
   return { nodes, links }
@@ -545,8 +583,12 @@ export interface SwimlaneData {
   cells: SwimlaneCell[]
 }
 
-export function buildSwimlaneData(tasks: Task[], statuses: Status[]): SwimlaneData {
-  const groups = groupTasks(tasks, statuses)
+export function buildSwimlaneData(
+  tasks: Task[],
+  statuses: Status[],
+  priorities: Priority[],
+): SwimlaneData {
+  const groups = groupTasks(tasks, statuses, priorities)
   const statusColumns: Array<{ id: number | null; name: string; color: string }> = []
 
   const sortedStatuses = [...statuses].sort(

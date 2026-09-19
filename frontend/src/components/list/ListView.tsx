@@ -11,7 +11,8 @@ import {
 } from 'lucide-react'
 import { errorMessage } from '../../lib/api'
 import type { Task, TaskQuery } from '../../lib/types'
-import { cn, dueClass, dueLabel, formatDate, priorityLabel, PRIORITY_META } from '../../lib/utils'
+import { cn, dueClass, dueLabel, formatDate } from '../../lib/utils'
+import { usePrioritiesMeta } from '../../hooks/usePrioritiesMeta'
 import {
   useArchiveTask,
   useDeleteTask,
@@ -43,6 +44,7 @@ export function ListView() {
   const { data: statuses = [] } = useStatuses()
   const { data: tags = [] } = useTags()
   const { data: groups = [] } = useGroups()
+  const { sorted: sortedPriorities, label: priorityLabel } = usePrioritiesMeta()
   const { groupBy, setGroupBy } = usePreferences()
   const archiveTask = useArchiveTask()
   const deleteTask = useDeleteTask()
@@ -80,7 +82,7 @@ export function ListView() {
     if (!groupBy) return []
     const map = new Map<
       string,
-      { key: string; name: string; color: string | null; tasks: Task[] }
+      { key: string; name: string; color: string | null; note: string | null; tasks: Task[] }
     >()
     for (const task of tasks) {
       const key = task.group ? `g-${task.group.id}` : 'none'
@@ -90,6 +92,7 @@ export function ListView() {
           key,
           name: task.group?.name ?? '未分组',
           color: task.group?.color ?? null,
+          note: task.group?.note ?? null,
           tasks: [],
         }
         map.set(key, section)
@@ -129,9 +132,7 @@ export function ListView() {
           </div>
         </td>
         <td className="px-4 py-2">
-          <span className={cn('text-xs', PRIORITY_META[task.priority]?.text)}>
-            {priorityLabel(task.priority)}
-          </span>
+          <span className="text-xs text-ink-soft">{priorityLabel(task.priority)}</span>
         </td>
         <td className={cn('px-4 py-2 text-xs', dueClass(task.due_date, isDone))}>
           {task.due_date ? dueLabel(task.due_date, isDone) : '—'}
@@ -266,9 +267,11 @@ export function ListView() {
           }
         >
           <option value="">全部优先级</option>
-          <option value={3}>高</option>
-          <option value={2}>中</option>
-          <option value={1}>低</option>
+          {sortedPriorities.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.name}
+            </option>
+          ))}
         </Select>
         <Select
           value={tagId ?? ''}
@@ -361,6 +364,11 @@ export function ListView() {
                               {section.tasks.length}
                             </span>
                           </div>
+                          {section.note ? (
+                            <p className="mt-0.5 pl-[18px] text-xs text-muted whitespace-pre-wrap">
+                              {section.note}
+                            </p>
+                          ) : null}
                         </td>
                       </tr>
                       {section.tasks.map((task) => renderRow(task))}

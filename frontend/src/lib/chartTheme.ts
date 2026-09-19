@@ -81,3 +81,54 @@ export function withAlpha(hex: string, alpha: number): string {
   if ([r, g, b].some((value) => Number.isNaN(value))) return hex
   return `rgba(${r}, ${g}, ${b}, ${alpha})`
 }
+
+function hexToRgb(hex: string): [number, number, number] {
+  const normalized = hex.replace('#', '')
+  const full =
+    normalized.length === 3
+      ? normalized
+          .split('')
+          .map((char) => char + char)
+          .join('')
+      : normalized
+  return [
+    parseInt(full.slice(0, 2), 16),
+    parseInt(full.slice(2, 4), 16),
+    parseInt(full.slice(4, 6), 16),
+  ]
+}
+
+export function isDarkColor(hex: string): boolean {
+  const [r, g, b] = hexToRgb(hex)
+  if ([r, g, b].some((value) => Number.isNaN(value))) return true
+  // 相对亮度，阈值 0.55。
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 < 0.55
+}
+
+/**
+ * 构建「优先级 id → 图表颜色」映射。自定义优先级使用其自身颜色；
+ * 缺失时回退到按 level 的默认配色。
+ */
+export function priorityColorMap(
+  priorities: Array<{ id: number; color: string; level: number }>,
+  isDark: boolean,
+): Record<number, string> {
+  const fallback = isDark
+    ? { 1: '#8b93a7', 2: '#f0b45a', 3: '#f07070' }
+    : { 1: '#6b7280', 2: '#d97706', 3: '#dc2626' }
+  const map: Record<number, string> = { ...fallback }
+  for (const item of priorities) {
+    // 深色主题下把过暗的自定义色稍微提亮，保证在暗背景可见。
+    map[item.id] = isDark && isDarkColor(item.color) ? lighten(item.color) : item.color
+  }
+  return map
+}
+
+function lighten(hex: string, amount = 0.35): string {
+  const [r, g, b] = hexToRgb(hex)
+  if ([r, g, b].some((value) => Number.isNaN(value))) return hex
+  const mix = (value: number) => Math.round(value + (255 - value) * amount)
+  return `#${[mix(r), mix(g), mix(b)]
+    .map((value) => value.toString(16).padStart(2, '0'))
+    .join('')}`
+}

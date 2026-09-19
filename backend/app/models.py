@@ -5,6 +5,7 @@ from sqlalchemy import (
     Column,
     Date,
     DateTime,
+    Float,
     ForeignKey,
     Integer,
     String,
@@ -60,19 +61,30 @@ class Tag(Base):
 
 class Group(Base):
     __tablename__ = "groups"
-
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
     color: Mapped[str] = mapped_column(String(20), nullable=False, default="#6366f1")
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
     position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utcnow)
 
     tasks: Mapped[list["Task"]] = relationship(back_populates="group")
 
 
+class Priority(Base):
+    __tablename__ = "priorities"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+    color: Mapped[str] = mapped_column(String(20), nullable=False, default="#6b7280")
+    # 权重等级：数值越大越高（用于图表评分/排序），可与 position 不同。
+    level: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utcnow)
+
+
 class Task(Base):
     __tablename__ = "tasks"
-
     id: Mapped[int] = mapped_column(primary_key=True)
     status_id: Mapped[int | None] = mapped_column(
         ForeignKey("statuses.id", ondelete="SET NULL"), nullable=True, index=True
@@ -147,6 +159,9 @@ class Preference(Base):
     compact: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     group_by: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     background_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    bg_opacity: Mapped[float] = mapped_column(Float, nullable=False, default=0.7)
+    card_opacity: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
+    panel_opacity: Mapped[float] = mapped_column(Float, nullable=False, default=0.82)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, default=utcnow, onupdate=utcnow
     )

@@ -1,20 +1,15 @@
 import { useMemo } from 'react'
 import { CheckSquare, CircleAlert } from 'lucide-react'
-import type { Status, Task } from '../../../lib/types'
-import { chartPalette } from '../../../lib/chartTheme'
+import type { Priority, Status, Task } from '../../../lib/types'
 import type { ChartPalette } from '../../../lib/chartTheme'
-import {
-  buildSwimlaneData,
-  groupSections,
-  priorityLabel,
-  priorityShortLabel,
-} from '../../../lib/mindmap'
+import { buildSwimlaneData, groupSections } from '../../../lib/mindmap'
 import { cn, dueState } from '../../../lib/utils'
-import { usePreferences } from '../../../store/preferences'
 
 interface SwimlaneViewProps {
   tasks: Task[]
   statuses: Status[]
+  priorities: Priority[]
+  palette: ChartPalette
   height: number
   groupBy: boolean
   onOpenTask: (taskId: number) => void
@@ -23,16 +18,19 @@ interface SwimlaneViewProps {
 export function SwimlaneView({
   tasks,
   statuses,
+  priorities,
+  palette,
   height,
   groupBy,
   onOpenTask,
 }: SwimlaneViewProps) {
-  const { resolvedTheme } = usePreferences()
-  const isDark = resolvedTheme === 'dark'
-  const palette = useMemo(() => chartPalette(isDark), [isDark])
+  const priorityNames = useMemo(
+    () => new Map(priorities.map((item) => [item.id, item.name])),
+    [priorities],
+  )
   const sections = useMemo(
-    () => (groupBy ? groupSections(tasks, statuses) : []),
-    [groupBy, tasks, statuses],
+    () => (groupBy ? groupSections(tasks, statuses, priorities) : []),
+    [groupBy, tasks, statuses, priorities],
   )
 
   return (
@@ -52,7 +50,9 @@ export function SwimlaneView({
               <SwimlaneGrid
                 tasks={section.tasks}
                 statuses={statuses}
+                priorities={priorities}
                 palette={palette}
+                priorityNames={priorityNames}
                 onOpenTask={onOpenTask}
               />
             </div>
@@ -62,7 +62,9 @@ export function SwimlaneView({
         <SwimlaneGrid
           tasks={tasks}
           statuses={statuses}
+          priorities={priorities}
           palette={palette}
+          priorityNames={priorityNames}
           onOpenTask={onOpenTask}
         />
       )}
@@ -73,15 +75,22 @@ export function SwimlaneView({
 function SwimlaneGrid({
   tasks,
   statuses,
+  priorities,
   palette,
+  priorityNames,
   onOpenTask,
 }: {
   tasks: Task[]
   statuses: Status[]
+  priorities: Priority[]
   palette: ChartPalette
+  priorityNames: Map<number, string>
   onOpenTask: (taskId: number) => void
 }) {
-  const data = useMemo(() => buildSwimlaneData(tasks, statuses), [tasks, statuses])
+  const data = useMemo(
+    () => buildSwimlaneData(tasks, statuses, priorities),
+    [tasks, statuses, priorities],
+  )
 
   const cellKey = (priority: number, statusId: number | null) =>
     `${priority}-${statusId ?? 'none'}`
@@ -93,7 +102,7 @@ function SwimlaneGrid({
         {data.priorities.map((priority) => (
           <div
             key={priority}
-            title={priorityLabel(priority)}
+            title={priorityNames.get(priority) ?? `优先级 ${priority}`}
             className="flex min-h-[104px] w-16 items-center gap-2 rounded-md border border-line bg-elevated/60 px-2"
           >
             <span
@@ -104,9 +113,7 @@ function SwimlaneGrid({
               className="text-xs font-semibold leading-tight"
               style={{ color: palette.priority[priority] }}
             >
-              {priorityShortLabel(priority)}
-              <br />
-              优先
+              {priorityNames.get(priority) ?? `${priority}`}
             </span>
           </div>
         ))}

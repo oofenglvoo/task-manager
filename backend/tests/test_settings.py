@@ -7,6 +7,9 @@ def test_get_default_settings(client):
     assert data["compact"] is False
     assert data["group_by"] is False
     assert data["background_url"] is None
+    assert data["bg_opacity"] == 0.7
+    assert data["card_opacity"] == 1.0
+    assert data["panel_opacity"] == 0.82
 
 
 def test_update_settings(client):
@@ -55,3 +58,19 @@ def test_invalid_theme_rejected(client):
 
 def test_invalid_card_size_rejected(client):
     assert client.put("/api/settings", json={"card_size": "huge"}).status_code == 400
+
+
+def test_update_opacity(client):
+    data = client.put(
+        "/api/settings",
+        json={"bg_opacity": 0.3, "card_opacity": 0.5, "panel_opacity": 1},
+    ).json()
+    assert data["bg_opacity"] == 0.3
+    assert data["card_opacity"] == 0.5
+    assert data["panel_opacity"] == 1.0
+    assert client.get("/api/settings").json()["card_opacity"] == 0.5
+
+
+def test_invalid_opacity_rejected(client):
+    assert client.put("/api/settings", json={"bg_opacity": 1.5}).status_code == 422
+    assert client.put("/api/settings", json={"card_opacity": -0.1}).status_code == 422

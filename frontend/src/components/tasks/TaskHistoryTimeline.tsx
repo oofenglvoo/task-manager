@@ -5,18 +5,14 @@ import type { TaskHistory } from '../../lib/types'
 import { formatDateTime } from '../../lib/utils'
 import { sanitizeDescription } from '../../lib/sanitizeHtml'
 import { useDeleteTaskHistory, useTaskHistory } from '../../hooks/queries'
+import { usePrioritiesMeta } from '../../hooks/usePrioritiesMeta'
 import { useToast } from '../../store/toast'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { LoadingBlock } from '../ui/Spinner'
 
-const PRIORITY_LABEL: Record<number, string> = {
-  1: '低',
-  2: '中',
-  3: '高',
-}
-
 function SnapshotContent({ entry }: { entry: TaskHistory }) {
   const { snapshot } = entry
+  const { label: priorityLabel } = usePrioritiesMeta()
   const descriptionHtml = useMemo(
     () => sanitizeDescription(snapshot.description, { allowImages: false }),
     [snapshot.description],
@@ -27,7 +23,7 @@ function SnapshotContent({ entry }: { entry: TaskHistory }) {
       <p className="text-sm font-medium text-ink">{snapshot.title}</p>
       <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted">
         <span>状态：{snapshot.status_name ?? '未分配'}</span>
-        <span>优先级：{PRIORITY_LABEL[snapshot.priority] ?? snapshot.priority}</span>
+        <span>优先级：{priorityLabel(snapshot.priority)}</span>
         <span>分组：{snapshot.group_name ?? '未分组'}</span>
         <span>截止：{snapshot.due_date ?? '未设置'}</span>
       </div>

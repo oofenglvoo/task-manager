@@ -64,11 +64,13 @@ class TagOut(BaseModel):
 class GroupCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     color: str = "#6366f1"
+    note: str | None = None
 
 
 class GroupUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=100)
     color: str | None = None
+    note: str | None = None
 
 
 class GroupOut(BaseModel):
@@ -77,6 +79,33 @@ class GroupOut(BaseModel):
     id: int
     name: str
     color: str
+    note: str | None = None
+    position: int
+    task_count: int = 0
+
+
+# --------------------------------------------------------------------------- #
+# Priority
+# --------------------------------------------------------------------------- #
+class PriorityCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    color: str = "#6b7280"
+    level: int | None = Field(default=None, ge=1)
+
+
+class PriorityUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+    color: str | None = None
+    level: int | None = Field(default=None, ge=1)
+
+
+class PriorityOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    color: str
+    level: int
     position: int
     task_count: int = 0
 
@@ -84,8 +113,7 @@ class GroupOut(BaseModel):
 # --------------------------------------------------------------------------- #
 # SubTask
 # --------------------------------------------------------------------------- #
-class SubTaskCreate(BaseModel):
-    title: str = Field(min_length=1, max_length=500)
+class SubTaskCreate(BaseModel):    title: str = Field(min_length=1, max_length=500)
 
 
 class SubTaskUpdate(BaseModel):
@@ -111,7 +139,7 @@ class TaskCreate(BaseModel):
     status_id: int | None = None
     group_id: int | None = None
     description: str | None = None
-    priority: int = Field(default=2, ge=1, le=3)
+    priority: int | None = None
     due_date: date | None = None
     tag_ids: list[int] = Field(default_factory=list)
 
@@ -121,7 +149,7 @@ class TaskUpdate(BaseModel):
     status_id: int | None = None
     group_id: int | None = None
     description: str | None = None
-    priority: int | None = Field(default=None, ge=1, le=3)
+    priority: int | None = None
     due_date: date | None = None
     tag_ids: list[int] | None = None
     position: int | None = None
@@ -202,6 +230,9 @@ class StatusStat(BaseModel):
 
 class PriorityStat(BaseModel):
     priority: int
+    name: str
+    color: str
+    level: int
     count: int
 
 
@@ -228,6 +259,9 @@ class PreferenceOut(BaseModel):
     compact: bool
     group_by: bool
     background_url: str | None
+    bg_opacity: float
+    card_opacity: float
+    panel_opacity: float
 
 
 class PreferenceUpdate(BaseModel):
@@ -236,6 +270,9 @@ class PreferenceUpdate(BaseModel):
     compact: bool | None = None
     group_by: bool | None = None
     background_url: str | None = None
+    bg_opacity: float | None = Field(default=None, ge=0, le=1)
+    card_opacity: float | None = Field(default=None, ge=0, le=1)
+    panel_opacity: float | None = Field(default=None, ge=0, le=1)
 
 
 class BackgroundOut(BaseModel):
@@ -263,6 +300,15 @@ class ExportGroup(BaseModel):
     id: int
     name: str
     color: str = "#6366f1"
+    note: str | None = None
+    position: int = 0
+
+
+class ExportPriority(BaseModel):
+    id: int
+    name: str
+    color: str = "#6b7280"
+    level: int = 1
     position: int = 0
 
 
@@ -301,6 +347,7 @@ class ExportData(BaseModel):
     statuses: list[ExportStatus] = Field(default_factory=list)
     tags: list[ExportTag] = Field(default_factory=list)
     groups: list[ExportGroup] = Field(default_factory=list)
+    priorities: list[ExportPriority] = Field(default_factory=list)
     tasks: list[ExportTask] = Field(default_factory=list)
 
 
@@ -308,5 +355,6 @@ class ImportResult(BaseModel):
     statuses: int
     tags: int
     groups: int
+    priorities: int = 0
     tasks: int
     subtasks: int
