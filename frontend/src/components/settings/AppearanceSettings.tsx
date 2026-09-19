@@ -36,7 +36,7 @@ function Segmented<T extends string>({
   onChange: (value: T) => void
 }) {
   return (
-    <div className="inline-flex rounded-md border border-line p-0.5">
+    <div className="inline-flex rounded-md border border-line bg-surface p-0.5">
       {options.map((option) => (
         <button
           key={option.value}

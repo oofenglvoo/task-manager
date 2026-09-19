@@ -27,7 +27,7 @@ export function Topbar() {
         type="button"
         onClick={toggleSidebar}
         aria-label="打开导航"
-        className="rounded p-1.5 text-ink-soft transition-colors hover:bg-elevated hover:text-ink"
+        className="rounded border border-line bg-surface p-1.5 text-ink-soft transition-colors hover:border-line-strong hover:text-ink"
       >
         <PanelLeft className="h-4 w-4" />
       </button>

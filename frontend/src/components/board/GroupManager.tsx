@@ -262,7 +262,7 @@ function GroupRow({ group, onEdit, onDelete }: GroupRowProps) {
         title="拖动排序"
         {...attributes}
         {...listeners}
-        className="mt-0.5 cursor-grab touch-none rounded p-1 text-muted transition-colors hover:bg-elevated hover:text-ink active:cursor-grabbing"
+        className="mt-0.5 cursor-grab touch-none rounded border border-line bg-surface p-1 text-muted transition-colors hover:bg-elevated hover:text-ink active:cursor-grabbing"
       >
         <GripVertical className="h-3.5 w-3.5" />
       </button>
@@ -284,7 +284,7 @@ function GroupRow({ group, onEdit, onDelete }: GroupRowProps) {
           type="button"
           title="编辑"
           onClick={onEdit}
-          className="rounded p-1 text-muted transition-colors hover:bg-elevated hover:text-ink"
+          className="rounded border border-line bg-surface p-1 text-muted transition-colors hover:bg-elevated hover:text-ink"
         >
           <Pencil className="h-3.5 w-3.5" />
         </button>
@@ -292,7 +292,7 @@ function GroupRow({ group, onEdit, onDelete }: GroupRowProps) {
           type="button"
           title="删除"
           onClick={onDelete}
-          className="rounded p-1 text-muted transition-colors hover:bg-elevated hover:text-danger"
+          className="rounded border border-line bg-surface p-1 text-muted transition-colors hover:bg-elevated hover:text-danger"
         >
           <Trash2 className="h-3.5 w-3.5" />
         </button>

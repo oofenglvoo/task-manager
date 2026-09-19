@@ -133,7 +133,7 @@ export function PriorityManager() {
                   type="button"
                   disabled={index === 0}
                   onClick={() => move(index, -1)}
-                  className="rounded p-1 text-muted transition-colors hover:bg-elevated hover:text-ink disabled:opacity-30"
+                  className="rounded border border-line bg-surface p-1 text-muted transition-colors hover:bg-elevated hover:text-ink disabled:opacity-30"
                 >
                   <ArrowUp className="h-3.5 w-3.5" />
                 </button>
@@ -141,7 +141,7 @@ export function PriorityManager() {
                   type="button"
                   disabled={index === priorities.length - 1}
                   onClick={() => move(index, 1)}
-                  className="rounded p-1 text-muted transition-colors hover:bg-elevated hover:text-ink disabled:opacity-30"
+                  className="rounded border border-line bg-surface p-1 text-muted transition-colors hover:bg-elevated hover:text-ink disabled:opacity-30"
                 >
                   <ArrowDown className="h-3.5 w-3.5" />
                 </button>
@@ -151,14 +151,14 @@ export function PriorityManager() {
                     setEditing(item)
                     setFormOpen(true)
                   }}
-                  className="rounded p-1 text-muted transition-colors hover:bg-elevated hover:text-ink"
+                  className="rounded border border-line bg-surface p-1 text-muted transition-colors hover:bg-elevated hover:text-ink"
                 >
                   <Pencil className="h-3.5 w-3.5" />
                 </button>
                 <button
                   type="button"
                   onClick={() => setDeleting(item)}
-                  className="rounded p-1 text-muted transition-colors hover:bg-elevated hover:text-danger"
+                  className="rounded border border-line bg-surface p-1 text-muted transition-colors hover:bg-elevated hover:text-danger"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>

@@ -99,7 +99,7 @@ export function TaskCard({
                 event.stopPropagation()
                 onOpen()
               }}
-              className="rounded p-0.5 text-muted opacity-0 transition-opacity hover:bg-elevated hover:text-ink focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 group-hover:opacity-100"
+              className="rounded border border-line bg-surface p-0.5 text-muted opacity-0 transition-opacity hover:bg-elevated hover:text-ink focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 group-hover:opacity-100"
             >
               <Pencil className="h-3.5 w-3.5" />
             </button>
@@ -108,8 +108,8 @@ export function TaskCard({
             <StatusMenu status={status} statuses={statuses} onChange={onStatusChange} />
           ) : status ? (
             <span
-              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs"
-              style={{ color: status.color, backgroundColor: `${status.color}26` }}
+              className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs"
+              style={{ color: status.color, borderColor: `${status.color}99`, backgroundColor: `${status.color}26` }}
             >
               {status.name}
             </span>
@@ -134,8 +134,8 @@ export function TaskCard({
 
       {task.group ? (
         <span
-          className="mt-1.5 inline-flex w-fit max-w-full items-center gap-1 rounded px-1.5 py-0.5 text-[11px]"
-          style={{ color: task.group.color, backgroundColor: `${task.group.color}26` }}
+          className="mt-1.5 inline-flex w-fit max-w-full items-center gap-1 rounded border px-1.5 py-0.5 text-[11px]"
+          style={{ color: task.group.color, borderColor: `${task.group.color}99`, backgroundColor: `${task.group.color}26` }}
         >
           <span
             className="h-1.5 w-1.5 shrink-0 rounded-sm"

@@ -77,7 +77,7 @@ export function TaskHistoryTimeline({ taskId }: { taskId: number }) {
                 type="button"
                 title="删除该历史记录"
                 onClick={() => setDeleting(entry)}
-                className="rounded p-1 text-muted transition-colors hover:bg-elevated hover:text-danger"
+                className="rounded border border-line bg-surface p-1 text-muted transition-colors hover:bg-elevated hover:text-danger"
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>

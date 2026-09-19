@@ -205,7 +205,7 @@ export function BoardView() {
             title={groupBy ? '不分组' : '按分组'}
             onClick={() => setGroupBy(!groupBy)}
             className={
-              'rounded border p-1.5 transition-colors ' +
+              'rounded border bg-surface p-1.5 transition-colors ' +
               (groupBy
                 ? 'border-accent bg-accent text-white'
                 : 'border-line text-ink-soft hover:border-line-strong hover:text-ink')
@@ -218,7 +218,7 @@ export function BoardView() {
             aria-label="管理分组"
             title="管理分组"
             onClick={() => openGroups()}
-            className="rounded border border-line p-1.5 text-ink-soft transition-colors hover:border-line-strong hover:text-ink"
+            className="rounded border border-line bg-surface p-1.5 text-ink-soft transition-colors hover:border-line-strong hover:text-ink"
           >
             <Settings2 className="h-4 w-4" />
           </button>
@@ -227,7 +227,7 @@ export function BoardView() {
             aria-label={compact ? '切换为宽松显示' : '切换为紧凑显示'}
             title={compact ? '宽松显示' : '紧凑显示'}
             onClick={() => setCompact(!compact)}
-            className="rounded border border-line p-1.5 text-ink-soft transition-colors hover:border-line-strong hover:text-ink"
+            className="rounded border border-line bg-surface p-1.5 text-ink-soft transition-colors hover:border-line-strong hover:text-ink"
           >
             {compact ? <Rows3 className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}
           </button>

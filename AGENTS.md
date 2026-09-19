@@ -71,7 +71,8 @@ Frontend, run from `frontend/`:
    multipliers, tints differ by hue only. `--app-panel-alpha` only affects `.app-chrome` / `.app-surface-panel`
    (顶栏/侧栏/任务脉脉络外层面板, 仅在设置了背景图时生效). Buttons, dropdown menus, badges and selected
     states must stay solid (`.bg-accent-soft` is redefined as a solid color-mix) so the sliders never
-    make them semi-transparent.
+    make them semi-transparent. 图标按钮/工具按钮统一用 `rounded border border-line bg-surface` 实心底色
+   （含看板工具栏、脉络工具栏、列表操作列、设置页操作按钮、富文本工具栏、任务卡与子任务行内按钮）。
 - Group sections on `/board` and `/list` must be ordered by `group.position` (未分组 fixed last):
   分组拖动排序只更新 `group.position`，若 sections 仍按任务出现顺序生成，拖动分组就不会有任何可见效果。
 - Schema migrations live in `database.ensure_schema()` (called from `main.py` after `create_all`):

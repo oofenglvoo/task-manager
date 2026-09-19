@@ -94,7 +94,7 @@ export function RichTextEditor({
   }
 
   const toolbarButton =
-    'inline-flex h-7 w-7 items-center justify-center rounded text-ink-soft transition-colors hover:bg-elevated hover:text-ink'
+    'inline-flex h-7 w-7 items-center justify-center rounded border border-line bg-surface text-ink-soft transition-colors hover:bg-elevated hover:text-ink'
 
   return (
     <div className="overflow-hidden rounded border border-line bg-canvas focus-within:border-accent focus-within:ring-1 focus-within:ring-accent/50">

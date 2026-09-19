@@ -138,7 +138,7 @@ export function TaskMindMap() {
             title={groupBy ? '不分组' : '按分组'}
             onClick={() => setGroupBy(!groupBy)}
             className={
-              'rounded border p-1.5 transition-colors ' +
+              'rounded border bg-surface p-1.5 transition-colors ' +
               (groupBy
                 ? 'border-accent bg-accent text-white'
                 : 'border-line text-ink-soft hover:border-line-strong hover:text-ink')
@@ -163,7 +163,7 @@ export function TaskMindMap() {
             aria-label={collapsed ? '展开任务脉络' : '折叠任务脉络'}
             title={collapsed ? '展开' : '折叠'}
             onClick={toggleCollapsed}
-            className="rounded border border-line p-1.5 text-ink-soft transition-colors hover:border-line-strong hover:text-ink"
+            className="rounded border border-line bg-surface p-1.5 text-ink-soft transition-colors hover:border-line-strong hover:text-ink"
           >
             {collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
           </button>

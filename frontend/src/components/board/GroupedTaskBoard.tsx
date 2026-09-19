@@ -372,7 +372,7 @@ function Section({
             title="拖动排序"
             {...attributes}
             {...listeners}
-            className="cursor-grab touch-none rounded p-0.5 text-muted/60 transition-colors hover:bg-elevated hover:text-ink active:cursor-grabbing"
+            className="cursor-grab touch-none rounded border border-line bg-surface p-0.5 text-muted transition-colors hover:bg-elevated hover:text-ink active:cursor-grabbing"
           >
             <GripVertical className="h-3.5 w-3.5" />
           </button>

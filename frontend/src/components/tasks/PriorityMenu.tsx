@@ -41,7 +41,7 @@ export function PriorityMenu({
           event.stopPropagation()
           setOpen((prev) => !prev)
         }}
-        className="inline-flex items-center gap-1 rounded px-1 py-0.5 text-xs text-ink-soft transition-colors hover:bg-elevated"
+        className="inline-flex items-center gap-1 rounded border border-line bg-surface px-1 py-0.5 text-xs text-ink-soft transition-colors hover:bg-elevated"
       >
         <span
           className="h-1.5 w-1.5 rounded-full"

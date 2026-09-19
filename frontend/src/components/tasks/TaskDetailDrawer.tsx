@@ -180,7 +180,7 @@ export function TaskDetailDrawer() {
               <button
                 type="button"
                 onClick={requestClose}
-                className="rounded p-1 text-muted transition-colors hover:bg-elevated hover:text-ink"
+                className="rounded border border-line bg-surface p-1 text-muted transition-colors hover:bg-elevated hover:text-ink"
               >
                 <X className="h-4 w-4" />
               </button>

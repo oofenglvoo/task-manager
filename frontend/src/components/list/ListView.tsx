@@ -156,8 +156,8 @@ export function ListView() {
         <td className="px-4 py-2">
           {status ? (
             <span
-              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs"
-              style={{ color: status.color, backgroundColor: `${status.color}26` }}
+              className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs"
+              style={{ color: status.color, borderColor: `${status.color}99`, backgroundColor: `${status.color}26` }}
             >
               {status.name}
             </span>
@@ -168,8 +168,8 @@ export function ListView() {
         <td className="px-4 py-2">
           {task.group ? (
             <span
-              className="inline-flex max-w-[10rem] items-center gap-1 rounded px-1.5 py-0.5 text-xs"
-              style={{ color: task.group.color, backgroundColor: `${task.group.color}26` }}
+              className="inline-flex max-w-[10rem] items-center gap-1 rounded border px-1.5 py-0.5 text-xs"
+              style={{ color: task.group.color, borderColor: `${task.group.color}99`, backgroundColor: `${task.group.color}26` }}
             >
               <span
                 className="h-1.5 w-1.5 shrink-0 rounded-sm"
@@ -197,7 +197,7 @@ export function ListView() {
               type="button"
               title="编辑"
               onClick={() => openTask(task.id)}
-              className="rounded p-1 text-muted transition-colors hover:bg-surface hover:text-ink"
+              className="rounded border border-line bg-surface p-1 text-muted transition-colors hover:bg-elevated hover:text-ink"
             >
               <Pencil className="h-3.5 w-3.5" />
             </button>
@@ -210,7 +210,7 @@ export function ListView() {
                   { onError },
                 )
               }
-              className="rounded p-1 text-muted transition-colors hover:bg-surface hover:text-ink"
+              className="rounded border border-line bg-surface p-1 text-muted transition-colors hover:bg-elevated hover:text-ink"
             >
               {task.is_archived ? (
                 <ArchiveRestore className="h-3.5 w-3.5" />
@@ -222,7 +222,7 @@ export function ListView() {
               type="button"
               title="删除"
               onClick={() => setDeleting(task)}
-              className="rounded p-1 text-muted transition-colors hover:bg-surface hover:text-danger"
+              className="rounded border border-line bg-surface p-1 text-muted transition-colors hover:bg-elevated hover:text-danger"
             >
               <Trash2 className="h-3.5 w-3.5" />
             </button>
@@ -307,7 +307,7 @@ export function ListView() {
           title={groupBy ? '不分组' : '按分组'}
           onClick={() => setGroupBy(!groupBy)}
           className={
-            'rounded border p-1.5 transition-colors ' +
+            'rounded border bg-surface p-1.5 transition-colors ' +
             (groupBy
               ? 'border-accent bg-accent text-white'
               : 'border-line text-ink-soft hover:border-line-strong hover:text-ink')

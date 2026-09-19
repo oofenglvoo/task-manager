@@ -140,7 +140,7 @@ export function SubTaskList({ task }: { task: Task }) {
                 type="button"
                 title="编辑"
                 onClick={() => startEdit(subtask.id, subtask.title)}
-                className="rounded p-1 text-muted opacity-0 transition-opacity hover:text-ink group-hover:opacity-100"
+                className="rounded border border-line bg-surface p-1 text-muted opacity-0 transition-opacity hover:text-ink group-hover:opacity-100"
               >
                 <Pencil className="h-3.5 w-3.5" />
               </button>
@@ -153,7 +153,7 @@ export function SubTaskList({ task }: { task: Task }) {
                     { onError },
                   )
                 }
-                className="rounded p-1 text-muted opacity-0 transition-opacity hover:text-danger group-hover:opacity-100"
+                className="rounded border border-line bg-surface p-1 text-muted opacity-0 transition-opacity hover:text-danger group-hover:opacity-100"
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
