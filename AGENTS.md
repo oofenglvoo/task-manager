@@ -10,14 +10,14 @@
 
 ## Commands (Windows / PowerShell)
 Repo root (one command; installs missing deps, builds the frontend, serves it from the API):
-- `npm run dev` → http://127.0.0.1:8000 (`scripts/run.mjs`; no Vite/HMR). After starting uvicorn it
+- `npm run dev` → http://127.0.0.1:8001 (`scripts/run.mjs`; no Vite/HMR). After starting uvicorn it
   auto-opens the default browser (skippable with `--no-open`).
 - `npm start` (alias), `npm run build` (build only), `npm run serve` (serve without rebuild)
 - `--port <n>` / env `PORT` overrides the API port.
 
 Backend, run from `backend/` (use the existing venv):
 - Install deps: `.venv\Scripts\python -m pip install -r requirements.txt`
-- Dev API: `.venv\Scripts\python -m uvicorn app.main:app --reload` → http://127.0.0.1:8000
+- Dev API: `.venv\Scripts\python -m uvicorn app.main:app --reload` → http://127.0.0.1:8001
 - All tests: `.venv\Scripts\python -m pytest`
 - One test: `.venv\Scripts\python -m pytest tests/test_tasks.py::test_reorder_tasks`
 - `pytest.ini` sets `pythonpath=.` and `testpaths=tests`; run pytest from `backend/`.
@@ -25,7 +25,7 @@ Backend, run from `backend/` (use the existing venv):
 
 Frontend, run from `frontend/`:
 - Install deps: `npm install`
-- Dev server: `npm run dev` → http://localhost:5173 (proxies `/api` → 127.0.0.1:8000)
+- Dev server: `npm run dev` → http://localhost:5173 (proxies `/api` → 127.0.0.1:8001)
 - Build (typecheck + bundle): `npm run build` → `frontend/dist`
 - Lint: `npm run lint` (oxlint; config in `.oxlintrc.json`)
 

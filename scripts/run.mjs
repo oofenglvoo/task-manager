@@ -16,7 +16,7 @@ const noBuild = argv.includes('--no-build')
 const noOpen = argv.includes('--no-open')
 const portIndex = argv.indexOf('--port')
 const port =
-  portIndex !== -1 ? argv[portIndex + 1] : process.env.PORT || '8000'
+  portIndex !== -1 ? argv[portIndex + 1] : process.env.PORT || '8001'
 
 function run(command, args, cwd) {
   const result = spawnSync(command, args, { cwd, stdio: 'inherit', shell: isWindows })

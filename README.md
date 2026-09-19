@@ -59,7 +59,7 @@ npm run dev
 
 脚本会自动检测并安装后端（`backend/.venv`）与前端（`frontend/node_modules`）依赖，
 构建前端到 `frontend/dist`，然后启动后端并由其托管前端。启动后访问
-http://127.0.0.1:8000 （接口文档 `/docs`），并会**自动打开系统默认浏览器**。按 Ctrl+C 停止。
+http://127.0.0.1:8001 （接口文档 `/docs`），并会**自动打开系统默认浏览器**。按 Ctrl+C 停止。
 
 可用脚本：
 
@@ -87,7 +87,7 @@ npm install
 npm run dev
 ```
 
-访问 http://localhost:5173 ，开发服务器会将 `/api` 代理到 `http://127.0.0.1:8000`。
+访问 http://localhost:5173 ，开发服务器会将 `/api` 代理到 `http://127.0.0.1:8001`。
 
 ## 测试与检查
 
