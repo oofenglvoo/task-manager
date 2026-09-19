@@ -49,20 +49,56 @@ export function relativeTime(value: string | null | undefined): string {
 
 export type DueState = 'overdue' | 'today' | 'soon' | 'normal' | 'none'
 
+/**
+ * 解析截止时间。带时分的值按本地时间精确解析；纯日期（旧数据）视为当天 23:59，
+ * 与后端保持一致，避免旧数据在升级后集体变为逾期。
+ */
+export function parseDue(value: string | null | undefined): Date | null {
+  if (!value) return null
+  const text = value.trim()
+  if (!text) return null
+  if (text.length <= 10) {
+    const date = new Date(`${text}T23:59:00`)
+    return Number.isNaN(date.getTime()) ? null : date
+  }
+  const date = new Date(text)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+/** 截止时间的展示文本：带时分则显示到分，纯日期只显示日期。 */
+export function formatDue(value: string | null | undefined): string {
+  if (!value) return ''
+  const text = value.trim()
+  if (text.length <= 10) return formatDate(text)
+  const date = new Date(text)
+  if (Number.isNaN(date.getTime())) return text
+  return new Intl.DateTimeFormat('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
+}
+
+function sameDay(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  )
+}
+
 export function dueState(dueDate: string | null, isDone: boolean): DueState {
   if (!dueDate) return 'none'
   if (isDone) return 'normal'
-  const today = todayISO()
-  if (dueDate < today) return 'overdue'
-  if (dueDate === today) return 'today'
-  const soonDate = new Date()
-  soonDate.setDate(soonDate.getDate() + 3)
-  const soonISO = new Date(
-    soonDate.getTime() - soonDate.getTimezoneOffset() * 60000,
-  )
-    .toISOString()
-    .slice(0, 10)
-  if (dueDate <= soonISO) return 'soon'
+  const due = parseDue(dueDate)
+  if (!due) return 'none'
+  const now = new Date()
+  if (due.getTime() < now.getTime()) return 'overdue'
+  if (sameDay(due, now)) return 'today'
+  const soon = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)
+  if (due.getTime() <= soon.getTime()) return 'soon'
   return 'normal'
 }
 
@@ -71,7 +107,7 @@ export function dueLabel(dueDate: string | null, isDone: boolean): string {
   if (state === 'overdue') return '已逾期'
   if (state === 'today') return '今天到期'
   if (state === 'soon') return '即将到期'
-  return formatDate(dueDate)
+  return formatDue(dueDate)
 }
 
 export function dueClass(dueDate: string | null, isDone: boolean): string {

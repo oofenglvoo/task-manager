@@ -1,6 +1,7 @@
 ﻿import type { Group, Priority, Status, Task } from './types'
 import { withAlpha } from './chartTheme'
 import type { ChartPalette } from './chartTheme'
+import { dueState, formatDue } from './utils'
 
 // 综合评分：优先级权重与最近更新时间权重的占比。
 export const PRIORITY_FACTOR = 1
@@ -186,9 +187,9 @@ export function formatTaskTooltip({
 }: MindMapTooltipMeta): string {
   const priority = priorityName ?? `优先级 ${task.priority}`
   const statusName = status?.name ?? '未分配'
-  const overdue = !task.completed_at && task.due_date != null && task.due_date < todayISO()
+  const overdue = dueState(task.due_date, task.completed_at != null) === 'overdue'
   const due = task.due_date
-    ? `${task.due_date}${overdue ? '（已逾期）' : ''}`
+    ? `${formatDue(task.due_date)}${overdue ? '（已逾期）' : ''}`
     : '未设置'
   const doneCount = task.subtasks.filter((item) => item.is_done).length
   const rows = [
@@ -213,13 +214,6 @@ function escapeHtml(value: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
-}
-
-function todayISO(): string {
-  const now = new Date()
-  return new Date(now.getTime() - now.getTimezoneOffset() * 60000)
-    .toISOString()
-    .slice(0, 10)
 }
 
 const MORE_SUFFIX = '__more__'

@@ -174,9 +174,9 @@ export function TaskForm({ open, onClose, defaultStatusId }: TaskFormProps) {
               ))}
             </Select>
           </Field>
-          <Field label="截止日期">
+          <Field label="截止时间">
             <Input
-              type="date"
+              type="datetime-local"
               value={form.dueDate}
               onChange={(event) => setForm({ ...form, dueDate: event.target.value })}
             />

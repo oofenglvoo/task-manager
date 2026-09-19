@@ -34,6 +34,14 @@ interface Draft {
   description: string
 }
 
+/** 把后端的截止值（可能带秒/时区）裁剪成 datetime-local 需要的 `YYYY-MM-DDTHH:MM`。 */
+function toDatetimeLocal(value: string | null | undefined): string {
+  if (!value) return ''
+  const text = value.trim()
+  if (text.length < 16) return text.slice(0, 10) // 纯日期
+  return text.slice(0, 16)
+}
+
 function draftFromTask(task: {
   title: string
   status_id: number | null
@@ -48,7 +56,7 @@ function draftFromTask(task: {
     statusId: task.status_id ?? '',
     groupId: task.group_id ?? '',
     priority: task.priority,
-    dueDate: task.due_date ?? '',
+    dueDate: toDatetimeLocal(task.due_date),
     tagIds: task.tags.map((tag) => tag.id),
     description: task.description ?? '',
   }
@@ -94,7 +102,7 @@ export function TaskDetailDrawer() {
       draft.statusId !== (task.status_id ?? '') ||
       draft.groupId !== (task.group_id ?? '') ||
       draft.priority !== task.priority ||
-      draft.dueDate !== (task.due_date ?? '') ||
+      draft.dueDate !== toDatetimeLocal(task.due_date) ||
       draft.description !== (task.description ?? '') ||
       !sameTags(draft.tagIds, task.tags.map((tag) => tag.id))
     )
@@ -235,9 +243,9 @@ export function TaskDetailDrawer() {
                   </Select>
                 </label>
                 <label className="space-y-1.5">
-                  <span className="text-xs font-medium text-ink-soft">截止日期</span>
+                  <span className="text-xs font-medium text-ink-soft">截止时间</span>
                   <input
-                    type="date"
+                    type="datetime-local"
                     value={draft.dueDate}
                     onChange={(event) => patch({ dueDate: event.target.value })}
                     className="h-9 w-full rounded border border-line bg-canvas px-3 text-sm text-ink focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/50"

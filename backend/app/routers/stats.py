@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
@@ -10,10 +10,14 @@ from ..database import get_db
 router = APIRouter(prefix="/api/stats", tags=["stats"])
 
 
+def _now() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
 @router.get("", response_model=schemas.StatsOut)
 def get_stats(db: Session = Depends(get_db)):
-    today = date.today()
-    soon = today + timedelta(days=7)
+    now = _now()
+    soon = now + timedelta(days=7)
 
     stmt = select(models.Task).options(selectinload(models.Task.status))
     tasks = list(db.scalars(stmt))
@@ -28,12 +32,12 @@ def get_stats(db: Session = Depends(get_db)):
     pending = [task for task in active if not is_done(task)]
 
     overdue = [
-        task for task in pending if task.due_date is not None and task.due_date < today
+        task for task in pending if task.due_date is not None and task.due_date < now
     ]
     due_soon = [
         task
         for task in pending
-        if task.due_date is not None and today <= task.due_date <= soon
+        if task.due_date is not None and now <= task.due_date <= soon
     ]
 
     statuses = list(

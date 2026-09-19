@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import { errorMessage } from '../../lib/api'
 import type { TaskHistory } from '../../lib/types'
-import { formatDateTime } from '../../lib/utils'
+import { formatDateTime, formatDue } from '../../lib/utils'
 import { sanitizeDescription } from '../../lib/sanitizeHtml'
 import { useDeleteTaskHistory, useTaskHistory } from '../../hooks/queries'
 import { usePrioritiesMeta } from '../../hooks/usePrioritiesMeta'
@@ -25,7 +25,7 @@ function SnapshotContent({ entry }: { entry: TaskHistory }) {
         <span>状态：{snapshot.status_name ?? '未分配'}</span>
         <span>优先级：{priorityLabel(snapshot.priority)}</span>
         <span>分组：{snapshot.group_name ?? '未分组'}</span>
-        <span>截止：{snapshot.due_date ?? '未设置'}</span>
+        <span>截止：{snapshot.due_date ? formatDue(snapshot.due_date) : '未设置'}</span>
       </div>
       {snapshot.tag_names.length > 0 ? (
         <div className="flex flex-wrap gap-1 text-xs text-muted">

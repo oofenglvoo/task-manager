@@ -6,7 +6,7 @@ def test_export_contains_data(client, statuses, make_group, make_task):
         priority=3,
         tag_ids=[tag["id"]],
         group_id=group["id"],
-        due_date="2026-10-01",
+        due_date="2026-10-01T18:30",
     )
     client.post(f"/api/tasks/{task['id']}/subtasks", json={"title": "子任务一"})
 
@@ -16,13 +16,25 @@ def test_export_contains_data(client, statuses, make_group, make_task):
     assert any(item["name"] == "待办" for item in data["statuses"])
     assert any(item["name"] == "后端" for item in data["tags"])
     assert any(item["name"] == "工作" for item in data["groups"])
+    assert any(item["name"] == "低" for item in data["priorities"])
 
     exported = next(item for item in data["tasks"] if item["id"] == task["id"])
     assert exported["title"] == "导出任务"
     assert exported["priority"] == 3
+    assert exported["due_date"] == "2026-10-01T18:30:00"
     assert exported["tag_ids"] == [tag["id"]]
     assert exported["group_id"] == group["id"]
     assert [sub["title"] for sub in exported["subtasks"]] == ["子任务一"]
+
+
+def test_import_preserves_due_date(client, make_task):
+    make_task(title="带截止", due_date="2026-10-01T18:30")
+    backup = client.get("/api/export").json()
+
+    client.post("/api/import", json=backup)
+    tasks = client.get("/api/tasks").json()
+    imported = next(item for item in tasks if item["title"] == "带截止")
+    assert imported["due_date"] == "2026-10-01T18:30:00"
 
 
 def test_export_includes_timestamps(client, make_task):

@@ -44,3 +44,30 @@ def test_stats_due_soon_window(client, make_task):
     stats = client.get("/api/stats").json()
     assert stats["due_soon"] == 1
     assert stats["overdue"] == 0
+
+
+def test_stats_overdue_uses_time_of_day(client, make_task):
+    from datetime import datetime, timedelta, timezone
+
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    past = (now - timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M")
+    future = (now + timedelta(days=2)).strftime("%Y-%m-%dT%H:%M")
+    make_task(title="已过时刻", due_date=past)
+    make_task(title="尚未到点", due_date=future)
+
+    stats = client.get("/api/stats").json()
+    assert stats["overdue"] == 1
+    assert stats["due_soon"] == 1
+
+
+def test_stats_legacy_date_only_uses_end_of_day(client, make_task):
+    # 旧数据只有日期时视为当天 23:59：今天不会算逾期，昨天会。
+    from datetime import date, timedelta
+
+    make_task(title="今天到期", due_date=date.today().isoformat())
+    stats = client.get("/api/stats").json()
+    assert stats["overdue"] == 0
+
+    make_task(title="昨天到期", due_date=(date.today() - timedelta(days=1)).isoformat())
+    stats = client.get("/api/stats").json()
+    assert stats["overdue"] == 1

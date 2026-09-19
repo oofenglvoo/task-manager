@@ -17,14 +17,21 @@ def test_create_task_with_all_fields(client, make_task):
     task = make_task(
         title="  发布版本  ",
         tag_ids=[tag["id"]],
-        due_date="2026-10-01",
+        due_date="2026-10-01T18:30",
         priority=3,
         description="打 tag 并推送",
     )
     assert task["title"] == "发布版本"
     assert task["priority"] == 3
-    assert task["due_date"] == "2026-10-01"
+    # 带时分的截止日期原样保存。
+    assert task["due_date"] == "2026-10-01T18:30:00"
     assert [item["name"] for item in task["tags"]] == ["紧急"]
+
+
+def test_create_task_with_date_only_due_date_uses_end_of_day(client, make_task):
+    # 兼容旧客户端/旧备份的纯日期：视为当天 23:59。
+    task = make_task(title="旧格式", due_date="2026-10-01")
+    assert task["due_date"] == "2026-10-01T23:59:00"
 
 
 def test_unknown_priority_is_rejected(client):

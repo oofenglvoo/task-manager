@@ -62,6 +62,25 @@ def ensure_schema() -> None:
         _drop_projects(connection)
         _add_task_group(connection)
         _add_group_note(connection)
+        _normalize_due_dates(connection)
+
+
+def _normalize_due_dates(connection) -> None:
+    """Rewrite legacy date-only `tasks.due_date` values to end-of-day 23:59.
+
+    `due_date` became a datetime; old rows hold plain `YYYY-MM-DD`. Treating them
+    as 23:59 keeps them from all flipping to "overdue" at 00:00. Idempotent: rows
+    that already carry a time (length > 10) are left untouched.
+    """
+    task_columns = {
+        row[1] for row in connection.exec_driver_sql("PRAGMA table_info(tasks)")
+    }
+    if not task_columns or "due_date" not in task_columns:
+        return
+    connection.exec_driver_sql(
+        "UPDATE tasks SET due_date = due_date || 'T23:59:00' "
+        "WHERE due_date IS NOT NULL AND LENGTH(due_date) = 10"
+    )
 
 
 def _add_group_note(connection) -> None:

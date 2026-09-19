@@ -12,6 +12,51 @@ def _serialize_utc(value: datetime) -> str:
 UtcDatetime = Annotated[datetime, PlainSerializer(_serialize_utc, return_type=str)]
 
 
+def parse_due(value: object) -> object:
+    """Normalize a due date/datetime to a naive datetime.
+
+    Legacy values are plain ``YYYY-MM-DD`` dates, which the rest of the app
+    treats as ending at 23:59 on that day. Anything already carrying a time is
+    returned as-is. ``None``/empty strings become ``None``.
+    """
+    if value is None or value == "":
+        return None
+    if isinstance(value, datetime):
+        return value.replace(tzinfo=None) if value.tzinfo else value
+    if isinstance(value, date):
+        return datetime(value.year, value.month, value.day, 23, 59)
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return None
+        try:
+            parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        except ValueError:
+            # date-only fallback, e.g. "2026-10-01"
+            try:
+                pure = date.fromisoformat(text[:10])
+            except ValueError:
+                return value
+            return datetime(pure.year, pure.month, pure.day, 23, 59)
+        if parsed.tzinfo is not None:
+            # Convert away the tz; due dates are wall-clock, not instant-based.
+            parsed = parsed.replace(tzinfo=None)
+        if len(text) <= 10:
+            return parsed.replace(hour=23, minute=59)
+        return parsed
+    return value
+
+
+def _serialize_due(value: datetime) -> str:
+    return value.isoformat()
+
+
+DueDatetime = Annotated[
+    datetime,
+    PlainSerializer(_serialize_due, return_type=str),
+]
+
+
 # --------------------------------------------------------------------------- #
 # Status
 # --------------------------------------------------------------------------- #
@@ -140,8 +185,10 @@ class TaskCreate(BaseModel):
     group_id: int | None = None
     description: str | None = None
     priority: int | None = None
-    due_date: date | None = None
+    due_date: DueDatetime | None = None
     tag_ids: list[int] = Field(default_factory=list)
+
+    _normalize_due = field_validator("due_date", mode="before")(parse_due)
 
 
 class TaskUpdate(BaseModel):
@@ -150,9 +197,11 @@ class TaskUpdate(BaseModel):
     group_id: int | None = None
     description: str | None = None
     priority: int | None = None
-    due_date: date | None = None
+    due_date: DueDatetime | None = None
     tag_ids: list[int] | None = None
     position: int | None = None
+
+    _normalize_due = field_validator("due_date", mode="before")(parse_due)
 
 
 class TaskMove(BaseModel):
@@ -170,7 +219,7 @@ class TaskOut(BaseModel):
     title: str
     description: str | None
     priority: int
-    due_date: date | None
+    due_date: DueDatetime | None
     position: int
     is_archived: bool
     created_at: UtcDatetime
@@ -186,9 +235,11 @@ class TaskHistorySnapshot(BaseModel):
     status_name: str | None = None
     group_name: str | None = None
     priority: int = 2
-    due_date: date | None = None
+    due_date: DueDatetime | None = None
     tag_names: list[str] = Field(default_factory=list)
     description: str | None = None
+
+    _normalize_due = field_validator("due_date", mode="before")(parse_due)
 
 
 class TaskHistoryOut(BaseModel):
@@ -330,7 +381,7 @@ class ExportTask(BaseModel):
     title: str
     description: str | None = None
     priority: int = 2
-    due_date: date | None = None
+    due_date: DueDatetime | None = None
     position: int = 0
     is_archived: bool = False
     created_at: datetime | None = None

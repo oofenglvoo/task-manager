@@ -36,6 +36,11 @@ Frontend, run from `frontend/`:
 - `tests/conftest.py` sets `TASK_DB_PATH` to a temp dir **before** importing the app, and an
   autouse fixture drops/recreates tables per test. Preserve that import order if editing it.
 - Datetimes are stored naive UTC and serialized with a trailing `Z` (`schemas._serialize_utc`).
+  `Task.due_date` is the exception: a naive **wall-clock** datetime (no `Z`, `schemas.DueDatetime`),
+  compared against `datetime.now(timezone.utc).replace(tzinfo=None)` in `stats.py`. Legacy date-only
+  strings (`YYYY-MM-DD`) mean **23:59 that day** — enforced both by `schemas.parse_due` (on input) and
+  `database._normalize_due_dates()` (rewrites existing rows to `T23:59:00`). Overdue/due-soon are
+  time-precise; the SQLite `DATE` column holds datetimes without a schema change.
 - `Task` has `created_at` (insert), `updated_at` (SQLAlchemy `onupdate=utcnow`, auto), `completed_at`.
 - `Task.priority` is an int (a **`priorities.id`**, not a fixed 1/2/3) with no range validation; the
   value must reference an existing `priorities` row or the write returns 404. `Priority` rows carry
@@ -64,13 +69,15 @@ Frontend, run from `frontend/`:
 - Schema migrations live in `database.ensure_schema()` (called from `main.py` after `create_all`):
   it adds new `preferences` columns (`compact`, `group_by`, `bg_opacity`, `card_opacity`,
   `panel_opacity`), runs `_drop_projects()` (rebuilds `tasks` without `project_id`, drops the
-  `projects` table, preserving every task row), `_add_task_group()` (adds `tasks.group_id` + index)
-  and `_add_group_note()` (adds `groups.note`). The `priorities` table is created by `create_all` and
-  seeded by `seed.seed_defaults`. `create_all` never drops columns/tables, so rebuild-style
-  migrations must stay idempotent.
+  `projects` table, preserving every task row), `_add_task_group()` (adds `tasks.group_id` + index),
+  `_add_group_note()` (adds `groups.note`) and `_normalize_due_dates()` (rewrites legacy date-only
+  `due_date` to `T23:59:00`). The `priorities` table is created by `create_all` and seeded by
+  `seed.seed_defaults`. `create_all` never drops columns/tables, so rebuild-style migrations must stay
+  idempotent.
 - `/api/export` dumps all data; `POST /api/import` **wipes and replaces** statuses/tags/groups/
   priorities/tasks (legacy payloads still containing `projects`/`project_id` are accepted and ignored;
   a legacy payload with no `priorities` re-seeds the default three and keeps task priority values).
+  Export/import deliberately **exclude appearance preferences** (`preferences`) and background files.
 - Groups are a first-class entity (`groups` table, `/api/groups` CRUD + `/reorder`); a task has an
   optional `group_id`. Priorities are likewise first-class (`priorities` table, `/api/priorities`
   CRUD + `/reorder`). The board/list/mindmap "group by" toggle is persisted as `preferences.group_by`.
@@ -154,7 +161,14 @@ Frontend, run from `frontend/`:
   `src/lib/richText.ts` remains for any plain-text needs.
 - Card grid (宽松 mode, `compact === false`) lists up to 5 subtasks with working checkboxes and a
   "还有 N 个" line; toggling uses `useUpdateSubtask` wired through `BoardView` → `SortableTaskCard` /
-  `GroupedTaskBoard`.
+  `GroupedTaskBoard`. Card subtasks are **toggle-only** (no rename/delete there).
+- Due dates are date **and time** (`YYYY-MM-DDTHH:MM`). `src/lib/utils.ts` has `parseDue()`
+  (legacy date-only ⇒ 23:59) / `formatDue()` and `dueState()` compares against `Date.now()` precisely;
+  never go back to raw string comparison. Inputs are `<input type="datetime-local">` in
+  `TaskDetailDrawer`/`TaskForm`; the drawer trims the stored value with `toDatetimeLocal()`.
+- Subtask titles are edited **inline only in the drawer** (`SubTaskList.tsx`): click the title (or the
+  pencil) → `Input`, Enter/blur saves (`useUpdateSubtask({ title })`), Esc cancels. The backend PUT
+  already supported `title`; keep card subtasks read-only.
 - The detail drawer has a collapsible **历史修改** timeline (`TaskHistoryTimeline`, default open) fed by
   `useTaskHistory`; each entry can be deleted via `ConfirmDialog`. Do not add a revert action (display
   only by design).
