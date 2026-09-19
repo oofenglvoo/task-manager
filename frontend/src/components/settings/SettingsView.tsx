@@ -1,6 +1,5 @@
 import { AppearanceSettings } from './AppearanceSettings'
 import { DataSettings } from './DataSettings'
-import { GroupManager } from './GroupManager'
 import { StatusManager } from './StatusManager'
 import { TagManager } from './TagManager'
 
@@ -10,12 +9,11 @@ export function SettingsView() {
       <div className="mx-auto max-w-3xl space-y-6">
         <div>
           <h1 className="text-sm font-semibold text-ink">设置</h1>
-          <p className="text-xs text-muted">外观、数据、任务状态、标签与分组</p>
+          <p className="text-xs text-muted">外观、数据、任务状态与标签</p>
         </div>
         <AppearanceSettings />
         <DataSettings />
         <StatusManager />
-        <GroupManager />
         <TagManager />
       </div>
     </div>

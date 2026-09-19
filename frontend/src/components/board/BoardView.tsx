@@ -15,7 +15,7 @@ import {
   rectSortingStrategy,
   sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable'
-import { LayoutGrid, Layers, Plus, Rows3 } from 'lucide-react'
+import { LayoutGrid, Layers, Plus, Rows3, Settings2 } from 'lucide-react'
 import { errorMessage } from '../../lib/api'
 import type { Task, TaskQuery } from '../../lib/types'
 import {
@@ -57,7 +57,7 @@ const SIZE_OPTIONS: Array<{ value: CardSize; label: string }> = [
 const PAGE_SIZE = 60
 
 export function BoardView() {
-  const { search, priority, tagId, openCreate, openTask, openEdit } = useUI()
+  const { search, priority, tagId, openCreate, openTask, openEdit, openGroups } = useUI()
   const { cardSize, compact, groupBy, setCardSize, setCompact, setGroupBy } = usePreferences()
   const { data: statuses = [] } = useStatuses()
   const reorderTasks = useReorderTasks()
@@ -201,6 +201,15 @@ export function BoardView() {
             }
           >
             <Layers className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            aria-label="管理分组"
+            title="管理分组"
+            onClick={() => openGroups()}
+            className="rounded border border-line p-1.5 text-ink-soft transition-colors hover:border-line-strong hover:text-ink"
+          >
+            <Settings2 className="h-4 w-4" />
           </button>
           <button
             type="button"

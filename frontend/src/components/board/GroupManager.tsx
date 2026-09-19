@@ -67,14 +67,11 @@ export function GroupManager() {
   }
 
   return (
-    <section className="rounded-lg border border-line bg-surface">
-      <header className="flex items-center justify-between border-b border-line px-4 py-3">
-        <div>
-          <h2 className="text-sm font-semibold text-ink">分组</h2>
-          <p className="text-xs text-muted">
-            把任务归属到分组，可在看板/列表/脑图中按分组查看
-          </p>
-        </div>
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs text-muted">
+          把任务归属到分组，可在看板/列表/脑图中按分组查看
+        </p>
         <Button
           size="sm"
           onClick={() => {
@@ -83,16 +80,18 @@ export function GroupManager() {
           }}
         >
           <Plus className="h-3.5 w-3.5" />
-          新建
+          新建分组
         </Button>
-      </header>
+      </div>
 
       {isLoading ? (
         <LoadingBlock />
       ) : groups.length === 0 ? (
-        <p className="px-4 py-8 text-center text-xs text-muted">还没有分组</p>
+        <p className="rounded-lg border border-dashed border-line px-4 py-8 text-center text-xs text-muted">
+          还没有分组
+        </p>
       ) : (
-        <ul className="divide-y divide-line/60">
+        <ul className="divide-y divide-line/60 rounded-lg border border-line">
           {groups.map((group) => (
             <li key={group.id} className="flex items-center gap-3 px-4 py-2.5">
               <span
@@ -188,6 +187,6 @@ export function GroupManager() {
           })
         }}
       />
-    </section>
+    </div>
   )
 }

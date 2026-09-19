@@ -21,6 +21,9 @@ interface UIState {
   sidebarOpen: boolean
   toggleSidebar: () => void
   closeSidebar: () => void
+  groupsOpen: boolean
+  openGroups: () => void
+  closeGroups: () => void
 }
 
 const UIContext = createContext<UIState | null>(null)
@@ -34,6 +37,7 @@ export function UIProvider({ children }: { children: ReactNode }) {
   const [createStatusId, setCreateStatusId] = useState<number | null>(null)
   const [editTaskId, setEditTaskId] = useState<number | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [groupsOpen, setGroupsOpen] = useState(false)
 
   const value = useMemo<UIState>(
     () => ({
@@ -59,6 +63,9 @@ export function UIProvider({ children }: { children: ReactNode }) {
       sidebarOpen,
       toggleSidebar: () => setSidebarOpen((prev) => !prev),
       closeSidebar: () => setSidebarOpen(false),
+      groupsOpen,
+      openGroups: () => setGroupsOpen(true),
+      closeGroups: () => setGroupsOpen(false),
     }),
     [
       search,
@@ -69,6 +76,7 @@ export function UIProvider({ children }: { children: ReactNode }) {
       createStatusId,
       editTaskId,
       sidebarOpen,
+      groupsOpen,
     ],
   )
 

@@ -1,14 +1,24 @@
 import { Outlet } from 'react-router-dom'
 import { useTask } from '../../hooks/queries'
 import { useUI } from '../../store/ui'
+import { GroupManager } from '../board/GroupManager'
 import { TaskDetailDrawer } from '../tasks/TaskDetailDrawer'
 import { TaskForm } from '../tasks/TaskForm'
+import { Modal } from '../ui/Modal'
 import { Toaster } from '../ui/Toaster'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
 
 export function AppShell() {
-  const { createOpen, closeCreate, createStatusId, editTaskId, closeEdit } = useUI()
+  const {
+    createOpen,
+    closeCreate,
+    createStatusId,
+    editTaskId,
+    closeEdit,
+    groupsOpen,
+    closeGroups,
+  } = useUI()
   const { data: editTask } = useTask(editTaskId)
 
   return (
@@ -30,6 +40,9 @@ export function AppShell() {
         task={editTask ?? null}
         onClose={closeEdit}
       />
+      <Modal open={groupsOpen} title="分组管理" onClose={closeGroups}>
+        <GroupManager />
+      </Modal>
       <Toaster />
     </div>
   )
