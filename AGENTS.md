@@ -38,20 +38,28 @@ Frontend, run from `frontend/`:
 - Datetimes are stored naive UTC and serialized with a trailing `Z` (`schemas._serialize_utc`).
 - `Task` has `created_at` (insert), `updated_at` (SQLAlchemy `onupdate=utcnow`, auto), `completed_at`.
 - `priority` is an int 1/2/3 (low/medium/high), validated 1–3.
+- `Task.description` stores **HTML** (rich text from the frontend); the API treats it as an opaque
+  string (no validation/sanitization). Plain-text consumers use `frontend/src/lib/richText.ts`.
 - Moving a task to a status with `is_done=True` auto-sets `completed_at`; moving off clears it.
 - Creating a task with no `status_id` assigns the first status by `position`; position is now global
   (`crud.next_task_position(db)`, no project scoping).
-- API is under `/api/*`; subtask routes share the `/api/tasks` prefix.
-- Deleting an in-use status returns 400; duplicate status/tag names return 409.
+- API is under `/api/*`; subtask routes share the `/api/tasks` prefix. Group routes are `/api/groups`.
+- `PUT /api/tasks/{id}/move` uses `exclude_unset` semantics: `group_id: null` **clears** the group,
+  omitting `group_id` leaves it unchanged (the frontend cross-group drag relies on this).
+- Deleting a group keeps its tasks but sets `group_id` to NULL (SQLAlchemy nulls the FK on delete).
+- Deleting an in-use status returns 400; duplicate status/tag/group names return 409.
 - All user-facing strings, seed data, and error messages are Chinese — keep new UI/messages Chinese.
 - Appearance preferences are a single `preferences` row (id=1) served by `/api/settings`; background
   files live in `DB_DIR/backgrounds/` (i.e. next to the SQLite file, so tests use the temp dir).
 - Schema migrations live in `database.ensure_schema()` (called from `main.py` after `create_all`):
-  it adds new `preferences` columns (`compact`) **and** runs `_drop_projects()`, which rebuilds
-  `tasks` without `project_id` and drops the `projects` table while preserving every task row.
-  `create_all` never drops columns/tables, so rebuild-style migrations must stay idempotent.
+  it adds new `preferences` columns (`compact`, `group_by`) **and** runs `_drop_projects()` (rebuilds
+  `tasks` without `project_id`, drops the `projects` table, preserving every task row) plus
+  `_add_task_group()` (adds `tasks.group_id` + index). `create_all` never drops columns/tables, so
+  rebuild-style migrations must stay idempotent.
 - `/api/export` dumps all data; `POST /api/import` **wipes and replaces** statuses/tags/tasks
   (legacy payloads still containing `projects`/`project_id` are accepted and ignored).
+- Groups are a first-class entity (`groups` table, `/api/groups` CRUD + `/reorder`); a task has an
+  optional `group_id`. The board/list/mindmap "group by" toggle is persisted as `preferences.group_by`.
 
 ## E2E / verification safety
 - **Never** run a script that deletes all tasks against the real `data/tasks.db` — this has destroyed
@@ -102,8 +110,23 @@ Frontend, run from `frontend/`:
 - Drag-reorder only works when board sort is `position` (手动排序); other sorts disable drag.
   Dragging uses an explicit `GripVertical` handle (`SortableTaskCard`), not the whole card, and
   is also disabled while the list is truncated by the 60-per-page "显示更多" pagination.
+  In the grouped board (`GroupedTaskBoard.tsx`, used when `groupBy` is on) each group is its own
+  `SortableContext` + droppable container; same-group drops reorder via `/reorder`, cross-group
+  drops call `/move` with `group_id`+`position` then re-flatten positions.
+- `Task.description` is HTML. The drawer edits it with the dependency-free `RichTextEditor`
+  (`contentEditable` + `document.execCommand`, image paste/drop as base64 data URLs, toolbar in
+  `src/components/ui/RichTextEditor.tsx`). Everywhere else render plain text via
+  `htmlToText()` from `src/lib/richText.ts` (cards); never render `task.description` raw outside
+  the editor/detail view.
+- There is **no edit modal**: `TaskForm` is create-only. Clicking a card / the row pencil / card
+  pencil opens `TaskDetailDrawer`, where all fields (title/status/priority/group/due/tags/
+  description) are staged in a local draft and only persisted by the footer 保存 button; closing
+  with unsaved changes prompts. Archive/restore and delete both go through `ConfirmDialog`.
 - Card density/size come from `CARD_SIZE_STYLES` in `src/store/preferences.tsx` (padding/title/
-  desc lines/gap), plus a `compact` preference; both are persisted server-side.
+  desc lines/gap), plus a `compact` preference; both are persisted server-side. Cards show
+  description + subtask progress only in 宽松 mode (`compact === false`).
+- Group management is a modal (`GroupManager.tsx`) opened from the board toolbar (`Settings2`
+  button, `ui.openGroups`), not from the settings page.
 - Vite dev server binds to `localhost` only, not `127.0.0.1` — open http://localhost:5173.
 - `npm run build` runs `tsc -b` with `verbatimModuleSyntax` + `erasableSyntaxOnly` + `noUnusedLocals`:
   type-only imports must use `import type`, and TS enums are disallowed.

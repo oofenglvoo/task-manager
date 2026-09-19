@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
-import { Archive, ArchiveRestore, Pencil, Trash2, X } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Archive, ArchiveRestore, Trash2, X } from 'lucide-react'
 import { errorMessage } from '../../lib/api'
 import { formatDateTime } from '../../lib/utils'
 import {
   useArchiveTask,
   useDeleteTask,
+  useGroups,
   useStatuses,
   useTags,
   useTask,
@@ -15,40 +16,134 @@ import { useUI } from '../../store/ui'
 import { Button } from '../ui/Button'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { Drawer } from '../ui/Drawer'
-import { Select, Textarea } from '../ui/Input'
+import { Input, Select } from '../ui/Input'
+import { RichTextEditor } from '../ui/RichTextEditor'
 import { Spinner } from '../ui/Spinner'
 import { TagPicker } from '../ui/TagPicker'
 import { SubTaskList } from './SubTaskList'
 
+interface Draft {
+  title: string
+  statusId: number | ''
+  groupId: number | ''
+  priority: number
+  dueDate: string
+  tagIds: number[]
+  description: string
+}
+
+function draftFromTask(task: {
+  title: string
+  status_id: number | null
+  group_id: number | null
+  priority: number
+  due_date: string | null
+  tags: Array<{ id: number }>
+  description: string | null
+}): Draft {
+  return {
+    title: task.title,
+    statusId: task.status_id ?? '',
+    groupId: task.group_id ?? '',
+    priority: task.priority,
+    dueDate: task.due_date ?? '',
+    tagIds: task.tags.map((tag) => tag.id),
+    description: task.description ?? '',
+  }
+}
+
+function sameTags(a: number[], b: number[]): boolean {
+  if (a.length !== b.length) return false
+  const sortedA = [...a].sort((x, y) => x - y)
+  const sortedB = [...b].sort((x, y) => x - y)
+  return sortedA.every((value, index) => value === sortedB[index])
+}
+
 export function TaskDetailDrawer() {
-  const { selectedTaskId, closeTask, openEdit } = useUI()
+  const { selectedTaskId, closeTask } = useUI()
   const { data: task, isLoading } = useTask(selectedTaskId)
   const { data: statuses = [] } = useStatuses()
   const { data: tags = [] } = useTags()
+  const { data: groups = [] } = useGroups()
   const updateTask = useUpdateTask()
   const archiveTask = useArchiveTask()
   const deleteTask = useDeleteTask()
   const { push } = useToast()
-  const [description, setDescription] = useState('')
-  const [confirmDelete, setConfirmDelete] = useState(false)
 
+  const [draft, setDraft] = useState<Draft | null>(null)
+  const [saveError, setSaveError] = useState('')
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [confirmArchive, setConfirmArchive] = useState(false)
+  const [confirmDiscard, setConfirmDiscard] = useState(false)
+
+  const taskId = task?.id ?? null
   useEffect(() => {
-    setDescription(task?.description ?? '')
-  }, [task?.id, task?.description])
+    setSaveError('')
+    setDraft(task ? draftFromTask(task) : null)
+    // 仅在切换到另一个任务时重置草稿，避免后台刷新覆盖未保存的编辑。
+  }, [taskId])
+
+  const dirty = useMemo(() => {
+    if (!task || !draft) return false
+    return (
+      draft.title !== task.title ||
+      draft.statusId !== (task.status_id ?? '') ||
+      draft.groupId !== (task.group_id ?? '') ||
+      draft.priority !== task.priority ||
+      draft.dueDate !== (task.due_date ?? '') ||
+      draft.description !== (task.description ?? '') ||
+      !sameTags(draft.tagIds, task.tags.map((tag) => tag.id))
+    )
+  }, [task, draft])
 
   const onError = (error: unknown) => push(errorMessage(error), 'error')
 
-  function patch(data: Parameters<typeof updateTask.mutate>[0]['data']) {
-    if (!task) return
-    updateTask.mutate({ id: task.id, data }, { onError })
+  function patch(next: Partial<Draft>) {
+    setDraft((prev) => (prev ? { ...prev, ...next } : prev))
+  }
+
+  function save() {
+    if (!task || !draft) return
+    const title = draft.title.trim()
+    if (!title) {
+      setSaveError('请输入任务标题')
+      return
+    }
+    setSaveError('')
+    updateTask.mutate(
+      {
+        id: task.id,
+        data: {
+          title,
+          status_id: draft.statusId === '' ? null : draft.statusId,
+          group_id: draft.groupId === '' ? null : draft.groupId,
+          priority: draft.priority,
+          due_date: draft.dueDate || null,
+          tag_ids: draft.tagIds,
+          description: draft.description.trim() || null,
+        },
+      },
+      {
+        onSuccess: () => push('任务已保存', 'success'),
+        onError,
+      },
+    )
+  }
+
+  function requestClose() {
+    if (dirty) {
+      setConfirmDiscard(true)
+      return
+    }
+    closeTask()
   }
 
   const open = selectedTaskId != null
 
   return (
     <>
-      <Drawer open={open} onClose={closeTask}>
-        {isLoading || !task ? (
+      <Drawer open={open} onClose={requestClose}>
+        {isLoading || !task || !draft ? (
           <div className="flex flex-1 items-center justify-center">
             <Spinner className="h-5 w-5" />
           </div>
@@ -63,13 +158,16 @@ export function TaskDetailDrawer() {
                   <span>·</span>
                   <span>#{task.id}</span>
                 </div>
-                <h2 className="text-base font-semibold leading-snug text-ink">
-                  {task.title}
-                </h2>
+                <Input
+                  value={draft.title}
+                  placeholder="任务标题"
+                  className="h-10 text-base font-semibold"
+                  onChange={(event) => patch({ title: event.target.value })}
+                />
               </div>
               <button
                 type="button"
-                onClick={closeTask}
+                onClick={requestClose}
                 className="rounded p-1 text-muted transition-colors hover:bg-elevated hover:text-ink"
               >
                 <X className="h-4 w-4" />
@@ -81,11 +179,11 @@ export function TaskDetailDrawer() {
                 <label className="space-y-1.5">
                   <span className="text-xs font-medium text-ink-soft">状态</span>
                   <Select
-                    value={task.status_id ?? ''}
+                    value={draft.statusId}
                     onChange={(event) =>
                       patch({
-                        status_id:
-                          event.target.value === '' ? null : Number(event.target.value),
+                        statusId:
+                          event.target.value === '' ? '' : Number(event.target.value),
                       })
                     }
                   >
@@ -100,7 +198,7 @@ export function TaskDetailDrawer() {
                 <label className="space-y-1.5">
                   <span className="text-xs font-medium text-ink-soft">优先级</span>
                   <Select
-                    value={task.priority}
+                    value={draft.priority}
                     onChange={(event) => patch({ priority: Number(event.target.value) })}
                   >
                     <option value={1}>低</option>
@@ -110,43 +208,52 @@ export function TaskDetailDrawer() {
                 </label>
               </div>
 
-              <label className="block space-y-1.5">
-                <span className="text-xs font-medium text-ink-soft">截止日期</span>
-                <input
-                  type="date"
-                  value={task.due_date ?? ''}
-                  onChange={(event) => patch({ due_date: event.target.value || null })}
-                  className="h-9 w-full rounded border border-line bg-canvas px-3 text-sm text-ink focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/50"
-                />
-              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="space-y-1.5">
+                  <span className="text-xs font-medium text-ink-soft">分组</span>
+                  <Select
+                    value={draft.groupId}
+                    onChange={(event) =>
+                      patch({
+                        groupId:
+                          event.target.value === '' ? '' : Number(event.target.value),
+                      })
+                    }
+                  >
+                    <option value="">未分组</option>
+                    {groups.map((group) => (
+                      <option key={group.id} value={group.id}>
+                        {group.name}
+                      </option>
+                    ))}
+                  </Select>
+                </label>
+                <label className="space-y-1.5">
+                  <span className="text-xs font-medium text-ink-soft">截止日期</span>
+                  <input
+                    type="date"
+                    value={draft.dueDate}
+                    onChange={(event) => patch({ dueDate: event.target.value })}
+                    className="h-9 w-full rounded border border-line bg-canvas px-3 text-sm text-ink focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/50"
+                  />
+                </label>
+              </div>
 
               <div className="space-y-1.5">
                 <span className="text-xs font-medium text-ink-soft">标签</span>
                 <TagPicker
                   tags={tags}
-                  selected={task.tags.map((tag) => tag.id)}
-                  onChange={(tagIds) => patch({ tag_ids: tagIds })}
+                  selected={draft.tagIds}
+                  onChange={(tagIds) => patch({ tagIds })}
                 />
               </div>
 
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-ink-soft">描述</span>
-                  {description !== (task.description ?? '') ? (
-                    <button
-                      type="button"
-                      onClick={() => patch({ description: description.trim() || null })}
-                      className="text-xs text-accent hover:text-accent-hover"
-                    >
-                      保存描述
-                    </button>
-                  ) : null}
-                </div>
-                <Textarea
-                  rows={4}
-                  value={description}
-                  placeholder="补充说明…"
-                  onChange={(event) => setDescription(event.target.value)}
+                <span className="text-xs font-medium text-ink-soft">任务详情</span>
+                <RichTextEditor
+                  value={draft.description}
+                  onChange={(html) => patch({ description: html })}
+                  placeholder="补充说明，支持图片粘贴与文字格式…"
                 />
               </div>
 
@@ -171,23 +278,9 @@ export function TaskDetailDrawer() {
             </div>
 
             <footer className="flex items-center gap-2 border-t border-line px-5 py-3">
-              <Button onClick={() => openEdit(task.id)}>
-                <Pencil className="h-3.5 w-3.5" />
-                编辑
-              </Button>
               <Button
-                onClick={() =>
-                  archiveTask.mutate(
-                    { id: task.id, isArchived: !task.is_archived },
-                    {
-                      onSuccess: () => {
-                        push(task.is_archived ? '已恢复任务' : '已归档任务', 'success')
-                        closeTask()
-                      },
-                      onError,
-                    },
-                  )
-                }
+                onClick={() => setConfirmArchive(true)}
+                disabled={archiveTask.isPending}
               >
                 {task.is_archived ? (
                   <ArchiveRestore className="h-3.5 w-3.5" />
@@ -201,10 +294,53 @@ export function TaskDetailDrawer() {
                 <Trash2 className="h-3.5 w-3.5" />
                 删除
               </Button>
+              <Button
+                variant="primary"
+                onClick={save}
+                disabled={!dirty || updateTask.isPending}
+              >
+                {updateTask.isPending ? '保存中…' : '保存'}
+              </Button>
             </footer>
+
+            {saveError ? (
+              <p className="border-t border-line px-5 py-2 text-xs text-danger">
+                {saveError}
+              </p>
+            ) : null}
           </>
         )}
       </Drawer>
+
+      <ConfirmDialog
+        open={confirmArchive}
+        title={task?.is_archived ? '恢复任务' : '归档任务'}
+        message={
+          task?.is_archived
+            ? '确定要恢复该任务吗？'
+            : '归档后任务将从看板/列表中隐藏，可在归档中恢复。确定要归档吗？'
+        }
+        confirmLabel={task?.is_archived ? '恢复' : '归档'}
+        loading={archiveTask.isPending}
+        onCancel={() => setConfirmArchive(false)}
+        onConfirm={() => {
+          if (!task) return
+          archiveTask.mutate(
+            { id: task.id, isArchived: !task.is_archived },
+            {
+              onSuccess: () => {
+                push(task.is_archived ? '已恢复任务' : '已归档任务', 'success')
+                setConfirmArchive(false)
+                closeTask()
+              },
+              onError: (error) => {
+                setConfirmArchive(false)
+                onError(error)
+              },
+            },
+          )
+        }}
+      />
 
       <ConfirmDialog
         open={confirmDelete}
@@ -226,6 +362,18 @@ export function TaskDetailDrawer() {
               onError(error)
             },
           })
+        }}
+      />
+
+      <ConfirmDialog
+        open={confirmDiscard}
+        title="放弃修改"
+        message="当前有未保存的修改，确定要放弃并关闭吗？"
+        confirmLabel="放弃"
+        onCancel={() => setConfirmDiscard(false)}
+        onConfirm={() => {
+          setConfirmDiscard(false)
+          closeTask()
         }}
       />
     </>

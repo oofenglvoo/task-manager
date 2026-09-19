@@ -116,8 +116,10 @@ def update_task(db: Session, task: models.Task, payload) -> models.Task:
 
 
 def move_task(db: Session, task: models.Task, payload) -> models.Task:
-    if payload.status_id is not None:
-        status = db.get(models.Status, payload.status_id)
+    data = payload.model_dump(exclude_unset=True)
+
+    if data.get("status_id") is not None:
+        status = db.get(models.Status, data["status_id"])
         if status is None:
             raise HTTPException(status_code=404, detail="状态不存在")
         task.status_id = status.id
@@ -127,12 +129,12 @@ def move_task(db: Session, task: models.Task, payload) -> models.Task:
         else:
             task.completed_at = None
 
-    if payload.group_id is not None:
-        resolve_group(db, payload.group_id)
-        task.group_id = payload.group_id
+    if "group_id" in data:
+        resolve_group(db, data["group_id"])
+        task.group_id = data["group_id"]
 
-    if payload.position is not None:
-        task.position = payload.position
+    if data.get("position") is not None:
+        task.position = data["position"]
 
     db.commit()
     db.refresh(task)

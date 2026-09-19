@@ -33,6 +33,8 @@ import { EmptyState } from '../ui/EmptyState'
 import { Select } from '../ui/Input'
 import { TaskCard } from '../tasks/TaskCard'
 import { TaskCardSkeleton } from '../tasks/TaskCardSkeleton'
+import { GroupedTaskBoard } from './GroupedTaskBoard'
+import type { TaskSection } from './GroupedTaskBoard'
 import { TaskMindMap } from './TaskMindMap'
 import { SortableTaskCard } from './SortableTaskCard'
 
@@ -57,7 +59,7 @@ const SIZE_OPTIONS: Array<{ value: CardSize; label: string }> = [
 const PAGE_SIZE = 60
 
 export function BoardView() {
-  const { search, priority, tagId, openCreate, openTask, openEdit, openGroups } = useUI()
+  const { search, priority, tagId, openCreate, openGroups } = useUI()
   const { cardSize, compact, groupBy, setCardSize, setCompact, setGroupBy } = usePreferences()
   const { data: statuses = [] } = useStatuses()
   const reorderTasks = useReorderTasks()
@@ -99,21 +101,19 @@ export function BoardView() {
   const doneStatus = statuses.find((item) => item.is_done)
   const openStatus = statuses.find((item) => !item.is_done)
   const truncated = visibleCount < tasks.length
-  const dragEnabled = manualOrder && !truncated && !groupBy
+  const dragEnabled = manualOrder && !truncated
   const visibleTasks = truncated ? tasks.slice(0, visibleCount) : tasks
 
-  const sections = useMemo(() => {
+  const sections = useMemo<TaskSection[]>(() => {
     if (!groupBy) return []
-    const map = new Map<
-      string,
-      { key: string; name: string; color: string | null; tasks: Task[] }
-    >()
+    const map = new Map<string, TaskSection>()
     for (const task of visibleTasks) {
       const key = task.group ? `g-${task.group.id}` : 'none'
       let section = map.get(key)
       if (!section) {
         section = {
           key,
+          groupId: task.group?.id ?? null,
           name: task.group?.name ?? '未分组',
           color: task.group?.color ?? null,
           tasks: [],
@@ -123,9 +123,7 @@ export function BoardView() {
       section.tasks.push(task)
     }
     const list = [...map.values()]
-    list.sort((a, b) =>
-      a.key === 'none' ? 1 : b.key === 'none' ? -1 : 0,
-    )
+    list.sort((a, b) => (a.key === 'none' ? 1 : b.key === 'none' ? -1 : 0))
     return list
   }, [groupBy, visibleTasks])
 
@@ -181,9 +179,8 @@ export function BoardView() {
         ) : null}
         {!manualOrder ? (
           <span className="text-xs text-muted">（切换「手动排序」后可拖拽）</span>
-        ) : null}
-        {groupBy ? (
-          <span className="text-xs text-muted">（分组视图下不可拖拽）</span>
+        ) : groupBy ? (
+          <span className="text-xs text-muted">（同组拖拽排序，跨组拖拽迁移分组）</span>
         ) : null}
         <div className="ml-auto flex items-center gap-2">
           <button
@@ -291,49 +288,17 @@ export function BoardView() {
       ) : (
         <div className="p-4">
           {groupBy ? (
-            <div className="space-y-6">
-              {sections.map((section) => (
-                <section key={section.key}>
-                  <div className="mb-3 flex items-center gap-2">
-                    <span
-                      className="h-3 w-3 rounded-sm"
-                      style={{
-                        backgroundColor:
-                          section.color ?? 'rgb(var(--c-line-strong))',
-                      }}
-                    />
-                    <h3 className="text-sm font-semibold text-ink">{section.name}</h3>
-                    <span className="text-xs text-muted">{section.tasks.length}</span>
-                  </div>
-                  <div
-                    className={`grid ${style.gap}`}
-                    style={{
-                      gridTemplateColumns: `repeat(auto-fill, minmax(${style.min}, 1fr))`,
-                    }}
-                  >
-                    {section.tasks.map((task) => (
-                      <TaskCard
-                        key={task.id}
-                        task={task}
-                        status={
-                          task.status_id != null
-                            ? statusMap.get(task.status_id)
-                            : undefined
-                        }
-                        statuses={statuses}
-                        style={style}
-                        compact={compact}
-                        onOpen={() => openTask(task.id)}
-                        onEdit={() => openEdit(task.id)}
-                        onStatusChange={(statusId) => changeStatus(task.id, statusId)}
-                        onPriorityChange={(priority) => changePriority(task.id, priority)}
-                        onToggleDone={() => toggleDone(task)}
-                      />
-                    ))}
-                  </div>
-                </section>
-              ))}
-            </div>
+            <GroupedTaskBoard
+              sections={sections}
+              statuses={statuses}
+              statusMap={statusMap}
+              style={style}
+              compact={compact}
+              dragEnabled={dragEnabled}
+              onChangeStatus={changeStatus}
+              onChangePriority={changePriority}
+              onToggleDone={toggleDone}
+            />
           ) : (
             <DndContext
               sensors={sensors}

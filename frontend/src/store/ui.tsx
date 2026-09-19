@@ -15,9 +15,6 @@ interface UIState {
   createStatusId: number | null
   openCreate: (statusId?: number | null) => void
   closeCreate: () => void
-  editTaskId: number | null
-  openEdit: (id: number) => void
-  closeEdit: () => void
   sidebarOpen: boolean
   toggleSidebar: () => void
   closeSidebar: () => void
@@ -35,7 +32,6 @@ export function UIProvider({ children }: { children: ReactNode }) {
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [createStatusId, setCreateStatusId] = useState<number | null>(null)
-  const [editTaskId, setEditTaskId] = useState<number | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [groupsOpen, setGroupsOpen] = useState(false)
 
@@ -57,9 +53,6 @@ export function UIProvider({ children }: { children: ReactNode }) {
         setCreateOpen(true)
       },
       closeCreate: () => setCreateOpen(false),
-      editTaskId,
-      openEdit: setEditTaskId,
-      closeEdit: () => setEditTaskId(null),
       sidebarOpen,
       toggleSidebar: () => setSidebarOpen((prev) => !prev),
       closeSidebar: () => setSidebarOpen(false),
@@ -74,7 +67,6 @@ export function UIProvider({ children }: { children: ReactNode }) {
       selectedTaskId,
       createOpen,
       createStatusId,
-      editTaskId,
       sidebarOpen,
       groupsOpen,
     ],

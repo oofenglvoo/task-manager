@@ -73,7 +73,7 @@ export function SankeyView({ tasks, statuses, height, groupBy, onOpenTask }: San
         {
           type: 'sankey',
           left: 10,
-          right: 96,
+          right: 200,
           top: 14,
           bottom: 14,
           nodeWidth: 15,
@@ -84,6 +84,9 @@ export function SankeyView({ tasks, statuses, height, groupBy, onOpenTask }: San
             color: palette.text,
             fontSize: 11,
             fontFamily: 'Inter, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif',
+            overflow: 'break',
+            width: 180,
+            lineHeight: 13,
             formatter: (params: DefaultLabelFormatterCallbackParams) =>
               nodeOf(params.data).display ?? '',
           },

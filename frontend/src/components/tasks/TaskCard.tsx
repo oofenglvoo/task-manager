@@ -10,6 +10,7 @@ import {
   noteSurfaceClass,
   noteTilt,
 } from '../../lib/utils'
+import { htmlToText } from '../../lib/richText'
 import { TagChip } from '../ui/Badge'
 import { Checkbox } from '../ui/Checkbox'
 import { PriorityMenu } from './PriorityMenu'
@@ -23,7 +24,6 @@ interface TaskCardProps {
   compact?: boolean
   handle?: ReactNode
   onOpen?: () => void
-  onEdit?: () => void
   onStatusChange?: (statusId: number | null) => void
   onPriorityChange?: (priority: number) => void
   onToggleDone?: () => void
@@ -37,7 +37,6 @@ export function TaskCard({
   compact,
   handle,
   onOpen,
-  onEdit,
   onStatusChange,
   onPriorityChange,
   onToggleDone,
@@ -45,6 +44,7 @@ export function TaskCard({
   const doneCount = task.subtasks.filter((item) => item.is_done).length
   const isDone = task.completed_at != null
   const tilt = noteTilt(task.id)
+  const descriptionText = htmlToText(task.description)
 
   const hasFooter = Boolean(task.due_date) || task.subtasks.length > 0
 
@@ -78,14 +78,14 @@ export function TaskCard({
         </div>
         <div className="flex shrink-0 items-center gap-1">
           {handle}
-          {onEdit ? (
+          {onOpen ? (
             <button
               type="button"
               aria-label="编辑任务"
               title="编辑任务"
               onClick={(event) => {
                 event.stopPropagation()
-                onEdit()
+                onOpen()
               }}
               className="rounded p-0.5 text-muted opacity-0 transition-opacity hover:bg-elevated hover:text-ink focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 group-hover:opacity-100"
             >
@@ -133,9 +133,9 @@ export function TaskCard({
         </span>
       ) : null}
 
-      {!compact && task.description ? (
-        <p className={cn('mt-1.5 text-xs leading-relaxed text-ink-soft/80', style.descLines)}>
-          {task.description}
+      {!compact && descriptionText ? (
+        <p className={cn('mt-1.5 whitespace-pre-line text-xs leading-relaxed text-ink-soft/80', style.descLines)}>
+          {descriptionText}
         </p>
       ) : null}
 

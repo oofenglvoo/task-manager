@@ -1,13 +1,6 @@
 import { useEffect, useState } from 'react'
 import { errorMessage } from '../../lib/api'
-import type { Task } from '../../lib/types'
-import {
-  useCreateTask,
-  useGroups,
-  useStatuses,
-  useTags,
-  useUpdateTask,
-} from '../../hooks/queries'
+import { useCreateTask, useGroups, useStatuses, useTags } from '../../hooks/queries'
 import { useToast } from '../../store/toast'
 import { Button } from '../ui/Button'
 import { Field, Input, Select, Textarea } from '../ui/Input'
@@ -17,7 +10,6 @@ import { TagPicker } from '../ui/TagPicker'
 interface TaskFormProps {
   open: boolean
   onClose: () => void
-  task?: Task | null
   defaultStatusId?: number | null
 }
 
@@ -41,12 +33,11 @@ const EMPTY: FormState = {
   tagIds: [],
 }
 
-export function TaskForm({ open, onClose, task, defaultStatusId }: TaskFormProps) {
+export function TaskForm({ open, onClose, defaultStatusId }: TaskFormProps) {
   const { data: statuses = [] } = useStatuses()
   const { data: groups = [] } = useGroups()
   const { data: tags = [] } = useTags()
   const createTask = useCreateTask()
-  const updateTask = useUpdateTask()
   const { push } = useToast()
   const [form, setForm] = useState<FormState>(EMPTY)
   const [error, setError] = useState('')
@@ -54,26 +45,14 @@ export function TaskForm({ open, onClose, task, defaultStatusId }: TaskFormProps
   useEffect(() => {
     if (!open) return
     setError('')
-    if (task) {
-      setForm({
-        title: task.title,
-        statusId: task.status_id ?? '',
-        groupId: task.group_id ?? '',
-        priority: task.priority,
-        dueDate: task.due_date ?? '',
-        description: task.description ?? '',
-        tagIds: task.tags.map((tag) => tag.id),
-      })
-      return
-    }
     setForm({
       ...EMPTY,
       statusId: defaultStatusId ?? '',
     })
-  }, [open, task, defaultStatusId])
+  }, [open, defaultStatusId])
 
   useEffect(() => {
-    if (!open || task) return
+    if (!open) return
     setForm((prev) => {
       const statusId =
         prev.statusId === '' && defaultStatusId == null && statuses.length
@@ -82,9 +61,9 @@ export function TaskForm({ open, onClose, task, defaultStatusId }: TaskFormProps
       if (statusId === prev.statusId) return prev
       return { ...prev, statusId }
     })
-  }, [open, task, statuses, defaultStatusId])
+  }, [open, statuses, defaultStatusId])
 
-  const pending = createTask.isPending || updateTask.isPending
+  const pending = createTask.isPending
 
   function submit() {
     const title = form.title.trim()
@@ -94,31 +73,26 @@ export function TaskForm({ open, onClose, task, defaultStatusId }: TaskFormProps
     }
     const payload = {
       title,
-      status_id: form.statusId === '' ? (task ? null : undefined) : form.statusId,
+      status_id: form.statusId === '' ? undefined : form.statusId,
       group_id: form.groupId === '' ? null : form.groupId,
       priority: form.priority,
       due_date: form.dueDate || null,
       description: form.description.trim() || null,
       tag_ids: form.tagIds,
     }
-    const handlers = {
+    createTask.mutate(payload, {
       onSuccess: () => {
-        push(task ? '任务已更新' : '任务已创建', 'success')
+        push('任务已创建', 'success')
         onClose()
       },
       onError: (err: unknown) => setError(errorMessage(err)),
-    }
-    if (task) {
-      updateTask.mutate({ id: task.id, data: payload }, handlers)
-    } else {
-      createTask.mutate(payload, handlers)
-    }
+    })
   }
 
   return (
     <Modal
       open={open}
-      title={task ? '编辑任务' : '新建任务'}
+      title="新建任务"
       onClose={onClose}
       width="max-w-xl"
       footer={
@@ -153,7 +127,7 @@ export function TaskForm({ open, onClose, task, defaultStatusId }: TaskFormProps
                 })
               }
             >
-              <option value="">{task ? '未分配' : '默认'}</option>
+              <option value="">默认</option>
               {statuses.map((status) => (
                 <option key={status.id} value={status.id}>
                   {status.name}

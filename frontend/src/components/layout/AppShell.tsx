@@ -1,5 +1,4 @@
 import { Outlet } from 'react-router-dom'
-import { useTask } from '../../hooks/queries'
 import { useUI } from '../../store/ui'
 import { GroupManager } from '../board/GroupManager'
 import { TaskDetailDrawer } from '../tasks/TaskDetailDrawer'
@@ -10,16 +9,7 @@ import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
 
 export function AppShell() {
-  const {
-    createOpen,
-    closeCreate,
-    createStatusId,
-    editTaskId,
-    closeEdit,
-    groupsOpen,
-    closeGroups,
-  } = useUI()
-  const { data: editTask } = useTask(editTaskId)
+  const { createOpen, closeCreate, createStatusId, groupsOpen, closeGroups } = useUI()
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -34,11 +24,6 @@ export function AppShell() {
         open={createOpen}
         onClose={closeCreate}
         defaultStatusId={createStatusId}
-      />
-      <TaskForm
-        open={editTaskId != null}
-        task={editTask ?? null}
-        onClose={closeEdit}
       />
       <Modal open={groupsOpen} title="分组管理" onClose={closeGroups}>
         <GroupManager />

@@ -39,8 +39,7 @@ const HEADERS: Array<{ field: SortField; label: string; className?: string }> = 
 ]
 
 export function ListView() {
-  const { search, setSearch, priority, setPriority, tagId, setTagId, openTask, openEdit } =
-    useUI()
+  const { search, setSearch, priority, setPriority, tagId, setTagId, openTask } = useUI()
   const { data: statuses = [] } = useStatuses()
   const { data: tags = [] } = useTags()
   const { data: groups = [] } = useGroups()
@@ -183,7 +182,7 @@ export function ListView() {
             <button
               type="button"
               title="编辑"
-              onClick={() => openEdit(task.id)}
+              onClick={() => openTask(task.id)}
               className="rounded p-1 text-muted transition-colors hover:bg-surface hover:text-ink"
             >
               <Pencil className="h-3.5 w-3.5" />

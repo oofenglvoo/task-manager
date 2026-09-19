@@ -111,7 +111,7 @@ export const api = {
     remove: (id: number) => request<void>(`/api/tasks/${id}`, 'DELETE'),
     move: (
       id: number,
-      data: { status_id?: number; position?: number },
+      data: { status_id?: number; group_id?: number | null; position?: number },
     ) => request<Task>(`/api/tasks/${id}/move`, 'PUT', data),
     reorder: (orderedIds: number[]) =>
       request<void>('/api/tasks/reorder', 'PUT', { ordered_ids: orderedIds }),

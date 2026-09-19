@@ -110,3 +110,25 @@ def test_move_task_to_group(client, make_group, make_task):
         f"/api/tasks/{task['id']}/move", json={"group_id": group["id"]}
     ).json()
     assert moved["group_id"] == group["id"]
+
+
+def test_move_task_clears_group(client, make_group, make_task):
+    group = make_group()
+    task = make_task(group_id=group["id"])
+    moved = client.put(
+        f"/api/tasks/{task['id']}/move", json={"group_id": None}
+    ).json()
+    assert moved["group_id"] is None
+
+
+def test_move_task_updates_position(client, make_group, make_task):
+    group = make_group()
+    first = make_task(title="A")
+    second = make_task(title="B")
+    moved = client.put(
+        f"/api/tasks/{second['id']}/move",
+        json={"group_id": group["id"], "position": 1},
+    ).json()
+    assert moved["group_id"] == group["id"]
+    assert moved["position"] == 1
+    assert first["id"] != moved["id"]

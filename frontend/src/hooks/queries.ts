@@ -93,7 +93,7 @@ export function useMoveTask() {
       data,
     }: {
       id: number
-      data: { status_id?: number; position?: number }
+      data: { status_id?: number; group_id?: number | null; position?: number }
     }) => api.tasks.move(id, data),
     onSuccess: invalidate,
   })
