@@ -8,7 +8,7 @@ import type {
 import { cn } from '../../lib/utils'
 
 const base =
-  'w-full rounded border border-line bg-canvas px-3 text-sm text-ink placeholder:text-muted transition-colors focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/50 disabled:opacity-50'
+  'w-full rounded border border-line bg-surface px-3 text-sm text-ink shadow-sm placeholder:text-muted transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30 disabled:opacity-50'
 
 export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
   return <input className={cn(base, 'h-9', className)} {...props} />

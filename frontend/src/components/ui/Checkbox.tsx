@@ -25,10 +25,10 @@ export function Checkbox({
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={cn(
-        'flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:opacity-50',
+        'flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-1 focus-visible:ring-offset-canvas disabled:opacity-50',
         checked
           ? 'border-accent bg-accent text-white'
-          : 'border-line-strong hover:border-accent',
+          : 'border-line-strong bg-surface hover:border-accent',
         className,
       )}
     >

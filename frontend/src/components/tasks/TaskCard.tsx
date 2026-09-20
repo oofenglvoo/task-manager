@@ -68,10 +68,10 @@ export function TaskCard({
       onClick={onOpen}
       style={{ transform: `rotate(${tilt}deg)`, ...surface.style }}
       className={cn(
-        'group relative flex h-full flex-col rounded-md border border-line/60 shadow-note transition-all duration-150',
+        'group relative flex h-full flex-col rounded-md border border-line/60 shadow-sm transition-all duration-150',
         surface.className,
         style.padding,
-        onOpen && 'cursor-pointer hover:z-10 hover:-translate-y-0.5 hover:rotate-0 hover:shadow-panel',
+        onOpen && 'cursor-pointer hover:z-10 hover:-translate-y-0.5 hover:rotate-0 hover:shadow-lg',
         'motion-reduce:rotate-0 motion-reduce:transform-none',
       )}
     >

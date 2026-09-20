@@ -51,7 +51,7 @@ export function StatusMenu({ status, statuses, onChange }: StatusMenuProps) {
       </button>
 
       {open ? (
-        <div className="absolute right-0 z-30 mt-1 w-36 overflow-hidden rounded-md border border-line bg-elevated py-1 shadow-panel">
+        <div className="absolute right-0 z-30 mt-1 w-36 overflow-hidden rounded-md border border-line bg-elevated py-1 shadow-lg">
           {statuses.map((item) => (
             <button
               key={item.id}

@@ -15,7 +15,7 @@ export function Toaster() {
           type="button"
           onClick={() => dismiss(toast.id)}
           className={cn(
-            'pointer-events-auto flex items-start gap-2 rounded-md border px-3 py-2 text-left text-sm shadow-panel transition-colors',
+            'pointer-events-auto flex items-start gap-2 rounded-md border px-3 py-2 text-left text-sm shadow-lg transition-colors',
             toast.tone === 'error'
               ? 'border-danger bg-danger text-white'
               : toast.tone === 'success'

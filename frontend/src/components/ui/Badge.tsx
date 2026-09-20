@@ -19,7 +19,7 @@ export function Badge({
       )}
       style={
         color
-          ? { borderColor: `${color}55`, color, backgroundColor: `${color}1a` }
+          ? { borderColor: `${color}99`, color, backgroundColor: `${color}26` }
           : undefined
       }
     >

@@ -3,54 +3,64 @@
 @tailwind utilities;
 
 @layer base {
+  /* ============ 深色（默认）============ */
   :root {
-    --c-canvas: 10 10 12;
-    --c-surface: 19 19 22;
-    --c-elevated: 26 26 31;
-    --c-line: 38 38 44;
-    --c-line-strong: 51 51 59;
-    --c-ink: 236 236 241;
-    --c-ink-soft: 165 165 176;
-    --c-muted: 111 111 122;
-    --c-accent: 94 106 210;
-    --c-accent-hover: 109 120 221;
+    /* 表面层级：canvas(最底) < surface(面板) < elevated(浮起) */
+    --c-canvas: 16 16 20;
+    --c-surface: 24 24 30;
+    --c-elevated: 32 32 40;
+    /* 边框：单档柔和分割线 + 强一档 hover */
+    --c-line: 46 46 56;
+    --c-line-strong: 62 62 76;
+    /* 文字层级 */
+    --c-ink: 237 237 242;
+    --c-ink-soft: 168 168 180;
+    --c-muted: 116 116 128;
+    /* 强调与语义 */
+    --c-accent: 99 102 241;
+    --c-accent-hover: 118 120 245;
     --c-priority-low: 107 114 128;
-    --c-priority-medium: 245 158 11;
-    --c-priority-high: 239 68 68;
+    --c-priority-medium: 217 119 6;
+    --c-priority-high: 220 38 38;
     --c-success: 34 197 94;
     --c-danger: 239 68 68;
-    --c-warning: 245 158 11;
-    --c-note-base: 34 34 40;
-    --c-note-low: 92 92 104;
-    --c-note-medium: 176 122 22;
-    --c-note-high: 172 62 62;
-    --shadow-note: 0 1px 2px rgba(0, 0, 0, 0.45), 0 6px 14px rgba(0, 0, 0, 0.3);
-    --shadow-panel: 0 1px 0 rgba(255, 255, 255, 0.03), 0 8px 24px rgba(0, 0, 0, 0.35);
-    --scroll-thumb: #2c2c34;
+    --c-warning: 217 119 6;
+    /* 便签三档（卡片默认底色，色相区分优先级） */
+    --c-note-base: 30 30 38;
+    --c-note-low: 84 84 98;
+    --c-note-medium: 163 116 26;
+    --c-note-high: 160 58 58;
+    /* 阴影：sm 卡片 / md 浮层 / lg 模态抽屉 */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.24);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.36), 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.48), 0 4px 8px rgba(0, 0, 0, 0.32);
+    --scroll-thumb: #3a3a46;
     --app-bg-scrim: 0.7;
     --app-card-alpha: 1;
     --app-panel-alpha: 0.82;
     color-scheme: dark;
   }
 
+  /* ============ 浅色 ============ */
   :root.light {
-    --c-canvas: 244 245 247;
+    --c-canvas: 245 246 248;
     --c-surface: 255 255 255;
-    --c-elevated: 246 247 249;
-    --c-line: 228 229 234;
-    --c-line-strong: 205 207 216;
-    --c-ink: 24 25 31;
-    --c-ink-soft: 82 84 96;
-    --c-muted: 132 135 148;
-    --c-accent: 79 91 200;
-    --c-accent-hover: 67 78 180;
+    --c-elevated: 248 249 251;
+    --c-line: 228 230 236;
+    --c-line-strong: 206 209 218;
+    --c-ink: 26 27 33;
+    --c-ink-soft: 84 86 98;
+    --c-muted: 134 137 150;
+    --c-accent: 79 91 220;
+    --c-accent-hover: 66 78 200;
     --c-note-base: 255 253 244;
     --c-note-low: 226 232 240;
-    --c-note-medium: 254 243 199;
-    --c-note-high: 254 226 226;
-    --shadow-note: 0 1px 2px rgba(16, 17, 26, 0.08), 0 6px 14px rgba(16, 17, 26, 0.1);
-    --shadow-panel: 0 1px 2px rgba(16, 17, 26, 0.06), 0 8px 24px rgba(16, 17, 26, 0.1);
-    --scroll-thumb: #c7c9d1;
+    --c-note-medium: 253 242 199;
+    --c-note-high: 253 226 226;
+    --shadow-sm: 0 1px 2px rgba(16, 17, 26, 0.06), 0 2px 6px rgba(16, 17, 26, 0.05);
+    --shadow-md: 0 4px 12px rgba(16, 17, 26, 0.1), 0 1px 3px rgba(16, 17, 26, 0.06);
+    --shadow-lg: 0 12px 32px rgba(16, 17, 26, 0.16), 0 4px 8px rgba(16, 17, 26, 0.08);
+    --scroll-thumb: #c9ccd4;
     color-scheme: light;
   }
 

@@ -51,7 +51,7 @@ export function PriorityMenu({
       </button>
 
       {open ? (
-        <div className="absolute left-0 z-30 mt-1 w-28 overflow-hidden rounded-md border border-line bg-elevated py-1 shadow-panel">
+        <div className="absolute left-0 z-30 mt-1 w-28 overflow-hidden rounded-md border border-line bg-elevated py-1 shadow-lg">
           {sorted.map((item) => (
             <button
               key={item.id}

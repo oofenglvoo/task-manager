@@ -51,8 +51,9 @@ export default {
         lg: '10px',
       },
       boxShadow: {
-        panel: 'var(--shadow-panel)',
-        note: 'var(--shadow-note)',
+        md: 'var(--shadow-md)',
+        sm: 'var(--shadow-sm)',
+        lg: 'var(--shadow-lg)',
       },
     },
   },
