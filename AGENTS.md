@@ -180,6 +180,10 @@ Frontend, run from `frontend/`:
   `GripVertical` handle that reorders the groups themselves via an outer `SortableContext` +
   `/api/groups/reorder` (the "未分组" section is fixed last and not draggable). The same reorder is
   available in `GroupManager.tsx`.
+- `GroupedTaskBoard` uses **one** shared `DndContext` for both task cards and group headers (a
+  nested inner/outer pair silently swallowed group drags — the outer context never saw them).
+  `handleDragEnd` dispatches on the id prefix: `group:*` → `handleGroupDragEnd`, otherwise a task
+  drop. Group sortables must be namespaced as `group:<id>`.
 - Two dnd-kit gotchas in `GroupedTaskBoard` that are easy to re-break:
   - Group-level sortable ids are namespaced (`group:<id>`); **never** use the raw numeric
     `groupId` — it collides with `task.id` in the same DndContext and silently replaces the card's

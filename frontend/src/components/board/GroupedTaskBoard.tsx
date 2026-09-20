@@ -1,11 +1,9 @@
 import { useState } from 'react'
-import type { ReactNode } from 'react'
 import {
   DndContext,
   DragOverlay,
   KeyboardSensor,
   PointerSensor,
-  closestCenter,
   pointerWithin,
   rectIntersection,
   useDroppable,
@@ -60,15 +58,21 @@ interface GroupedTaskBoardProps {
 }
 
 /**
- * 任务拖拽的碰撞策略（按优先级）：
+ * 拖拽碰撞策略（任务与分组共用一个 DndContext，按 active id 前缀分流）：
+ *
+ * 分组拖拽（active.id = `group:*`）：只在分组卡片之间取指针下最近的一个，
+ * 否则分组手柄会命中自己内部的任务卡 / 容器，导致永远排不动。
+ *
+ * 任务拖拽（按优先级）：
  * 1. 分组顶部的「插到最前」细条（section-start:）命中时优先，否则 8px 细条抢不过卡片；
  * 2. 否则在命中的任务卡里取「距指针最近」的一张（pointerWithin 常有多张卡同时命中）；
  * 3. 没命中卡片时取分组容器（section:），指针不在任何投放区时回退矩形相交。
  *
- * 注意：用「指针坐标」而不是 dragged rect 中心来选最近卡片，
+ * 注意：用「指针坐标」而不是 dragged rect 中心来选最近目标，
  * 否则命中会跟着拖拽浮层偏移，落到错误的位置。
  */
 const isTopStripId = (id: UniqueIdentifier) => String(id).startsWith('section-start:')
+const isGroupId = (id: UniqueIdentifier) => String(id).startsWith('group:')
 const isContainerId = (id: UniqueIdentifier) =>
   String(id).startsWith('section:') || String(id).startsWith('section-start:')
 
@@ -82,8 +86,36 @@ function distanceTo(a: { x: number; y: number }, b: { x: number; y: number }) {
   return dx * dx + dy * dy
 }
 
-const taskCollisionDetection: CollisionDetection = (args) => {
+function nearestToPointer(
+  args: Parameters<CollisionDetection>[0],
+  collisions: ReturnType<CollisionDetection>,
+) {
   const { pointerCoordinates, droppableRects } = args
+  if (!pointerCoordinates) return collisions[0]
+  return collisions
+    .map((collision) => {
+      const rect = droppableRects.get(collision.id)
+      return {
+        collision,
+        distance: rect ? distanceTo(center(rect), pointerCoordinates) : Number.POSITIVE_INFINITY,
+      }
+    })
+    .sort((a, b) => a.distance - b.distance)[0].collision
+}
+
+const taskCollisionDetection: CollisionDetection = (args) => {
+  // 分组拖拽：只在分组之间竞争，避免命中自己内部的任务卡 / 容器。
+  if (args.active && isGroupId(args.active.id)) {
+    const groupContainers = args.droppableContainers.filter((container) =>
+      isGroupId(container.id),
+    )
+    const groupArgs = { ...args, droppableContainers: groupContainers }
+    const hits = pointerWithin(groupArgs)
+    const collisions = hits.length > 0 ? hits : rectIntersection(groupArgs)
+    if (collisions.length === 0) return []
+    return [nearestToPointer(args, collisions)]
+  }
+
   const candidates = pointerWithin(args)
   const collisions = candidates.length > 0 ? candidates : rectIntersection(args)
 
@@ -92,17 +124,7 @@ const taskCollisionDetection: CollisionDetection = (args) => {
 
   const cards = collisions.filter((c) => !isContainerId(c.id))
   if (cards.length > 0) {
-    if (!pointerCoordinates) return [cards[0]]
-    const scored = cards
-      .map((collision) => {
-        const rect = droppableRects.get(collision.id)
-        return {
-          collision,
-          distance: rect ? distanceTo(center(rect), pointerCoordinates) : Number.POSITIVE_INFINITY,
-        }
-      })
-      .sort((a, b) => a.distance - b.distance)
-    return [scored[0].collision]
+    return [nearestToPointer(args, cards)]
   }
 
   const containers = collisions.filter((c) => isContainerId(c.id))
@@ -128,6 +150,7 @@ export function GroupedTaskBoard({
   const reorderGroups = useReorderGroups()
   const { push } = useToast()
   const [activeId, setActiveId] = useState<number | null>(null)
+  const [activeGroupId, setActiveGroupId] = useState<number | null>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -138,14 +161,15 @@ export function GroupedTaskBoard({
 
   // 分组本身可拖拽排序（仅在有分组时；「未分组」固定末尾不可拖）。
   const sortableSections = sections.filter((section) => section.groupId != null)
-  const taskSensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  )
 
   const activeTask =
     activeId != null
       ? sections.flatMap((section) => section.tasks).find((task) => task.id === activeId)
+      : undefined
+
+  const activeGroup =
+    activeGroupId != null
+      ? sortableSections.find((section) => section.groupId === activeGroupId)
       : undefined
 
   function groupsFromSections(): Groups {
@@ -178,12 +202,24 @@ export function GroupedTaskBoard({
   }
 
   function handleDragStart(event: DragStartEvent) {
+    const id = String(event.active.id)
+    if (id.startsWith('group:')) {
+      setActiveGroupId(Number(id.replace('group:', '')))
+      return
+    }
     setActiveId(Number(event.active.id))
   }
 
   function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event
+    const { active } = event
+    // 分组手柄与任务卡共用同一个 DndContext，按 id 前缀分发。
+    if (String(active.id).startsWith('group:')) {
+      setActiveGroupId(null)
+      handleGroupDragEnd(event)
+      return
+    }
     setActiveId(null)
+    const { over } = event
     if (!over) return
 
     const activeTaskId = Number(active.id)
@@ -265,126 +301,57 @@ export function GroupedTaskBoard({
   }
 
   return (
-    <>
-      {sortableSections.length > 1 ? (
-        <DndContext
-          sensors={taskSensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleGroupDragEnd}
-        >
-          <SortableContext
-            items={sortableSections.map((section) => `group:${section.groupId}`)}
-            strategy={verticalListSortingStrategy}
-          >
-            <TaskDndContext
-              sensors={sensors}
-              onDragStart={handleDragStart}
-              onDragEnd={handleDragEnd}
-            >
-              <div className="space-y-6">
-                {sections.map((section) => (
-                  <Section
-                    key={section.key}
-                    section={section}
-                    statuses={statuses}
-                    statusMap={statusMap}
-                    style={style}
-                    compact={compact}
-                    dragEnabled={dragEnabled}
-                    groupDraggable={section.groupId != null}
-                    onChangeStatus={onChangeStatus}
-                    onChangePriority={onChangePriority}
-                    onToggleDone={onToggleDone}
-                    onToggleSubtask={onToggleSubtask}
-                  />
-                ))}
-              </div>
-              {activeTask ? (
-                <DragOverlay>
-                  <div className="w-72 rotate-2 opacity-90">
-                    <TaskCard
-                      task={activeTask}
-                      status={
-                        activeTask.status_id != null
-                          ? statusMap.get(activeTask.status_id)
-                          : undefined
-                      }
-                      style={style}
-                      compact={compact}
-                    />
-                  </div>
-                </DragOverlay>
-              ) : null}
-            </TaskDndContext>
-          </SortableContext>
-        </DndContext>
-      ) : (
-        <TaskDndContext
-          sensors={sensors}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-        >
-          <div className="space-y-6">
-            {sections.map((section) => (
-              <Section
-                key={section.key}
-                section={section}
-                statuses={statuses}
-                statusMap={statusMap}
-                style={style}
-                compact={compact}
-                dragEnabled={dragEnabled}
-                groupDraggable={false}
-                onChangeStatus={onChangeStatus}
-                onChangePriority={onChangePriority}
-                onToggleDone={onToggleDone}
-                onToggleSubtask={onToggleSubtask}
-              />
-            ))}
-          </div>
-          {activeTask ? (
-            <DragOverlay>
-              <div className="w-72 rotate-2 opacity-90">
-                <TaskCard
-                  task={activeTask}
-                  status={
-                    activeTask.status_id != null
-                      ? statusMap.get(activeTask.status_id)
-                      : undefined
-                  }
-                  style={style}
-                  compact={compact}
-                />
-              </div>
-            </DragOverlay>
-          ) : null}
-        </TaskDndContext>
-      )}
-    </>
-  )
-}
-
-interface TaskDndContextProps {
-  sensors: ReturnType<typeof useSensors>
-  onDragStart: (event: DragStartEvent) => void
-  onDragEnd: (event: DragEndEvent) => void
-  children: ReactNode
-}
-
-function TaskDndContext({
-  sensors,
-  onDragStart,
-  onDragEnd,
-  children,
-}: TaskDndContextProps) {
-  return (
     <DndContext
       sensors={sensors}
       collisionDetection={taskCollisionDetection}
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
     >
-      {children}
+      <SortableContext
+        items={sortableSections.map((section) => `group:${section.groupId}`)}
+        strategy={verticalListSortingStrategy}
+      >
+        <div className="space-y-6">
+          {sections.map((section) => (
+            <Section
+              key={section.key}
+              section={section}
+              statuses={statuses}
+              statusMap={statusMap}
+              style={style}
+              compact={compact}
+              dragEnabled={dragEnabled}
+              groupDraggable={
+                sortableSections.length > 1 && section.groupId != null
+              }
+              onChangeStatus={onChangeStatus}
+              onChangePriority={onChangePriority}
+              onToggleDone={onToggleDone}
+              onToggleSubtask={onToggleSubtask}
+            />
+          ))}
+        </div>
+      </SortableContext>
+      <DragOverlay>
+        {activeTask ? (
+          <div className="w-72 rotate-2 opacity-90">
+            <TaskCard
+              task={activeTask}
+              status={
+                activeTask.status_id != null
+                  ? statusMap.get(activeTask.status_id)
+                  : undefined
+              }
+              style={style}
+              compact={compact}
+            />
+          </div>
+        ) : activeGroup ? (
+          <div className="rounded-lg border border-line bg-surface px-3 py-2 text-sm font-semibold text-ink shadow-lg">
+            {activeGroup.name}
+          </div>
+        ) : null}
+      </DragOverlay>
     </DndContext>
   )
 }
