@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import type { Priority, Task } from '../../../lib/types'
+import { isDarkColor } from '../../../lib/chartTheme'
 import type { ChartPalette } from '../../../lib/chartTheme'
 import { buildScoreBoardData, GROUP_ORDER_FACTOR, TASK_ORDER_FACTOR } from '../../../lib/mindmap'
 import { taskColor } from '../../../lib/taskColor'
@@ -46,50 +47,45 @@ export function ScoreBoardView({
       className="scrollbar-thin overflow-y-auto pr-1"
       style={{ maxHeight: height }}
     >
-      <ol className="space-y-0.5">
-        {items.map((item, index) => (
-          <li key={item.id}>
-            <button
+       <ol className="space-y-1.5">
+         {items.map((item, index) => (
+           <li key={item.id}>
+             <button
               type="button"
               onClick={() => onOpenTask(item.id)}
               title={`分数 ${item.score}（分组顺序 ${item.groupOrder} × ${GROUP_ORDER_FACTOR} + 组内顺序 ${item.taskOrder} × ${TASK_ORDER_FACTOR} + 优先级权重 ${item.priorityLevel}）`}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left transition-colors hover:bg-elevated"
-            >
-              <span
-                className="w-6 shrink-0 text-right text-[10px] tabular-nums"
-                style={{ color: palette.muted }}
-              >
-                {index + 1}
-              </span>
-              <span
-                className="w-40 shrink-0 truncate text-xs"
-                style={{ color: palette.text }}
-              >
-                {item.title}
-              </span>
-              <span className="relative h-3.5 flex-1 overflow-hidden rounded-full bg-elevated">
-                <span
-                  className="absolute inset-y-0 left-0 rounded-full"
-                  style={{
-                    width: `${maxScore ? Math.max(2, (item.score / maxScore) * 100) : 0}%`,
-                    backgroundColor: item.color,
-                  }}
-                />
-              </span>
-              <span
-                className="w-10 shrink-0 text-right text-[10px] tabular-nums"
-                style={{ color: palette.subText }}
-              >
-                {item.score}
-              </span>
-              <span
-                className="hidden w-24 shrink-0 truncate text-[10px] sm:block"
-                style={{ color: palette.muted }}
-              >
-                {item.groupName}
-              </span>
-            </button>
-          </li>
+               className="group flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-elevated"
+             >
+               <span
+                 className="w-6 shrink-0 text-right text-[10px] font-medium tabular-nums"
+                 style={{ color: palette.muted }}
+               >
+                 {index + 1}
+               </span>
+               <span className="relative flex h-9 min-w-0 flex-1 overflow-hidden rounded-md bg-elevated/50">
+                 <span
+                   className="absolute inset-y-0 left-0 flex min-w-[22%] items-center gap-2 rounded-md px-3 transition-[width] duration-300 group-hover:brightness-110"
+                   style={{
+                     width: `${maxScore ? Math.max(22, (item.score / maxScore) * 100) : 0}%`,
+                     backgroundColor: item.color,
+                   }}
+                 >
+                   <span
+                     className="min-w-0 flex-1 truncate text-xs font-medium"
+                     style={{ color: isDarkColor(item.color) ? '#fff' : '#17181d' }}
+                   >
+                     {item.title}
+                   </span>
+                   <span
+                     className="shrink-0 text-xs font-semibold tabular-nums"
+                     style={{ color: isDarkColor(item.color) ? '#fff' : '#17181d' }}
+                   >
+                     {item.score}
+                   </span>
+                 </span>
+               </span>
+             </button>
+           </li>
         ))}
       </ol>
     </div>
