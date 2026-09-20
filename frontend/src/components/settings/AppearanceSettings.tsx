@@ -140,13 +140,13 @@ export function AppearanceSettings() {
   }
 
   return (
-    <section className="rounded-lg border border-line bg-surface">
-      <header className="border-b border-line px-4 py-3">
+    <section className="rounded-xl border border-line bg-surface shadow-sm">
+      <header className="border-b border-line px-5 py-4">
         <h2 className="text-sm font-semibold text-ink">外观</h2>
-        <p className="text-xs text-muted">主题、卡片大小与背景图片</p>
+        <p className="mt-1 text-xs text-muted">主题、卡片大小与背景图片</p>
       </header>
 
-      <div className="space-y-5 px-4 py-4">
+      <div className="space-y-5 px-5 py-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <span className="text-sm text-ink-soft">主题</span>
           <Segmented value={theme} options={THEME_OPTIONS} onChange={setTheme} />

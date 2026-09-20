@@ -93,11 +93,11 @@ export function PriorityManager() {
   }
 
   return (
-    <section className="rounded-lg border border-line bg-surface">
-      <header className="flex items-center justify-between border-b border-line px-4 py-3">
+    <section className="rounded-xl border border-line bg-surface shadow-sm">
+      <header className="flex items-center justify-between border-b border-line px-5 py-4">
         <div>
           <h2 className="text-sm font-semibold text-ink">优先级</h2>
-          <p className="text-xs text-muted">
+          <p className="mt-1 text-xs text-muted">
             可增删改名称、颜色与权重；权重越大越优先，排序决定看板/图表展示顺序
           </p>
         </div>
@@ -116,9 +116,9 @@ export function PriorityManager() {
       {isLoading ? (
         <LoadingBlock />
       ) : (
-        <ul className="divide-y divide-line/60">
+        <ul className="divide-y divide-line/60 overflow-hidden">
           {priorities.map((item, index) => (
-            <li key={item.id} className="flex items-center gap-3 px-4 py-2.5">
+            <li key={item.id} className="flex items-center gap-3 px-5 py-3">
               <span
                 className="h-3 w-3 rounded-full"
                 style={{ backgroundColor: item.color }}
@@ -127,7 +127,7 @@ export function PriorityManager() {
               <span className="rounded-full bg-elevated px-2 py-0.5 text-xs text-muted">
                 权重 {item.level}
               </span>
-              <span className="text-xs text-muted">{item.task_count} 个任务</span>
+              <span className="mt-1 text-xs text-muted">{item.task_count} 个任务</span>
               <div className="flex items-center gap-0.5">
                 <button
                   type="button"

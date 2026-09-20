@@ -67,11 +67,11 @@ export function TagManager() {
   }
 
   return (
-    <section className="rounded-lg border border-line bg-surface">
-      <header className="flex items-center justify-between border-b border-line px-4 py-3">
+    <section className="rounded-xl border border-line bg-surface shadow-sm">
+      <header className="flex items-center justify-between border-b border-line px-5 py-4">
         <div>
           <h2 className="text-sm font-semibold text-ink">标签</h2>
-          <p className="text-xs text-muted">为任务添加分类标签</p>
+          <p className="mt-1 text-xs text-muted">为任务添加分类标签</p>
         </div>
         <Button
           size="sm"
@@ -90,9 +90,9 @@ export function TagManager() {
       ) : tags.length === 0 ? (
         <p className="px-4 py-8 text-center text-xs text-muted">还没有标签</p>
       ) : (
-        <ul className="divide-y divide-line/60">
+        <ul className="divide-y divide-line/60 overflow-hidden">
           {tags.map((tag) => (
-            <li key={tag.id} className="flex items-center gap-3 px-4 py-2.5">
+            <li key={tag.id} className="flex items-center gap-3 px-5 py-3">
               <span
                 className="h-3 w-3 rounded-full"
                 style={{ backgroundColor: tag.color }}

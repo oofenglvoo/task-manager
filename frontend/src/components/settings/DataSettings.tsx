@@ -60,13 +60,13 @@ export function DataSettings() {
   }
 
   return (
-    <section className="rounded-lg border border-line bg-surface">
-      <header className="border-b border-line px-4 py-3">
+    <section className="rounded-xl border border-line bg-surface shadow-sm">
+      <header className="border-b border-line px-5 py-4">
         <h2 className="text-sm font-semibold text-ink">数据</h2>
-        <p className="text-xs text-muted">导出或导入全部数据（JSON）</p>
+        <p className="mt-1 text-xs text-muted">导出或导入全部数据（JSON）</p>
       </header>
 
-      <div className="space-y-3 px-4 py-4">
+      <div className="space-y-3 px-5 py-5">
         <div className="flex flex-wrap items-center gap-2">
           <Button size="sm" onClick={exportData}>
             <Download className="h-3.5 w-3.5" />
