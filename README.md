@@ -140,6 +140,10 @@ APP_PORT=8001
 
 三项必填项缺任意一项，后端会在启动时**直接报错退出**。
 
+> `server.env` 由 `scripts/load_env.py` 读取，已兼容 UTF-8 BOM、CRLF/LF、值两侧引号与空格；
+> 若仍提示缺少变量，请确认文件里确实是 `TASK_APP_USERNAME=你的用户名` 这样的 `KEY=VALUE` 形式。
+> 修改 `server.env` 后需要重新运行 `start-server.bat` 才会生效。
+
 ### 2. 启动
 
 双击 `start-server.bat`：它会读取 `server.env`、按需创建 `backend/.venv` 并装依赖、

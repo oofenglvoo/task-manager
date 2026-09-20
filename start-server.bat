@@ -15,11 +15,15 @@ if not exist "server.env" (
   exit /b 1
 )
 
-rem Read server.env (skip blank lines and # comments)
-for /f "usebackq eol=# tokens=1,* delims==" %%a in ("server.env") do (
+rem Load server.env through Python so a UTF-8 BOM, quotes or CRLF never break parsing.
+set "ENV_PY=python"
+if exist "backend\.venv\Scripts\python.exe" set "ENV_PY=backend\.venv\Scripts\python.exe"
+
+for /f "usebackq tokens=1,* delims==" %%a in (`%ENV_PY% "%~dp0scripts\load_env.py" server.env`) do (
   set "KEY=%%a"
   set "VAL=%%b"
-  if not "!KEY!"=="" if not "!VAL!"=="" set "!KEY!=!VAL!"
+  if defined KEY if defined VAL set "!KEY!=!VAL!"
+  if defined KEY if not defined VAL set "!KEY!="
 )
 
 if "%TASK_APP_USERNAME%"=="" goto missing
