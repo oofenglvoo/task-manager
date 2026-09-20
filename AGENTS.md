@@ -62,6 +62,10 @@ Frontend, run from `frontend/`:
 - Deleting an in-use status/priority returns 400 (a priority that is the last remaining one also 400);
   duplicate status/tag/group/priority names return 409.
 - All user-facing strings, seed data, and error messages are Chinese — keep new UI/messages Chinese.
+- Frontend UI refactor uses a shared dual-theme design system: `--c-canvas` / `--c-surface` /
+  `--c-elevated` define surface layers, `--shadow-sm` / `--shadow-md` / `--shadow-lg` define
+  elevation, and controls use consistent rounded corners and focus rings. Keep new UI aligned with
+  these tokens instead of introducing one-off colors, shadows, or radii.
 - Appearance preferences are a single `preferences` row (id=1) served by `/api/settings`; background
   files live in `DB_DIR/backgrounds/` (i.e. next to the SQLite file, so tests use the temp dir).
    Opacity prefs    Opacity prefs `bg_opacity`/`card_opacity`/`panel_opacity` (0–1, **不透明度**: 0 = 全透明, 1 = 完全

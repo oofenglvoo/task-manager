@@ -113,7 +113,7 @@ export function SubTaskList({ task }: { task: Task }) {
           ) : (
             <li
               key={subtask.id}
-              className="group flex items-center gap-2 rounded px-1 py-1 hover:bg-elevated"
+              className="group flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-elevated"
             >
               <Checkbox
                 checked={subtask.is_done}
@@ -178,7 +178,7 @@ export function SubTaskList({ task }: { task: Task }) {
           type="button"
           onClick={submit}
           disabled={!title.trim() || createSubtask.isPending}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-line text-ink-soft transition-colors hover:border-line-strong hover:text-ink disabled:opacity-50"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-line bg-surface text-ink-soft transition-colors hover:border-line-strong hover:bg-elevated hover:text-ink disabled:opacity-50"
         >
           <Plus className="h-4 w-4" />
         </button>

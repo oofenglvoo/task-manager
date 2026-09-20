@@ -167,7 +167,7 @@ export function TaskDetailDrawer() {
           </div>
         ) : (
           <>
-            <header className="flex items-start gap-3 border-b border-line px-5 py-4">
+            <header className="flex items-start gap-3 border-b border-line bg-surface px-5 py-5">
               <div className="flex-1 space-y-2">
                 <div className="flex items-center gap-2 text-xs text-muted">
                   <span className={task.completed_at ? 'text-success' : ''}>
@@ -186,13 +186,14 @@ export function TaskDetailDrawer() {
               <button
                 type="button"
                 onClick={requestClose}
-                className="rounded border border-line bg-surface p-1 text-muted transition-colors hover:bg-elevated hover:text-ink"
+                aria-label="关闭"
+                className="rounded-md border border-transparent p-1.5 text-muted transition-colors hover:border-line hover:bg-elevated hover:text-ink"
               >
                 <X className="h-4 w-4" />
               </button>
             </header>
 
-            <div className="scrollbar-thin flex-1 space-y-6 overflow-y-auto px-5 py-5">
+            <div className="scrollbar-thin flex-1 space-y-7 overflow-y-auto px-5 py-6">
               <div className="grid grid-cols-2 gap-3">
                 <label className="space-y-1.5">
                   <span className="text-xs font-medium text-ink-soft">状态</span>
@@ -254,7 +255,7 @@ export function TaskDetailDrawer() {
                     type="datetime-local"
                     value={draft.dueDate}
                     onChange={(event) => patch({ dueDate: event.target.value })}
-                    className="h-9 w-full rounded border border-line bg-canvas px-3 text-sm text-ink focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/50"
+                     className="h-9 w-full rounded border border-line bg-surface px-3 text-sm text-ink shadow-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
                   />
                 </label>
               </div>
@@ -289,7 +290,7 @@ export function TaskDetailDrawer() {
 
               <SubTaskList task={task} />
 
-              <dl className="space-y-1 border-t border-line pt-4 text-xs text-muted">
+              <dl className="space-y-1.5 border-t border-line pt-4 text-xs text-muted">
                 <div className="flex justify-between">
                   <dt>创建时间</dt>
                   <dd>{formatDateTime(task.created_at)}</dd>
@@ -306,7 +307,7 @@ export function TaskDetailDrawer() {
                 ) : null}
               </dl>
 
-              <div className="border-t border-line pt-4">
+              <div className="border-t border-line pt-5">
                 <button
                   type="button"
                   onClick={() => setHistoryOpen((prev) => !prev)}
@@ -327,7 +328,7 @@ export function TaskDetailDrawer() {
               </div>
             </div>
 
-            <footer className="flex items-center gap-2 border-t border-line px-5 py-3">
+            <footer className="flex items-center gap-2 border-t border-line bg-surface px-5 py-3.5">
               <Button
                 onClick={() => setConfirmArchive(true)}
                 disabled={archiveTask.isPending}

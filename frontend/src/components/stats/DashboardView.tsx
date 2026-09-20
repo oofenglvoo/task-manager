@@ -19,12 +19,12 @@ export function DashboardView() {
   const total = stats.active || 1
 
   return (
-    <div className="scrollbar-thin h-full overflow-y-auto p-4">
-      <div className="mx-auto max-w-5xl space-y-6">
+    <div className="scrollbar-thin h-full overflow-y-auto p-4 sm:p-6">
+      <div className="mx-auto max-w-5xl space-y-5">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h1 className="text-sm font-semibold text-ink">统计仪表盘</h1>
-            <p className="text-xs text-muted">全部任务概览</p>
+            <h1 className="text-base font-semibold text-ink">统计仪表盘</h1>
+            <p className="mt-1 text-xs text-muted">全部任务概览</p>
           </div>
         </div>
 
@@ -62,7 +62,7 @@ export function DashboardView() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
-          <section className="space-y-4 rounded-lg border border-line bg-surface p-4">
+          <section className="space-y-4 rounded-xl border border-line bg-surface p-5 shadow-sm">
             <h2 className="text-sm font-semibold text-ink">按状态分布</h2>
             <div className="space-y-3">
               {stats.by_status.map((item) => (
@@ -80,7 +80,7 @@ export function DashboardView() {
             </div>
           </section>
 
-          <section className="space-y-4 rounded-lg border border-line bg-surface p-4">
+          <section className="space-y-4 rounded-xl border border-line bg-surface p-5 shadow-sm">
             <h2 className="text-sm font-semibold text-ink">按优先级分布</h2>
             <div className="space-y-3">
               {stats.by_priority.map((item) => (

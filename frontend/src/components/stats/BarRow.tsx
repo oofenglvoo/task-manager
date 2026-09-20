@@ -18,7 +18,7 @@ export function BarRow({
           {count} · {percent}%
         </span>
       </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-line">
+      <div className="h-2 overflow-hidden rounded-full bg-elevated">
         <div
           className="h-full rounded-full transition-all"
           style={{ width: `${percent}%`, backgroundColor: color }}
