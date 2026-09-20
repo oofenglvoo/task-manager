@@ -241,19 +241,19 @@ export function ListView() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
+      <div className="mx-auto flex w-full max-w-[1400px] flex-wrap items-center gap-2 border-b border-line px-4 py-2.5">
         <div className="relative w-64">
-          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
           <Input
             value={search}
             placeholder="搜索标题或描述…"
-            className="pl-8"
+            className="h-8 pl-8 text-xs"
             onChange={(event) => setSearch(event.target.value)}
           />
         </div>
         <Select
           value={statusId}
-          className="w-32"
+          className="h-8 w-32 text-xs"
           onChange={(event) =>
             setStatusId(event.target.value === '' ? '' : Number(event.target.value))
           }
@@ -267,7 +267,7 @@ export function ListView() {
         </Select>
         <Select
           value={groupId}
-          className="w-32"
+          className="h-8 w-32 text-xs"
           onChange={(event) =>
             setGroupId(event.target.value === '' ? '' : Number(event.target.value))
           }
@@ -281,7 +281,7 @@ export function ListView() {
         </Select>
         <Select
           value={priority ?? ''}
-          className="w-28"
+          className="h-8 w-28 text-xs"
           onChange={(event) =>
             setPriority(event.target.value === '' ? null : Number(event.target.value))
           }
@@ -295,7 +295,7 @@ export function ListView() {
         </Select>
         <Select
           value={tagId ?? ''}
-          className="w-32"
+          className="h-8 w-32 text-xs"
           onChange={(event) =>
             setTagId(event.target.value === '' ? null : Number(event.target.value))
           }
@@ -314,10 +314,10 @@ export function ListView() {
           title={groupBy ? '不分组' : '按分组'}
           onClick={() => setGroupBy(!groupBy)}
           className={
-            'rounded border p-1.5 transition-colors ' +
+            'rounded-md border p-1.5 transition-colors ' +
             (groupBy
               ? 'border-accent bg-accent text-white'
-              : 'border-line bg-surface text-ink-soft hover:border-line-strong hover:text-ink')
+              : 'border-line bg-surface text-ink-soft hover:border-line-strong hover:bg-elevated hover:text-ink')
           }
         >
           <Layers className="h-4 w-4" />
@@ -336,15 +336,15 @@ export function ListView() {
         <LoadingBlock />
       ) : (
         <div className="scrollbar-thin flex-1 overflow-auto">
-          <table className="w-full border-collapse text-sm">
+          <table className="mx-auto w-full max-w-[1400px] border-collapse text-sm">
             <thead className="sticky top-0 z-10 bg-surface">
               <tr className="border-b border-line text-left text-xs text-muted">
                 {HEADERS.map((header) => (
-                  <th key={header.field} className={cn('px-4 py-2 font-medium', header.className)}>
+                  <th key={header.field} className={cn('px-4 py-2.5 font-medium', header.className)}>
                     <button
                       type="button"
                       onClick={() => toggleSort(header.field)}
-                      className="inline-flex items-center gap-1 hover:text-ink"
+                      className="inline-flex items-center gap-1 rounded transition-colors hover:text-ink"
                     >
                       {header.label}
                       {sort === header.field ? (
@@ -357,18 +357,18 @@ export function ListView() {
                     </button>
                   </th>
                 ))}
-                <th className="w-28 px-4 py-2 font-medium">状态</th>
-                <th className="w-32 px-4 py-2 font-medium">分组</th>
-                <th className="px-4 py-2 font-medium">标签</th>
-                <th className="w-24 px-4 py-2 text-right font-medium">操作</th>
+                <th className="w-28 px-4 py-2.5 font-medium">状态</th>
+                <th className="w-32 px-4 py-2.5 font-medium">分组</th>
+                <th className="px-4 py-2.5 font-medium">标签</th>
+                <th className="w-24 px-4 py-2.5 text-right font-medium">操作</th>
               </tr>
             </thead>
             <tbody>
               {groupBy
                 ? sections.map((section) => (
                     <Fragment key={section.key}>
-                      <tr className="bg-elevated">
-                        <td colSpan={8} className="px-4 py-1.5">
+                      <tr className="border-b border-line/60 bg-elevated">
+                        <td colSpan={8} className="px-4 py-2">
                           <div className="flex items-center gap-2">
                             <span
                               className="h-2.5 w-2.5 rounded-sm"
@@ -380,7 +380,7 @@ export function ListView() {
                             <span className="text-xs font-semibold text-ink">
                               {section.name}
                             </span>
-                            <span className="text-xs text-muted">
+                            <span className="rounded-full bg-surface px-1.5 py-0.5 text-[10px] tabular-nums text-muted">
                               {section.tasks.length}
                             </span>
                           </div>
@@ -397,7 +397,7 @@ export function ListView() {
                 : tasks.map((task) => renderRow(task))}
               {tasks.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-sm text-muted">
+                  <td colSpan={8} className="px-4 py-16 text-center text-sm text-muted">
                     没有符合条件的任务
                   </td>
                 </tr>
