@@ -4,11 +4,12 @@ import {
   DragOverlay,
   KeyboardSensor,
   PointerSensor,
-  closestCenter,
+  pointerWithin,
+  rectIntersection,
   useSensor,
   useSensors,
 } from '@dnd-kit/core'
-import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core'
+import type { CollisionDetection, DragEndEvent, DragStartEvent } from '@dnd-kit/core'
 import {
   SortableContext,
   arrayMove,
@@ -56,6 +57,15 @@ const SIZE_OPTIONS: Array<{ value: CardSize; label: string }> = [
   { value: 'md', label: '中' },
   { value: 'lg', label: '大' },
 ]
+
+/**
+ * 任务拖拽碰撞策略：优先命中指针下的投放区，指针滑出所有投放区时回退矩形相交。
+ * 与 GroupedTaskBoard 保持一致，便于插到第一个位置。
+ */
+const taskCollisionDetection: CollisionDetection = (args) => {
+  const pointerCollisions = pointerWithin(args)
+  return pointerCollisions.length > 0 ? pointerCollisions : rectIntersection(args)
+}
 
 const PAGE_SIZE = 60
 
@@ -323,7 +333,7 @@ export function BoardView() {
           ) : (
             <DndContext
               sensors={sensors}
-              collisionDetection={closestCenter}
+              collisionDetection={taskCollisionDetection}
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
             >

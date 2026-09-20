@@ -6,6 +6,8 @@
 - `frontend/` — React + TypeScript + Vite + Tailwind SPA. `npm run build` emits `frontend/dist`,
   which the API serves when present (`backend/app/main.py:45`), so build output must land there.
 - `data/` — runtime SQLite DB (gitignored). `scripts/run.mjs` is the one-command launcher.
+- `start.bat` (Windows, double-click) / `start.sh` (macOS/Linux) are thin wrappers around
+  `npm run dev`: they check Node, install root deps once, then forward any args.
 - Git repo: branch `master`, remote `origin` = GitHub `task-manager`. Commit only when asked.
 
 ## Commands (Windows / PowerShell)
@@ -178,6 +180,17 @@ Frontend, run from `frontend/`:
   `GripVertical` handle that reorders the groups themselves via an outer `SortableContext` +
   `/api/groups/reorder` (the "未分组" section is fixed last and not draggable). The same reorder is
   available in `GroupManager.tsx`.
+- Two dnd-kit gotchas in `GroupedTaskBoard` that are easy to re-break:
+  - Group-level sortable ids are namespaced (`group:<id>`); **never** use the raw numeric
+    `groupId` — it collides with `task.id` in the same DndContext and silently replaces the card's
+    measured rect (dropping a card then resolves `over` to the whole group).
+  - The task drag context uses a custom `taskCollisionDetection` (in both `GroupedTaskBoard` and
+    `BoardView`): top strip (`section-start:`) wins first, then the card **nearest the pointer**
+    (not the dragged-rect center), then the group container, falling back to `rectIntersection`.
+    That is what makes "drag a card to the first position" work — plain `closestCenter` can never
+    hit the thin strip because it compares rect centers.
+  - Cross-group moves must remove the task from the source list before flattening, otherwise the
+    task id appears twice in the `/reorder` payload and corrupts the order.
 - Group headers (`GroupedTaskBoard`) and the list's group rows render `section.note` under the title
   when set; the note is edited in `GroupManager.tsx`.
 - `Task.description` is HTML. The drawer edits it with the dependency-free `RichTextEditor`

@@ -6,11 +6,18 @@ import {
   KeyboardSensor,
   PointerSensor,
   closestCenter,
+  pointerWithin,
+  rectIntersection,
   useDroppable,
   useSensor,
   useSensors,
 } from '@dnd-kit/core'
-import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core'
+import type {
+  CollisionDetection,
+  DragEndEvent,
+  DragStartEvent,
+  UniqueIdentifier,
+} from '@dnd-kit/core'
 import {
   SortableContext,
   rectSortingStrategy,
@@ -50,6 +57,56 @@ interface GroupedTaskBoardProps {
   onChangePriority: (taskId: number, priority: number) => void
   onToggleDone: (task: Task) => void
   onToggleSubtask: (taskId: number, subtaskId: number, isDone: boolean) => void
+}
+
+/**
+ * 任务拖拽的碰撞策略（按优先级）：
+ * 1. 分组顶部的「插到最前」细条（section-start:）命中时优先，否则 8px 细条抢不过卡片；
+ * 2. 否则在命中的任务卡里取「距指针最近」的一张（pointerWithin 常有多张卡同时命中）；
+ * 3. 没命中卡片时取分组容器（section:），指针不在任何投放区时回退矩形相交。
+ *
+ * 注意：用「指针坐标」而不是 dragged rect 中心来选最近卡片，
+ * 否则命中会跟着拖拽浮层偏移，落到错误的位置。
+ */
+const isTopStripId = (id: UniqueIdentifier) => String(id).startsWith('section-start:')
+const isContainerId = (id: UniqueIdentifier) =>
+  String(id).startsWith('section:') || String(id).startsWith('section-start:')
+
+function center(rect: { left: number; top: number; width: number; height: number }) {
+  return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+}
+
+function distanceTo(a: { x: number; y: number }, b: { x: number; y: number }) {
+  const dx = a.x - b.x
+  const dy = a.y - b.y
+  return dx * dx + dy * dy
+}
+
+const taskCollisionDetection: CollisionDetection = (args) => {
+  const { pointerCoordinates, droppableRects } = args
+  const candidates = pointerWithin(args)
+  const collisions = candidates.length > 0 ? candidates : rectIntersection(args)
+
+  const topStrips = collisions.filter((c) => isTopStripId(c.id))
+  if (topStrips.length > 0) return topStrips
+
+  const cards = collisions.filter((c) => !isContainerId(c.id))
+  if (cards.length > 0) {
+    if (!pointerCoordinates) return [cards[0]]
+    const scored = cards
+      .map((collision) => {
+        const rect = droppableRects.get(collision.id)
+        return {
+          collision,
+          distance: rect ? distanceTo(center(rect), pointerCoordinates) : Number.POSITIVE_INFINITY,
+        }
+      })
+      .sort((a, b) => a.distance - b.distance)
+    return [scored[0].collision]
+  }
+
+  const containers = collisions.filter((c) => isContainerId(c.id))
+  return containers.length > 0 ? containers : collisions
 }
 
 type Groups = Record<string, number[]>
@@ -109,9 +166,10 @@ export function GroupedTaskBoard({
   function handleGroupDragEnd(event: DragEndEvent) {
     const { active, over } = event
     if (!over || active.id === over.id) return
+    const groupIdOf = (id: UniqueIdentifier) => Number(String(id).replace('group:', ''))
     const orderedIds = sortableSections.map((section) => section.groupId as number)
-    const from = orderedIds.indexOf(Number(active.id))
-    const to = orderedIds.indexOf(Number(over.id))
+    const from = orderedIds.indexOf(groupIdOf(active.id))
+    const to = orderedIds.indexOf(groupIdOf(over.id))
     if (from < 0 || to < 0) return
     const next = [...orderedIds]
     const [moved] = next.splice(from, 1)
@@ -132,11 +190,15 @@ export function GroupedTaskBoard({
     const sourceKey = findSectionKey(activeTaskId)
     if (sourceKey == null) return
 
-    // 落点可能是任务卡，也可能是分组容器本体。
+    // 落点可能是任务卡、分组容器本体，或分组顶部的「插到最前」投放区。
     const overId = String(over.id)
     let targetKey: string | null = null
     let overTaskId: number | null = null
-    if (overId.startsWith('section:')) {
+    let atStart = false
+    if (overId.startsWith('section-start:')) {
+      targetKey = overId.slice('section-start:'.length)
+      atStart = true
+    } else if (overId.startsWith('section:')) {
       targetKey = overId.slice('section:'.length)
     } else {
       overTaskId = Number(over.id)
@@ -150,12 +212,23 @@ export function GroupedTaskBoard({
     if (from < 0) return
 
     if (targetKey === sourceKey) {
-      if (overTaskId == null || overTaskId === activeTaskId) return
-      const overIndex = sourceList.indexOf(overTaskId)
-      if (overIndex < 0) return
+      // 放到容器本体（末尾）或容器顶部投放区（开头）时也允许同组移动。
+      let overIndex: number
+      if (atStart) {
+        overIndex = 0
+      } else if (overTaskId == null) {
+        overIndex = sourceList.length
+      } else {
+        if (overTaskId === activeTaskId) return
+        overIndex = sourceList.indexOf(overTaskId)
+        if (overIndex < 0) return
+      }
       const next = [...sourceList]
       next.splice(from, 1)
-      next.splice(overIndex, 0, activeTaskId)
+      // 移除原项后，落点在其之后的索引需要前移一位。
+      const insertIndex = from < overIndex ? overIndex - 1 : overIndex
+      if (insertIndex === from) return
+      next.splice(insertIndex, 0, activeTaskId)
       groups[sourceKey] = next
       reorderTasks.mutate(flatten(groups), { onError })
       return
@@ -164,9 +237,13 @@ export function GroupedTaskBoard({
     // 跨组：移动任务到目标分组（按落点插入目标组内顺序）。
     const targetSection = sections.find((section) => section.key === targetKey)
     if (!targetSection) return
+    // 先从原分组移除，否则 flatten 时该任务会在源/目标两组各出现一次，导致顺序错乱。
+    const sourceWithout = sourceList.filter((id) => id !== activeTaskId)
+    groups[sourceKey] = sourceWithout
     const targetList = [...(groups[targetKey] ?? [])]
-    const insertIndex =
-      overTaskId != null
+    const insertIndex = atStart
+      ? 0
+      : overTaskId != null
         ? Math.max(0, targetList.indexOf(overTaskId))
         : targetList.length
     targetList.splice(insertIndex, 0, activeTaskId)
@@ -196,7 +273,7 @@ export function GroupedTaskBoard({
           onDragEnd={handleGroupDragEnd}
         >
           <SortableContext
-            items={sortableSections.map((section) => section.groupId as number)}
+            items={sortableSections.map((section) => `group:${section.groupId}`)}
             strategy={verticalListSortingStrategy}
           >
             <TaskDndContext
@@ -303,7 +380,7 @@ function TaskDndContext({
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCenter}
+      collisionDetection={taskCollisionDetection}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
     >
@@ -344,6 +421,9 @@ function Section({
   onToggleSubtask,
 }: SectionProps) {
   const { setNodeRef, isOver } = useDroppable({ id: `section:${section.key}` })
+  const { setNodeRef: setStartRef, isOver: isOverStart } = useDroppable({
+    id: `section-start:${section.key}`,
+  })
   const {
     attributes,
     listeners,
@@ -352,9 +432,9 @@ function Section({
     transition,
     isDragging,
   } = useSortable({
-    id: section.groupId ?? `none-${section.key}`,
+    id: `group:${section.groupId ?? `none-${section.key}`}`,
     disabled: !groupDraggable,
-    data: { type: 'group' },
+    data: { type: 'group', groupId: section.groupId },
   })
 
   const style_ = {
@@ -402,6 +482,14 @@ function Section({
         items={section.tasks.map((task) => task.id)}
         strategy={rectSortingStrategy}
       >
+        <div
+          ref={setStartRef}
+          aria-hidden
+          className={
+            'mb-1.5 h-2 rounded-full transition-colors ' +
+            (isOverStart ? 'bg-accent/60' : 'bg-transparent')
+          }
+        />
         <div
           ref={setNodeRef}
           className={
