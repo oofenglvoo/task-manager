@@ -13,6 +13,7 @@ interface TaskFormProps {
   open: boolean
   onClose: () => void
   defaultStatusId?: number | null
+  defaultDueDate?: string | null
 }
 
 interface FormState {
@@ -37,7 +38,12 @@ const EMPTY: FormState = {
   tagIds: [],
 }
 
-export function TaskForm({ open, onClose, defaultStatusId }: TaskFormProps) {
+export function TaskForm({
+  open,
+  onClose,
+  defaultStatusId,
+  defaultDueDate,
+}: TaskFormProps) {
   const { data: statuses = [] } = useStatuses()
   const { data: groups = [] } = useGroups()
   const { data: tags = [] } = useTags()
@@ -57,8 +63,9 @@ export function TaskForm({ open, onClose, defaultStatusId }: TaskFormProps) {
         ? sortedPriorities[Math.floor((sortedPriorities.length - 1) / 2)].id
         : EMPTY.priority,
       statusId: defaultStatusId ?? '',
+      dueDate: defaultDueDate ?? '',
     })
-  }, [open, defaultStatusId, sortedPriorities])
+  }, [open, defaultStatusId, defaultDueDate, sortedPriorities])
 
   useEffect(() => {
     if (!open) return

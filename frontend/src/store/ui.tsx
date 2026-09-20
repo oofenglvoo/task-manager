@@ -13,7 +13,9 @@ interface UIState {
   closeTask: () => void
   createOpen: boolean
   createStatusId: number | null
-  openCreate: (statusId?: number | null) => void
+  /** 新建任务时预填的截止时间（YYYY-MM-DDTHH:MM），来自日历点击某天。 */
+  createDueDate: string | null
+  openCreate: (statusId?: number | null, dueDate?: string | null) => void
   closeCreate: () => void
   sidebarOpen: boolean
   toggleSidebar: () => void
@@ -32,6 +34,7 @@ export function UIProvider({ children }: { children: ReactNode }) {
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [createStatusId, setCreateStatusId] = useState<number | null>(null)
+  const [createDueDate, setCreateDueDate] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [groupsOpen, setGroupsOpen] = useState(false)
 
@@ -48,8 +51,10 @@ export function UIProvider({ children }: { children: ReactNode }) {
       closeTask: () => setSelectedTaskId(null),
       createOpen,
       createStatusId,
-      openCreate: (statusId: number | null = null) => {
+      createDueDate,
+      openCreate: (statusId: number | null = null, dueDate: string | null = null) => {
         setCreateStatusId(statusId)
+        setCreateDueDate(dueDate)
         setCreateOpen(true)
       },
       closeCreate: () => setCreateOpen(false),
@@ -67,6 +72,7 @@ export function UIProvider({ children }: { children: ReactNode }) {
       selectedTaskId,
       createOpen,
       createStatusId,
+      createDueDate,
       sidebarOpen,
       groupsOpen,
     ],

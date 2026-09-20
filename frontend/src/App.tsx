@@ -1,4 +1,5 @@
 ﻿import { QueryClientProvider } from '@tanstack/react-query'
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { queryClient } from './lib/queryClient'
 import { AuthProvider, useAuth } from './store/auth'
@@ -12,6 +13,12 @@ import { BoardView } from './components/board/BoardView'
 import { ListView } from './components/list/ListView'
 import { SettingsView } from './components/settings/SettingsView'
 import { DashboardView } from './components/stats/DashboardView'
+
+const CalendarView = lazy(() =>
+  import('./components/calendar/CalendarView').then((module) => ({
+    default: module.CalendarView,
+  })),
+)
 
 function AppRoutes() {
   const { authenticated, loading } = useAuth()
@@ -33,6 +40,14 @@ function AppRoutes() {
           <Route path="/" element={<Navigate to="/board" replace />} />
           <Route path="/board" element={<BoardView />} />
           <Route path="/list" element={<ListView />} />
+          <Route
+            path="/calendar"
+            element={
+              <Suspense fallback={null}>
+                <CalendarView />
+              </Suspense>
+            }
+          />
           <Route path="/dashboard" element={<DashboardView />} />
           <Route path="/settings" element={<SettingsView />} />
           <Route path="*" element={<Navigate to="/board" replace />} />

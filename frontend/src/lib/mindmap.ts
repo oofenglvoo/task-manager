@@ -178,11 +178,6 @@ export function groupSections(
 // 评分柱状图：分组顺序 > 组内顺序 > 优先级等级
 // --------------------------------------------------------------------------- #
 
-/** 权重：分组顺序影响最大，其次组内顺序，最后优先级等级。 */
-export const GROUP_ORDER_FACTOR = 100
-export const TASK_ORDER_FACTOR = 10
-export const SCORE_PRIORITY_FACTOR = 1
-
 export interface ScoreBoardItem {
   id: number
   title: string
@@ -204,7 +199,12 @@ export interface ScoreBoardItem {
  *   会直接影响分数。
  * - 优先级等级：`priority.level`（越大越优先）。
  *
- * 分数越大的分组/任务排得越靠前，柱子也越长。
+ * 注意：排序序号越小越靠前，因此分值用「总数 − 序号 + 1」反转为正向权重，
+ * 顺序越靠前权重越大、分数越高。
+ *
+ * 采用严格分层算法：`score = 分组权重 × STEP × SPAN + 组内权重 × SPAN + level`，
+ * 其中 `STEP` / `SPAN` 取足够大的基数（任务数、优先级等级上限再加一），
+ * 保证「更靠前的分组」严格高于「更靠后的分组」，任务再多、等级再高也不会串层。
  */
 export function buildScoreBoardData(
   tasks: Task[],
@@ -244,21 +244,41 @@ export function buildScoreBoardData(
   })
 
   const ungroupedRank = groupOrder.size + 1
+  const groupCount = groupOrder.size
+  const maxTaskCount = Math.max(
+    1,
+    ...[...bucket.keys()].map((key) => (bucket.get(key) ?? []).length),
+  )
+  const maxLevel = Math.max(
+    1,
+    ...priorities.map((item) => item.level ?? 0),
+    ...tasks.map((task) => priorityById(priorities, task.priority)?.level ?? 0),
+  )
+  const taskSpan = maxTaskCount + 1
+  const prioritySpan = maxLevel + 1
+
   for (const key of keys) {
     const list = [...(bucket.get(key) ?? [])].sort(
       (a, b) => a.position - b.position || a.id - b.id,
     )
+    const gOrder = key == null ? ungroupedRank : (groupOrder.get(key) ?? ungroupedRank)
+    // 序号越小越靠前：反转成正向权重（未分组固定最低，排在所有分组之后）。
+    const groupWeight =
+      key == null
+        ? 0
+        : Math.max(1, groupCount - gOrder + 1)
+    const taskCount = list.length
     list.forEach((task, index) => {
-      const gOrder = key == null ? ungroupedRank : (groupOrder.get(key) ?? ungroupedRank)
       const tOrder = index + 1
+      const taskWeight = Math.max(1, taskCount - tOrder + 1)
       const level = priorityById(priorities, task.priority)?.level ?? 0
       items.push({
         id: task.id,
         title: task.title,
         score:
-          gOrder * GROUP_ORDER_FACTOR +
-          tOrder * TASK_ORDER_FACTOR +
-          level * SCORE_PRIORITY_FACTOR,
+          groupWeight * taskSpan * prioritySpan +
+          taskWeight * prioritySpan +
+          level,
         groupOrder: gOrder,
         taskOrder: tOrder,
         priorityLevel: level,

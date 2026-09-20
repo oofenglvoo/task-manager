@@ -9,7 +9,8 @@ import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
 
 export function AppShell() {
-  const { createOpen, closeCreate, createStatusId, groupsOpen, closeGroups } = useUI()
+  const { createOpen, closeCreate, createStatusId, createDueDate, groupsOpen, closeGroups } =
+    useUI()
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -24,6 +25,7 @@ export function AppShell() {
         open={createOpen}
         onClose={closeCreate}
         defaultStatusId={createStatusId}
+        defaultDueDate={createDueDate}
       />
       <Modal open={groupsOpen} title="分组管理" onClose={closeGroups}>
         <GroupManager />

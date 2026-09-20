@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import type { Priority, Task } from '../../../lib/types'
 import { isDarkColor } from '../../../lib/chartTheme'
 import type { ChartPalette } from '../../../lib/chartTheme'
-import { buildScoreBoardData, GROUP_ORDER_FACTOR, TASK_ORDER_FACTOR } from '../../../lib/mindmap'
+import { buildScoreBoardData } from '../../../lib/mindmap'
 import { taskColor } from '../../../lib/taskColor'
 
 interface ScoreBoardViewProps {
@@ -53,7 +53,7 @@ export function ScoreBoardView({
              <button
               type="button"
               onClick={() => onOpenTask(item.id)}
-              title={`分数 ${item.score}（分组顺序 ${item.groupOrder} × ${GROUP_ORDER_FACTOR} + 组内顺序 ${item.taskOrder} × ${TASK_ORDER_FACTOR} + 优先级权重 ${item.priorityLevel}）`}
+               title={`分数 ${item.score}（分组权重（越靠前越高） ${item.groupOrder} · 组内权重 ${item.taskOrder} · 优先级 ${item.priorityLevel}）`}
                className="group flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-elevated"
              >
                <span

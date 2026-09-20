@@ -197,7 +197,7 @@ export function BoardView() {
   return (
     <div className="scrollbar-thin h-full overflow-y-auto">
       <TaskMindMap />
-      <div className="border-b border-line">
+      <div>
         <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-2 px-4 py-2.5">
           <span className="text-sm font-semibold text-ink">任务</span>
           <span className="rounded-full bg-elevated px-1.5 py-0.5 text-[10px] tabular-nums text-muted">

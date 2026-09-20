@@ -12,6 +12,7 @@ from .routers import (
     backgrounds,
     data,
     groups,
+    holidays,
     priorities,
     settings,
     stats,
@@ -59,6 +60,7 @@ app.include_router(subtasks.router, dependencies=protected)
 app.include_router(stats.router, dependencies=protected)
 app.include_router(settings.router, dependencies=protected)
 app.include_router(backgrounds.router, dependencies=protected)
+app.include_router(holidays.router, dependencies=protected)
 app.include_router(data.router, dependencies=protected)
 
 

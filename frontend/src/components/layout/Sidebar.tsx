@@ -1,11 +1,12 @@
 import { NavLink } from 'react-router-dom'
-import { BarChart3, Columns3, List, Settings, X } from 'lucide-react'
+import { BarChart3, CalendarDays, Columns3, List, Settings, X } from 'lucide-react'
 import { useUI } from '../../store/ui'
 import { cn } from '../../lib/utils'
 
 const NAV = [
   { to: '/board', label: '看板', icon: Columns3 },
   { to: '/list', label: '列表', icon: List },
+  { to: '/calendar', label: '日历', icon: CalendarDays },
   { to: '/dashboard', label: '仪表盘', icon: BarChart3 },
 ]
 

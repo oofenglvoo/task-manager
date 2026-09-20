@@ -129,7 +129,7 @@ export function TaskMindMap() {
   const isEmpty = !isLoading && tasks.length === 0
 
   return (
-    <section className="border-b border-line">
+    <section>
       <div className="mx-auto max-w-[1400px] px-4 py-3.5">
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <h2 className="text-sm font-semibold text-ink">任务脉络</h2>

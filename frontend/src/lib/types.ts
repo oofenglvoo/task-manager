@@ -151,3 +151,14 @@ export interface SessionInfo {
   authenticated: boolean
   username: string | null
 }
+
+export interface HolidayDay {
+  date: string
+  name: string
+  is_off_day: boolean
+}
+
+export interface HolidayCalendar {
+  year: number
+  days: HolidayDay[]
+}

@@ -19,6 +19,10 @@ data/*.db
 data/*.db-journal
 data/*.sqlite3
 
+# Runtime caches (backgrounds / holiday data)
+data/backgrounds/
+data/holidays/
+
 # Deployment secrets
 server.env
 

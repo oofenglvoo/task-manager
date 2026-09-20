@@ -334,6 +334,20 @@ class BackgroundOut(BaseModel):
 
 
 # --------------------------------------------------------------------------- #
+# Holidays
+# --------------------------------------------------------------------------- #
+class HolidayDay(BaseModel):
+    date: str
+    name: str
+    is_off_day: bool
+
+
+class HolidayCalendarOut(BaseModel):
+    year: int
+    days: list[HolidayDay]
+
+
+# --------------------------------------------------------------------------- #
 # Export / Import
 # --------------------------------------------------------------------------- #
 class ExportStatus(BaseModel):

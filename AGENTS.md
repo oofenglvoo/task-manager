@@ -78,7 +78,7 @@ Frontend, run from `frontend/`:
   (`crud.next_task_position(db)`, no project scoping). No `priority` assigns the first priority by
   position (`crud.resolve_priority`).
 - API is under `/api/*`; subtask routes share the `/api/tasks` prefix. Group routes are `/api/groups`,
-  priority routes are `/api/priorities`.
+  priority routes are `/api/priorities`. Holiday routes are `/api/holidays/{year}` (proxy + cache).
 - `PUT /api/tasks/{id}/move` uses `exclude_unset` semantics: `group_id: null` **clears** the group,
   omitting `group_id` leaves it unchanged (the frontend cross-group drag relies on this).
 - Deleting a group keeps its tasks but sets `group_id` to NULL (SQLAlchemy nulls the FK on delete).
@@ -147,8 +147,8 @@ Frontend, run from `frontend/`:
   persisted to `localStorage` key `task-manager:preferences`; opacity values are written to `:root` as
   `--app-bg-scrim`/`--app-card-alpha`/`--app-panel-alpha`.
   `index.html` has an inline script that applies theme/background/opacity before React to avoid a flash.
-- Routes: `/board`, `/list`, `/dashboard`, `/settings` (all wrapped by `AppShell`). There is no
-  `/projects` route or project UI anymore.
+- Routes: `/board`, `/list`, `/calendar`, `/dashboard`, `/settings` (all wrapped by `AppShell`). There is
+  no `/projects` route or project UI anymore.
 - `/board` is a **sticky-note wall**: a responsive card grid where cards tilt slightly and are tinted
   by priority (`noteSurfaceClassFor`/`noteTilt` in `src/lib/priority.ts` + `src/lib/utils.ts`); hover
   straightens the card. The note tone maps each priority to 低/中/高三档 by its `level`
@@ -172,9 +172,11 @@ Frontend, run from `frontend/`:
 - Chart data is built by pure functions in `src/lib/mindmap.ts` over `Task[]` + `Status[]` +
   `Priority[]` (`buildTreeData` / `buildSunburstData` / `buildSankeyData` / `buildSwimlaneData` /
   `buildScoreBoardData`); there is **no backend endpoint**. The score view ranks non-archived tasks by
-  `groupOrder × GROUP_ORDER_FACTOR + taskOrder × TASK_ORDER_FACTOR + priorityLevel × SCORE_PRIORITY_FACTOR`
-  (分组顺序 > 组内顺序 > 优先级等级); `taskOrder` is the task's index within its group under the current
-  `position` sort. Bar colors come from `taskColor()` (custom color → priority tint). 树/旭日/桑基的
+  a **strictly layered** weight `groupWeight × taskSpan × prioritySpan + taskWeight × prioritySpan + level`,
+  where the order index is inverted (`total - order + 1`) so **越靠前分数越高**；`taskSpan`/`prioritySpan`
+  are computed from the actual max task count / max priority level so later groups or large levels can
+  never bleed across layers. 未分组固定最低权重、排在所有分组之后。Bar colors come from `taskColor()`
+  (custom color → priority tint). 树/旭日/桑基的
   (priority→status) 分支内任务仍按 `taskScore()` = 优先级 `level` + 最近更新权重
   （`PRIORITY_FACTOR`/`RECENCY_FACTOR`）排序，并截断到 `BRANCH_LIMIT`（8），其余折叠为
   「还有 N 个…」节点——与评分柱状图是两套不同的打分逻辑，不要混淆。
@@ -193,6 +195,18 @@ Frontend, run from `frontend/`:
   `priorities`/`resolvedTheme` change. Do not reintroduce hardcoded hex colors or `priorityColor()`.
 - Sankey / tree / sunburst all render **task titles on canvas** (truncated, full text in the
   tooltip); swimlane renders them as chips with overdue / subtask-progress signals.
+- `/calendar` (菜单「日历」) is a **lazy-loaded** page (`React.lazy` in `App.tsx`, own chunk).
+  `CalendarView.tsx` 提供月/周视图切换、翻页、回到今天，复用顶部筛选（优先级/标签/搜索），
+  默认排除已归档任务。任务**仅按 `due_date` 落格**（`src/lib/calendar.ts` 的 `groupTasksByDay`），
+  每个日期格显示公历日 + 农历/节气/传统节日（`src/lib/lunar.ts` 封装 `lunar-javascript`，本地离线计算，
+  周一为一周起始）、节假日「休/班」角标，以及当天任务数 `done/total` 与完成度着色
+  （全完成绿/进行中黄/含逾期红/待开始蓝）。点击日期弹出 `DayTasksPanel`（当天任务列表 + 「新建」入口，
+  新建时通过 `ui.openCreate(null, dueDate)` 预填该日 23:59 的截止时间）。
+- 节假日数据（放假「休」/调休「班」）来自后端 `GET /api/holidays/{year}`（`routers/holidays.py`，
+  数据源 `NateScarlet/holiday-cn`，MIT）：优先读缓存 `DB_DIR/holidays/{year}.json`，未命中则依次尝试
+  jsDelivr / fastly / raw.githubusercontent 镜像抓取并写缓存；年份非法 400，全部失败且无缓存 502，
+  前端 `useHolidays` 会静默降级（不显示休/班角标，其余功能正常）。因 12 月可能由次年文件决定，
+  前端同时请求当年与次年数据合并。`holiday-cn` 的周末不视为法定节假日。
 - Drag-reorder only works when board sort is `position` (手动排序); other sorts disable drag.
   Dragging uses an explicit `GripVertical` handle (`SortableTaskCard`), not the whole card, and
   is also disabled while the list is truncated by the 60-per-page "显示更多" pagination.

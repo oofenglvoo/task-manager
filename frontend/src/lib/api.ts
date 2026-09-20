@@ -1,5 +1,6 @@
 import type {
   Group,
+  HolidayCalendar,
   ImportResult,
   Preferences,
   Priority,
@@ -200,5 +201,8 @@ export const api = {
     exportAll: () => request<Record<string, unknown>>('/api/export'),
     importAll: (payload: Record<string, unknown>) =>
       request<ImportResult>('/api/import', 'POST', payload),
+  },
+  holidays: {
+    get: (year: number) => request<HolidayCalendar>(`/api/holidays/${year}`),
   },
 }

@@ -11,6 +11,7 @@ export const keys = {
   task: (id: number) => ['task', id] as const,
   history: (id: number) => ['history', id] as const,
   stats: ['stats'] as const,
+  holidays: (year: number) => ['holidays', year] as const,
 }
 
 export function useStatuses() {
@@ -65,6 +66,15 @@ export function useDeleteTaskHistory() {
 
 export function useStats() {
   return useQuery({ queryKey: keys.stats, queryFn: () => api.stats.get() })
+}
+
+export function useHolidays(year: number) {
+  return useQuery({
+    queryKey: keys.holidays(year),
+    queryFn: () => api.holidays.get(year),
+    staleTime: 24 * 60 * 60 * 1000,
+    retry: false,
+  })
 }
 
 function useInvalidateTasks() {
