@@ -187,96 +187,100 @@ export function BoardView() {
   return (
     <div className="scrollbar-thin h-full overflow-y-auto">
       <TaskMindMap />
-      <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
-        <span className="text-sm font-semibold text-ink">任务</span>
-        <span className="text-xs text-muted">{tasks.length}</span>
-        {!dragEnabled && manualOrder && truncated ? (
-          <span className="text-xs text-muted">（已加载 {visibleTasks.length} 条，拖拽已暂停）</span>
-        ) : null}
-        {!manualOrder ? (
-          <span className="text-xs text-muted">（切换「手动排序」后可拖拽）</span>
-        ) : groupBy ? (
-          <span className="text-xs text-muted">（同组拖拽排序，跨组拖拽迁移分组）</span>
-        ) : null}
-        <div className="ml-auto flex items-center gap-2">
-          <button
-            type="button"
-            aria-label={groupBy ? '切换为不分组' : '按分组查看'}
-            title={groupBy ? '不分组' : '按分组'}
-            onClick={() => setGroupBy(!groupBy)}
-            className={
-              'rounded border p-1.5 transition-colors ' +
-              (groupBy
-                ? 'border-accent bg-accent text-white'
-                : 'border-line bg-surface text-ink-soft hover:border-line-strong hover:text-ink')
-            }
-          >
-            <Layers className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            aria-label="管理分组"
-            title="管理分组"
-            onClick={() => openGroups()}
-            className="rounded border border-line bg-surface p-1.5 text-ink-soft transition-colors hover:border-line-strong hover:text-ink"
-          >
-            <Settings2 className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            aria-label={compact ? '切换为宽松显示' : '切换为紧凑显示'}
-            title={compact ? '宽松显示' : '紧凑显示'}
-            onClick={() => setCompact(!compact)}
-            className="rounded border border-line bg-surface p-1.5 text-ink-soft transition-colors hover:border-line-strong hover:text-ink"
-          >
-            {compact ? <Rows3 className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}
-          </button>
-          <Select
-            value={cardSize}
-            className="w-24"
-            aria-label="卡片大小"
-            onChange={(event) => setCardSize(event.target.value as CardSize)}
-          >
-            {SIZE_OPTIONS.map((item) => (
-              <option key={item.value} value={item.value}>
-                {item.label}
-              </option>
-            ))}
-          </Select>
-          <Select
-            value={statusFilter}
-            className="w-32"
-            aria-label="状态筛选"
-            onChange={(event) =>
-              setStatusFilter(
-                event.target.value === '' ? '' : Number(event.target.value),
-              )
-            }
-          >
-            <option value="">全部状态</option>
-            {statuses.map((status) => (
-              <option key={status.id} value={status.id}>
-                {status.name}
-              </option>
-            ))}
-          </Select>
-          <Select
-            value={sortValue}
-            className="w-32"
-            aria-label="排序方式"
-            onChange={(event) => setSortValue(event.target.value)}
-          >
-            {SORT_OPTIONS.map((item) => (
-              <option key={item.value} value={item.value}>
-                {item.label}
-              </option>
-            ))}
-          </Select>
+      <div className="border-b border-line">
+        <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-2 px-4 py-2.5">
+          <span className="text-sm font-semibold text-ink">任务</span>
+          <span className="rounded-full bg-elevated px-1.5 py-0.5 text-[10px] tabular-nums text-muted">
+            {tasks.length}
+          </span>
+          {!dragEnabled && manualOrder && truncated ? (
+            <span className="text-xs text-muted">（已加载 {visibleTasks.length} 条，拖拽已暂停）</span>
+          ) : null}
+          {!manualOrder ? (
+            <span className="text-xs text-muted">（切换「手动排序」后可拖拽）</span>
+          ) : groupBy ? (
+            <span className="text-xs text-muted">（同组拖拽排序，跨组拖拽迁移分组）</span>
+          ) : null}
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              type="button"
+              aria-label={groupBy ? '切换为不分组' : '按分组查看'}
+              title={groupBy ? '不分组' : '按分组'}
+              onClick={() => setGroupBy(!groupBy)}
+              className={
+                'rounded-md border p-1.5 transition-colors ' +
+                (groupBy
+                  ? 'border-accent bg-accent text-white'
+                  : 'border-line bg-surface text-ink-soft hover:border-line-strong hover:bg-elevated hover:text-ink')
+              }
+            >
+              <Layers className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              aria-label="管理分组"
+              title="管理分组"
+              onClick={() => openGroups()}
+              className="rounded-md border border-line bg-surface p-1.5 text-ink-soft transition-colors hover:border-line-strong hover:bg-elevated hover:text-ink"
+            >
+              <Settings2 className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              aria-label={compact ? '切换为宽松显示' : '切换为紧凑显示'}
+              title={compact ? '宽松显示' : '紧凑显示'}
+              onClick={() => setCompact(!compact)}
+              className="rounded-md border border-line bg-surface p-1.5 text-ink-soft transition-colors hover:border-line-strong hover:bg-elevated hover:text-ink"
+            >
+              {compact ? <Rows3 className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}
+            </button>
+            <Select
+              value={cardSize}
+              className="h-8 w-24 text-xs"
+              aria-label="卡片大小"
+              onChange={(event) => setCardSize(event.target.value as CardSize)}
+            >
+              {SIZE_OPTIONS.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </Select>
+            <Select
+              value={statusFilter}
+              className="h-8 w-32 text-xs"
+              aria-label="状态筛选"
+              onChange={(event) =>
+                setStatusFilter(
+                  event.target.value === '' ? '' : Number(event.target.value),
+                )
+              }
+            >
+              <option value="">全部状态</option>
+              {statuses.map((status) => (
+                <option key={status.id} value={status.id}>
+                  {status.name}
+                </option>
+              ))}
+            </Select>
+            <Select
+              value={sortValue}
+              className="h-8 w-32 text-xs"
+              aria-label="排序方式"
+              onChange={(event) => setSortValue(event.target.value)}
+            >
+              {SORT_OPTIONS.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </Select>
+          </div>
         </div>
       </div>
 
       {isLoading ? (
-        <div className="p-4">
+        <div className="mx-auto max-w-[1400px] p-4">
           <div
             className={`grid ${style.gap}`}
             style={{
@@ -289,7 +293,7 @@ export function BoardView() {
           </div>
         </div>
       ) : tasks.length === 0 ? (
-        <div className="p-4">
+        <div className="mx-auto max-w-[1400px] p-4">
           <EmptyState
             title="还没有任务"
             description="创建第一个任务，它会以卡片形式出现在这里。"
@@ -302,7 +306,7 @@ export function BoardView() {
           />
         </div>
       ) : (
-        <div className="p-4">
+        <div className="mx-auto max-w-[1400px] p-4">
           {groupBy ? (
             <GroupedTaskBoard
               sections={sections}

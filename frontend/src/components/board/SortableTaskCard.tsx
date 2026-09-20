@@ -43,7 +43,7 @@ export function SortableTaskCard({
       {...listeners}
       aria-label="拖拽排序"
       onClick={(event) => event.stopPropagation()}
-      className="cursor-grab touch-none rounded border border-line bg-surface p-0.5 text-muted opacity-0 transition-opacity hover:bg-elevated hover:text-ink focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 group-hover:opacity-100 active:cursor-grabbing"
+      className="cursor-grab touch-none rounded border border-transparent p-0.5 text-muted opacity-0 transition-all hover:border-line hover:bg-elevated hover:text-ink focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 group-hover:opacity-100 active:cursor-grabbing"
     >
       <GripVertical className="h-3.5 w-3.5" />
     </button>

@@ -108,13 +108,14 @@ export function GroupManager() {
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-xs text-muted">
+    <div className="space-y-4">
+      <div className="flex items-start justify-between gap-3">
+        <p className="flex-1 min-w-0 text-xs leading-relaxed text-muted">
           把任务归属到分组，可在看板/列表/脑图中按分组查看；拖动可调整顺序
         </p>
         <Button
           size="sm"
+          variant="primary"
           onClick={() => {
             setEditing(null)
             setFormOpen(true)
@@ -128,7 +129,7 @@ export function GroupManager() {
       {isLoading ? (
         <LoadingBlock />
       ) : groups.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-line px-4 py-8 text-center text-xs text-muted">
+        <p className="rounded-lg border border-dashed border-line-strong/60 px-4 py-10 text-center text-xs text-muted">
           还没有分组
         </p>
       ) : (
@@ -141,7 +142,7 @@ export function GroupManager() {
             items={groups.map((group) => group.id)}
             strategy={verticalListSortingStrategy}
           >
-            <ul className="divide-y divide-line/60 rounded-lg border border-line">
+            <ul className="divide-y divide-line/60 overflow-hidden rounded-lg border border-line bg-surface">
               {groups.map((group) => (
                 <GroupRow
                   key={group.id}

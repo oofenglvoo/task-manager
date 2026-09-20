@@ -9,7 +9,6 @@ import {
   dueBadgeClass,
   dueLabel,
   formatDateTime,
-  noteTilt,
 } from '../../lib/utils'
 import { cardSurfaceStyle } from '../../lib/priority'
 import { usePrioritiesMeta } from '../../hooks/usePrioritiesMeta'
@@ -50,7 +49,6 @@ export function TaskCard({
 }: TaskCardProps) {
   const doneCount = task.subtasks.filter((item) => item.is_done).length
   const isDone = task.completed_at != null
-  const tilt = noteTilt(task.id)
   const { priorities } = usePrioritiesMeta()
   const { resolvedTheme } = usePreferences()
   const surface = cardSurfaceStyle(task, priorities, isDone, resolvedTheme === 'dark')
@@ -66,15 +64,21 @@ export function TaskCard({
   return (
     <div
       onClick={onOpen}
-      style={{ transform: `rotate(${tilt}deg)`, ...surface.style }}
+      style={surface.style}
       className={cn(
-        'group relative flex h-full flex-col rounded-md border border-line/60 shadow-sm transition-all duration-150',
+        'group relative flex h-full flex-col overflow-hidden rounded-lg border border-line/70 pl-3 shadow-sm transition-all duration-150',
         surface.className,
         style.padding,
-        onOpen && 'cursor-pointer hover:z-10 hover:-translate-y-0.5 hover:rotate-0 hover:shadow-lg',
-        'motion-reduce:rotate-0 motion-reduce:transform-none',
+        onOpen &&
+          'cursor-pointer hover:z-10 hover:-translate-y-0.5 hover:border-line-strong hover:shadow-md',
       )}
     >
+      {/* 左侧颜色条：自定义色或优先级色，扫描时快速定位 */}
+      <span
+        aria-hidden
+        className="absolute inset-y-0 left-0 w-1"
+        style={{ backgroundColor: surface.accent }}
+      />
       <div className="mb-2 flex items-center justify-between gap-2">
         <div
           className="flex min-w-0 items-center gap-1.5"
@@ -127,9 +131,9 @@ export function TaskCard({
           onOpen?.()
         }}
         className={cn(
-          'rounded text-left font-medium leading-snug text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60',
+          'rounded text-left font-semibold leading-snug text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60',
           style.title,
-          isDone && 'text-muted line-through',
+          isDone && 'font-medium text-muted line-through',
         )}
       >
         {task.title}
@@ -195,7 +199,7 @@ export function TaskCard({
       ) : null}
 
       {hasFooter ? (
-        <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-ink/10 pt-2.5 text-xs text-ink-soft/80">
+        <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-line/60 pt-2.5 text-xs text-ink-soft">
           {task.due_date ? (
             <span
               className={cn(
@@ -216,9 +220,9 @@ export function TaskCard({
         </div>
       ) : null}
 
-      <div className="mt-auto pt-2.5 text-[11px] leading-relaxed text-ink-soft/60">
-        <div>创建 {formatDateTime(task.created_at)}</div>
-        <div>修改 {formatDateTime(task.updated_at)}</div>
+      <div className="mt-auto flex items-center gap-3 pt-2.5 text-[11px] leading-relaxed text-muted">
+        <span>创建 {formatDateTime(task.created_at)}</span>
+        <span>修改 {formatDateTime(task.updated_at)}</span>
       </div>
     </div>
   )

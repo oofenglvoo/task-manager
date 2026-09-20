@@ -365,14 +365,14 @@ function Section({
 
   return (
     <section ref={setSortableRef} style={style_} className="bg-transparent">
-      <div className="mb-1 flex items-center gap-2">
+      <div className="mb-2 flex items-center gap-2">
         {groupDraggable ? (
           <button
             type="button"
             title="拖动排序"
             {...attributes}
             {...listeners}
-            className="cursor-grab touch-none rounded border border-line bg-surface p-0.5 text-muted transition-colors hover:bg-elevated hover:text-ink active:cursor-grabbing"
+            className="cursor-grab touch-none rounded border border-transparent p-0.5 text-muted transition-colors hover:border-line hover:bg-elevated hover:text-ink active:cursor-grabbing"
           >
             <GripVertical className="h-3.5 w-3.5" />
           </button>
@@ -380,13 +380,15 @@ function Section({
           <span className="w-[18px]" />
         )}
         <span
-          className="h-3 w-3 rounded-sm"
+          className="h-3.5 w-3.5 rounded-sm"
           style={{
             backgroundColor: section.color ?? 'rgb(var(--c-line-strong))',
           }}
         />
         <h3 className="text-sm font-semibold text-ink">{section.name}</h3>
-        <span className="text-xs text-muted">{section.tasks.length}</span>
+        <span className="rounded-full bg-elevated px-1.5 py-0.5 text-[10px] tabular-nums text-muted">
+          {section.tasks.length}
+        </span>
       </div>
       {section.note ? (
         <p className="mb-3 pl-[26px] text-xs leading-relaxed text-muted whitespace-pre-wrap">
@@ -403,7 +405,7 @@ function Section({
         <div
           ref={setNodeRef}
           className={
-            'grid min-h-[80px] rounded-md transition-colors ' +
+            'grid min-h-[80px] rounded-lg transition-colors ' +
             style.gap +
             (isOver ? ' bg-accent-soft ring-1 ring-accent/40' : '')
           }

@@ -4,7 +4,7 @@ export function TaskCardSkeleton({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        'h-full animate-pulse rounded-lg border border-line bg-surface p-4',
+        'h-full animate-pulse rounded-lg border border-line/70 bg-surface p-4 shadow-sm',
         className,
       )}
     >
