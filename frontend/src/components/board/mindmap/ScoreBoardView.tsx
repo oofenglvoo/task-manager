@@ -46,14 +46,14 @@ export function ScoreBoardView({
       className="scrollbar-thin overflow-y-auto pr-1"
       style={{ maxHeight: height }}
     >
-      <ol className="space-y-1">
+      <ol className="space-y-0.5">
         {items.map((item, index) => (
           <li key={item.id}>
             <button
               type="button"
               onClick={() => onOpenTask(item.id)}
               title={`分数 ${item.score}（分组顺序 ${item.groupOrder} × ${GROUP_ORDER_FACTOR} + 组内顺序 ${item.taskOrder} × ${TASK_ORDER_FACTOR} + 优先级权重 ${item.priorityLevel}）`}
-              className="flex w-full items-center gap-2 rounded px-1 py-0.5 text-left transition-colors hover:bg-elevated"
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left transition-colors hover:bg-elevated"
             >
               <span
                 className="w-6 shrink-0 text-right text-[10px] tabular-nums"
@@ -67,9 +67,9 @@ export function ScoreBoardView({
               >
                 {item.title}
               </span>
-              <span className="relative h-4 flex-1 overflow-hidden rounded-sm">
+              <span className="relative h-3.5 flex-1 overflow-hidden rounded-full bg-elevated">
                 <span
-                  className="absolute inset-y-0 left-0 rounded-sm"
+                  className="absolute inset-y-0 left-0 rounded-full"
                   style={{
                     width: `${maxScore ? Math.max(2, (item.score / maxScore) * 100) : 0}%`,
                     backgroundColor: item.color,

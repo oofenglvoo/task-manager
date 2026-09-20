@@ -129,101 +129,110 @@ export function TaskMindMap() {
   const isEmpty = !isLoading && tasks.length === 0
 
   return (
-    <section className="border-b border-line px-4 py-4">
-      <div className="mb-2 flex flex-wrap items-center gap-2">
-        <h2 className="text-sm font-semibold text-ink">任务脉络</h2>
-        <span className="text-xs text-muted">
-          {groupBy
-            ? '按分组 / 优先级与最近更新时间综合排序，每分支最多展示 8 个'
-            : '按优先级与最近更新时间综合排序，每分支最多展示 8 个'}
-        </span>
-        <div className="ml-2 hidden items-center gap-2 sm:flex">
-          {sorted.map((item) => (
-            <span key={item.id} className="inline-flex items-center gap-1 text-xs text-muted">
+    <section className="border-b border-line">
+      <div className="mx-auto max-w-[1400px] px-4 py-3.5">
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <h2 className="text-sm font-semibold text-ink">任务脉络</h2>
+          <span className="hidden text-xs text-muted lg:inline">
+            {groupBy
+              ? '按分组 / 优先级与最近更新时间综合排序，每分支最多展示 8 个'
+              : '按优先级与最近更新时间综合排序，每分支最多展示 8 个'}
+          </span>
+          <div className="hidden items-center gap-3 rounded-full border border-line bg-surface px-3 py-1 md:flex">
+            {sorted.map((item) => (
               <span
-                className="h-2 w-2 rounded-full"
-                style={{ backgroundColor: palette.priority[item.id] ?? item.color }}
-              />
-              {item.name}
-            </span>
-          ))}
-        </div>
-        <div className="ml-auto flex items-center gap-2">
-          <button
-            type="button"
-            aria-label={groupBy ? '切换为不分组' : '按分组查看'}
-            title={groupBy ? '不分组' : '按分组'}
-            onClick={() => setGroupBy(!groupBy)}
-            className={
-              'rounded border p-1.5 transition-colors ' +
-              (groupBy
-                ? 'border-accent bg-accent text-white'
-                : 'border-line bg-surface text-ink-soft hover:border-line-strong hover:text-ink')
-            }
-          >
-            <Layers className="h-4 w-4" />
-          </button>
-          <Select
-            value={view}
-            className="w-32"
-            aria-label="选择视图"
-            onChange={(event) => changeView(event.target.value as MindMapView)}
-          >
-            {VIEW_OPTIONS.map((item) => (
-              <option key={item.value} value={item.value}>
-                {item.label}
-              </option>
+                key={item.id}
+                className="inline-flex items-center gap-1 text-[11px] text-ink-soft"
+              >
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{ backgroundColor: palette.priority[item.id] ?? item.color }}
+                />
+                {item.name}
+              </span>
             ))}
-          </Select>
-          <button
-            type="button"
-            aria-label={collapsed ? '展开任务脉络' : '折叠任务脉络'}
-            title={collapsed ? '展开' : '折叠'}
-            onClick={toggleCollapsed}
-            className="rounded border border-line bg-surface p-1.5 text-ink-soft transition-colors hover:border-line-strong hover:text-ink"
-          >
-            {collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
-          </button>
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              type="button"
+              aria-label={groupBy ? '切换为不分组' : '按分组查看'}
+              title={groupBy ? '不分组' : '按分组'}
+              onClick={() => setGroupBy(!groupBy)}
+              className={
+                'rounded-md border p-1.5 transition-colors ' +
+                (groupBy
+                  ? 'border-accent bg-accent text-white'
+                  : 'border-line bg-surface text-ink-soft hover:border-line-strong hover:bg-elevated hover:text-ink')
+              }
+            >
+              <Layers className="h-4 w-4" />
+            </button>
+            <Select
+              value={view}
+              className="h-8 w-32 text-xs"
+              aria-label="选择视图"
+              onChange={(event) => changeView(event.target.value as MindMapView)}
+            >
+              {VIEW_OPTIONS.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </Select>
+            <button
+              type="button"
+              aria-label={collapsed ? '展开任务脉络' : '折叠任务脉络'}
+              title={collapsed ? '展开' : '折叠'}
+              onClick={toggleCollapsed}
+              className="rounded-md border border-line bg-surface p-1.5 text-ink-soft transition-colors hover:border-line-strong hover:bg-elevated hover:text-ink"
+            >
+              {collapsed ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronUp className="h-4 w-4" />
+              )}
+            </button>
+          </div>
         </div>
-      </div>
 
-      {collapsed ? null : isLoading ? (
-        <div className="h-40 animate-pulse rounded-lg bg-elevated" />
-      ) : isEmpty ? (
-        <EmptyState
-          title="还没有任务"
-          description="创建第一个任务，它会出现在这张任务脉络图中。"
-          action={
-            <Button variant="primary" size="sm" onClick={() => openCreate()}>
-              <Plus className="h-3.5 w-3.5" />
-              新建任务
-            </Button>
-          }
-        />
-      ) : (
-        <div className="app-surface-panel rounded-lg border border-line bg-surface p-3">
-          <Suspense
-            fallback={
-              <div
-                className="animate-pulse rounded bg-elevated"
-                style={{ height: chartHeight }}
-              />
+        {collapsed ? null : isLoading ? (
+          <div className="h-40 animate-pulse rounded-lg bg-elevated" />
+        ) : isEmpty ? (
+          <EmptyState
+            title="还没有任务"
+            description="创建第一个任务，它会出现在这张任务脉络图中。"
+            action={
+              <Button variant="primary" size="sm" onClick={() => openCreate()}>
+                <Plus className="h-3.5 w-3.5" />
+                新建任务
+              </Button>
             }
-          >
-            {view === 'sankey' ? (
-              <SankeyView {...viewProps} />
-            ) : view === 'radial' ? (
-              <RadialView {...viewProps} />
-            ) : view === 'tree' ? (
-              <TreeView {...viewProps} />
-            ) : view === 'score' ? (
-              <ScoreBoardView {...viewProps} />
-            ) : (
-              <SwimlaneView {...viewProps} />
-            )}
-          </Suspense>
-        </div>
-      )}
+          />
+        ) : (
+          <div className="app-surface-panel rounded-xl border border-line bg-surface p-3 shadow-sm">
+            <Suspense
+              fallback={
+                <div
+                  className="animate-pulse rounded bg-elevated"
+                  style={{ height: chartHeight }}
+                />
+              }
+            >
+              {view === 'sankey' ? (
+                <SankeyView {...viewProps} />
+              ) : view === 'radial' ? (
+                <RadialView {...viewProps} />
+              ) : view === 'tree' ? (
+                <TreeView {...viewProps} />
+              ) : view === 'score' ? (
+                <ScoreBoardView {...viewProps} />
+              ) : (
+                <SwimlaneView {...viewProps} />
+              )}
+            </Suspense>
+          </div>
+        )}
+      </div>
     </section>
   )
 }

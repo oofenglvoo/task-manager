@@ -3,6 +3,7 @@ import { CheckSquare, CircleAlert } from 'lucide-react'
 import type { Priority, Status, Task } from '../../../lib/types'
 import type { ChartPalette } from '../../../lib/chartTheme'
 import { buildSwimlaneData, groupSections } from '../../../lib/mindmap'
+import { taskColor } from '../../../lib/taskColor'
 import { cn, dueState } from '../../../lib/utils'
 
 interface SwimlaneViewProps {
@@ -12,6 +13,7 @@ interface SwimlaneViewProps {
   palette: ChartPalette
   height: number
   groupBy: boolean
+  isDark: boolean
   onOpenTask: (taskId: number) => void
 }
 
@@ -22,6 +24,7 @@ export function SwimlaneView({
   palette,
   height,
   groupBy,
+  isDark,
   onOpenTask,
 }: SwimlaneViewProps) {
   const priorityNames = useMemo(
@@ -53,6 +56,7 @@ export function SwimlaneView({
                 priorities={priorities}
                 palette={palette}
                 priorityNames={priorityNames}
+                isDark={isDark}
                 onOpenTask={onOpenTask}
               />
             </div>
@@ -65,6 +69,7 @@ export function SwimlaneView({
           priorities={priorities}
           palette={palette}
           priorityNames={priorityNames}
+          isDark={isDark}
           onOpenTask={onOpenTask}
         />
       )}
@@ -78,6 +83,7 @@ function SwimlaneGrid({
   priorities,
   palette,
   priorityNames,
+  isDark,
   onOpenTask,
 }: {
   tasks: Task[]
@@ -85,6 +91,7 @@ function SwimlaneGrid({
   priorities: Priority[]
   palette: ChartPalette
   priorityNames: Map<number, string>
+  isDark: boolean
   onOpenTask: (taskId: number) => void
 }) {
   const data = useMemo(
@@ -98,12 +105,12 @@ function SwimlaneGrid({
   return (
     <div className="flex min-w-max gap-3 p-1">
       <div className="flex shrink-0 flex-col gap-3">
-        <div className="h-7" />
+        <div className="h-8" />
         {data.priorities.map((priority) => (
           <div
             key={priority}
             title={priorityNames.get(priority) ?? `优先级 ${priority}`}
-            className="app-surface-elevated flex min-h-[104px] w-16 items-center gap-2 rounded-md border border-line px-2"
+            className="app-surface-elevated flex min-h-[104px] w-16 items-center gap-2 rounded-lg border border-line px-2"
           >
             <span
               className="h-8 w-1.5 shrink-0 rounded-full"
@@ -122,7 +129,7 @@ function SwimlaneGrid({
       {data.statuses.map((column) => (
         <div key={column.id ?? 'none'} className="flex w-56 shrink-0 flex-col gap-3">
           <div
-            className="flex h-7 items-center gap-1.5 rounded-md px-2 text-xs font-semibold"
+            className="flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold"
             style={{ color: column.color, backgroundColor: `${column.color}26` }}
           >
             <span
@@ -139,7 +146,7 @@ function SwimlaneGrid({
               <div
                 key={cellKey(priority, column.id)}
                 className={cn(
-                  'min-h-[104px] rounded-md border p-1.5',
+                  'min-h-[104px] rounded-lg border p-1.5 transition-colors',
                   cell
                     ? 'border-line/70 bg-surface'
                     : 'border-dashed border-line/40 bg-transparent',
@@ -151,7 +158,7 @@ function SwimlaneGrid({
                       <SwimlaneTask
                         key={task.id}
                         task={task}
-                        color={palette.priority[task.priority]}
+                        color={taskColor(task, priorities, isDark)}
                         doneColor={palette.done}
                         onClick={() => onOpenTask(task.id)}
                       />
@@ -193,7 +200,7 @@ function SwimlaneTask({
       onClick={onClick}
       title={task.title}
       className={cn(
-        'app-surface-elevated flex w-full items-center gap-1.5 rounded border border-line/60 px-1.5 py-1 text-left text-[11px] leading-tight text-ink transition-colors hover:border-line-strong hover:bg-elevated',
+        'app-surface-elevated flex w-full items-center gap-1.5 overflow-hidden rounded-lg border border-line/60 py-1 pl-2 pr-1.5 text-left text-[11px] leading-tight text-ink transition-colors hover:border-line-strong hover:bg-elevated',
         isDone && 'text-muted',
       )}
     >
