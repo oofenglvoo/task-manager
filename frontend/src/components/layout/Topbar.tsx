@@ -22,30 +22,31 @@ export function Topbar() {
   const { resolvedTheme, setTheme } = usePreferences()
 
   return (
-    <header className="app-chrome flex h-14 shrink-0 items-center gap-3 border-b border-line bg-surface px-4">
+    <header className="app-chrome flex h-12 shrink-0 items-center gap-2.5 border-b border-line bg-surface px-4">
       <button
         type="button"
         onClick={toggleSidebar}
         aria-label="打开导航"
-        className="rounded border border-line bg-surface p-1.5 text-ink-soft transition-colors hover:border-line-strong hover:text-ink"
+        title="导航"
+        className="rounded border border-transparent p-1.5 text-muted transition-colors hover:bg-elevated hover:text-ink hover:border-line"
       >
         <PanelLeft className="h-4 w-4" />
       </button>
-      <span className="text-sm font-medium text-ink">全部任务</span>
+      <span className="text-sm font-semibold text-ink">全部任务</span>
 
-      <div className="relative ml-auto w-56">
-        <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+      <div className="relative ml-auto w-64">
+        <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
         <Input
           value={search}
           placeholder="搜索任务…"
-          className="pl-8"
+          className="h-8 pl-8 text-xs"
           onChange={(event) => setSearch(event.target.value)}
         />
       </div>
 
       <Select
         value={priority ?? ''}
-        className="w-28"
+        className="h-8 w-28 text-xs"
         aria-label="优先级筛选"
         onChange={(event) =>
           setPriority(event.target.value === '' ? null : Number(event.target.value))
@@ -61,7 +62,7 @@ export function Topbar() {
 
       <Select
         value={tagId ?? ''}
-        className="w-32"
+        className="h-8 w-32 text-xs"
         aria-label="标签筛选"
         onChange={(event) =>
           setTagId(event.target.value === '' ? null : Number(event.target.value))
@@ -89,7 +90,7 @@ export function Topbar() {
         )}
       </Button>
 
-      <Button variant="primary" onClick={() => openCreate()}>
+      <Button variant="primary" size="sm" onClick={() => openCreate()}>
         <Plus className="h-4 w-4" />
         新建任务
       </Button>
