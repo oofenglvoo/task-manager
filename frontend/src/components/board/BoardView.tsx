@@ -205,10 +205,10 @@ export function BoardView() {
             title={groupBy ? '不分组' : '按分组'}
             onClick={() => setGroupBy(!groupBy)}
             className={
-              'rounded border bg-surface p-1.5 transition-colors ' +
+              'rounded border p-1.5 transition-colors ' +
               (groupBy
                 ? 'border-accent bg-accent text-white'
-                : 'border-line text-ink-soft hover:border-line-strong hover:text-ink')
+                : 'border-line bg-surface text-ink-soft hover:border-line-strong hover:text-ink')
             }
           >
             <Layers className="h-4 w-4" />
