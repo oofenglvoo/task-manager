@@ -19,6 +19,9 @@ data/*.db
 data/*.db-journal
 data/*.sqlite3
 
+# Deployment secrets
+server.env
+
 # Editor / OS
 .vscode/
 .idea/

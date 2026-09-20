@@ -1,3 +1,4 @@
+import { AccountSettings } from './AccountSettings'
 import { AppearanceSettings } from './AppearanceSettings'
 import { DataSettings } from './DataSettings'
 import { PriorityManager } from './PriorityManager'
@@ -17,6 +18,7 @@ export function SettingsView() {
         <StatusManager />
         <PriorityManager />
         <TagManager />
+        <AccountSettings />
       </div>
     </div>
   )

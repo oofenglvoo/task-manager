@@ -3,6 +3,9 @@
 一个中文任务管理应用：FastAPI + SQLite 后端，React + TypeScript 前端。以**便签墙**形式展示任务，
 支持分组、拖拽排序、列表筛选、状态/标签/分组管理与统计总览。
 
+> 部署到服务器时，应用提供**用户名 + 密码登录**（登录态 30 天，可在设置页退出）；
+> 详见「部署到服务器（Windows）」。本地开发需要先按「配置」一节设置账号相关环境变量。
+
 ## 功能
 
 - **任务看板（便签墙）**：任务以彩色便签卡片错落排布，按优先级自动取便签底色并带轻微倾斜（悬停摆正），每个任务还可在表单/详情里**自定义卡片颜色**（清除后回退为按优先级取色）；卡片显示标题、描述、状态、优先级、分组、截止日期、标签、子任务进度，以及**创建时间与最后修改时间**；卡片上可勾选完成、点击优先级/状态快速修改；支持拖拽排序（手柄）、紧凑/宽松密度与三档卡片大小
@@ -12,6 +15,7 @@
 - **任务详情**：点击卡片或铅笔图标打开详情抽屉，可修改标题、状态、优先级、分组、截止时间（精确到分）、标签与**任务详情（富文本）**；富文本支持加粗/斜体/下划线/删除线、字号、字体颜色、有序/无序列表，以及**图片粘贴/拖拽/上传**（以 base64 内嵌）；内容以本地草稿暂存，点底部**保存**统一提交，未保存关闭时会提示；管理子任务（增删改、勾选，标题可点击**行内编辑**）；归档/恢复与删除均需确认
 - **历史修改**：每次保存（含新建）会记录一条任务主字段快照（状态/分组/标签保存为名称，描述去除图片），详情抽屉底部以**竖向时间线**展示，可删除单条历史（二次确认）；历史随导出/导入一并备份
 - **状态 / 标签 / 分组 / 优先级管理**：增删改、颜色、排序；状态可标记为「已完成」（任务进入后自动记录完成时间）；**优先级可自由增删**（名称、颜色、权重），看板底色、图表与筛选随之变化
+- **登录鉴权**：部署时使用用户名 + 密码登录（HttpOnly Cookie 保存 30 天），未登录只能看到登录页；登录态失效时自动跳回登录页，可在「设置 → 账号」退出登录
 - **统计仪表盘**：与主页总览同源的完整统计（数字卡 + 状态/优先级分布）
 - **界面**：默认收起左侧导航（顶部按钮展开），全宽展示任务看板；深色/浅色主题共用一套
   工作区结构，顶栏、侧栏、卡片、浮层和表单控件使用统一的层级、圆角、阴影与交互态；
@@ -48,8 +52,10 @@
 │       └── components/ # layout / board / list / tasks / settings / stats / ui
 ├── data/               # 运行时 SQLite 数据库（gitignore）
 ├── scripts/run.mjs     # 一键运行脚本（装依赖 + 构建前端 + 启动后端）
-├── start.bat           # Windows 双击启动（检查 Node → 装依赖 → npm run dev）
-├── start.sh            # macOS / Linux 启动脚本（同上）
+├── start.bat           # Windows 双击启动（本机开发）
+├── start.sh            # macOS / Linux 启动脚本（本机开发）
+├── start-server.bat    # Windows 服务器部署启动（读取 server.env，监听 0.0.0.0）
+├── server.env.example  # 部署配置模板（复制为 server.env 后填写）
 ├── package.json        # 根脚本入口：npm run dev / start / build / serve
 ├── AGENTS.md           # 面向开发者的仓库说明
 └── README.md
@@ -106,6 +112,72 @@ npm run dev
 
 访问 http://localhost:5173 ，开发服务器会将 `/api` 代理到 `http://127.0.0.1:8001`。
 
+## 部署到服务器（Windows）
+
+> 需要 **Python 3.10+** 与 **Node.js 18+**，首次部署的机器上都要装好。
+
+### 1. 配置账号
+
+复制 `server.env.example` 为 `server.env`，填写账号信息（`server.env` 不会被提交）：
+
+```ini
+TASK_APP_USERNAME=admin
+TASK_APP_PASSWORD=改成你的密码
+TASK_SECRET_KEY=改成一串足够长的随机字符串
+TASK_TOKEN_DAYS=30
+APP_HOST=0.0.0.0
+APP_PORT=8001
+```
+
+| 变量 | 必填 | 说明 |
+| --- | --- | --- |
+| `TASK_APP_USERNAME` | 是 | 登录用户名 |
+| `TASK_APP_PASSWORD` | 是 | 登录密码 |
+| `TASK_SECRET_KEY` | 是 | 登录令牌签名密钥，**改动会让所有人重新登录** |
+| `TASK_TOKEN_DAYS` | 否 | 登录态有效期（天），默认 `30` |
+| `APP_HOST` | 否 | 监听地址，默认 `0.0.0.0`（允许其他机器访问） |
+| `APP_PORT` | 否 | 监听端口，默认 `8001` |
+
+三项必填项缺任意一项，后端会在启动时**直接报错退出**。
+
+### 2. 启动
+
+双击 `start-server.bat`：它会读取 `server.env`、按需创建 `backend/.venv` 并装依赖、
+构建前端，最后以 `APP_HOST:APP_PORT` 启动服务。按 Ctrl+C 停止。
+
+也可以手动启动（需要先设置好上面的环境变量）：
+
+```powershell
+backend\.venv\Scripts\python -m uvicorn app.main:app --app-dir backend --host 0.0.0.0 --port 8001
+```
+
+命令行参数可覆盖 `server.env` 里的地址与端口。
+
+### 3. 放行防火墙端口
+
+管理员 PowerShell 中执行（按需改成实际端口）：
+
+```powershell
+netsh advfirewall firewall add rule name="Task Manager 8001" dir=in action=allow protocol=TCP localport=8001
+```
+
+### 4. 访问
+
+浏览器打开 `http://<服务器IP>:8001`，首次访问会看到登录页，输入 `server.env` 中配置的用户名与密码。
+同一局域网的其他机器用服务器 IP 即可访问。
+
+### 5. 更新部署
+
+拉取新代码后重新执行 `start-server.bat`（或手动重新 `npm run build`），前端产物在 `frontend/dist`，
+改动前端必须重新构建才会生效。
+
+### 安全提示
+
+- 直连 IP + 端口是 **HTTP 明文**，用户名密码与登录令牌都会明文传输。内网使用尚可，
+  **公网部署强烈建议在前面加一层 HTTPS 反向代理**。
+- 建议把防火墙规则限制为可信来源 IP，而不是对所有来源开放。
+- 数据库与上传的背景图片都在 `data/` 目录，部署前请先做好备份。
+
 ## 测试与检查
 
 ```powershell
@@ -126,8 +198,16 @@ npm run lint
 
 | 变量 | 说明 |
 | --- | --- |
+| `TASK_APP_USERNAME` | 登录用户名（部署必填） |
+| `TASK_APP_PASSWORD` | 登录密码（部署必填） |
+| `TASK_SECRET_KEY` | 登录令牌签名密钥（部署必填） |
+| `TASK_TOKEN_DAYS` | 登录态有效期（天），默认 `30` |
+| `APP_HOST` / `APP_PORT` | `start-server.bat` 使用的监听地址与端口 |
 | `TASK_DB_PATH` | 覆盖数据库文件路径（绝对路径），默认 `data/tasks.db` |
 | `VITE_API_BASE` | 前端 API 基础地址，默认走 Vite 代理的相对路径 `/api` |
+
+> 注意：后端在启动时会校验 `TASK_APP_USERNAME` / `TASK_APP_PASSWORD` / `TASK_SECRET_KEY`，
+> 未配置会直接报错退出，因此运行 `pytest` 或本地调试时也需要先设置这三项。
 
 外观偏好（主题、卡片大小、显示密度、背景图片）保存到**后端**（`/api/settings`），同时在浏览器
 `localStorage` 缓存一份以避免首屏闪烁，因此换浏览器/设备也能保持一致。本地上传的背景图片
@@ -153,11 +233,15 @@ npm run lint
 
 ## API 概览
 
-所有接口位于 `/api/*`。
+所有接口位于 `/api/*`。除 `/api/auth/*` 与 `/api/health` 外，其余接口都需要登录，
+未登录会返回 401。
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| GET | `/api/health` | 健康检查 |
+| GET | `/api/health` | 健康检查（无需登录） |
+| POST | `/api/auth/login` | 用户名 + 密码登录，成功后下发登录 Cookie（无需登录） |
+| POST | `/api/auth/logout` | 退出登录（无需登录） |
+| GET | `/api/auth/session` | 查询当前登录状态（无需登录） |
 | GET/POST | `/api/statuses` | 状态列表 / 创建 |
 | PUT/DELETE | `/api/statuses/{id}` | 更新 / 删除状态（被任务使用时返回 400） |
 | PUT | `/api/statuses/reorder` | 状态排序 |

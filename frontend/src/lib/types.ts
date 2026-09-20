@@ -146,3 +146,8 @@ export interface ImportResult {
   tasks: number
   subtasks: number
 }
+
+export interface SessionInfo {
+  authenticated: boolean
+  username: string | null
+}

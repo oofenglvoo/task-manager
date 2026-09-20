@@ -1,12 +1,14 @@
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from . import auth
 from .database import Base, SessionLocal, engine, ensure_schema
 from .routers import (
+    auth as auth_router,
     backgrounds,
     data,
     groups,
@@ -19,6 +21,9 @@ from .routers import (
     tasks,
 )
 from .seed import seed_defaults
+
+# 缺少账号配置时直接退出，避免以“无鉴权”状态对外提供服务。
+auth.require_config()
 
 Base.metadata.create_all(bind=engine)
 ensure_schema()
@@ -41,16 +46,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(statuses.router)
-app.include_router(tags.router)
-app.include_router(groups.router)
-app.include_router(priorities.router)
-app.include_router(tasks.router)
-app.include_router(subtasks.router)
-app.include_router(stats.router)
-app.include_router(settings.router)
-app.include_router(backgrounds.router)
-app.include_router(data.router)
+app.include_router(auth_router.router)
+
+# 业务路由统一要求登录；/api/auth/* 与 /api/health 保持放行。
+protected = [Depends(auth.require_auth)]
+app.include_router(statuses.router, dependencies=protected)
+app.include_router(tags.router, dependencies=protected)
+app.include_router(groups.router, dependencies=protected)
+app.include_router(priorities.router, dependencies=protected)
+app.include_router(tasks.router, dependencies=protected)
+app.include_router(subtasks.router, dependencies=protected)
+app.include_router(stats.router, dependencies=protected)
+app.include_router(settings.router, dependencies=protected)
+app.include_router(backgrounds.router, dependencies=protected)
+app.include_router(data.router, dependencies=protected)
 
 
 @app.get("/api/health", tags=["health"])

@@ -8,7 +8,27 @@
 - `data/` — runtime SQLite DB (gitignored). `scripts/run.mjs` is the one-command launcher.
 - `start.bat` (Windows, double-click) / `start.sh` (macOS/Linux) are thin wrappers around
   `npm run dev`: they check Node, install root deps once, then forward any args.
+- `start-server.bat` + `server.env.example` are the **server-deploy** path: it reads `server.env`
+  (gitignored), binds `APP_HOST` (default `0.0.0.0`) / `APP_PORT`, so the app is reachable from
+  other machines. Keep it ASCII-only — `chcp 65001` + non-ASCII text breaks `cmd.exe` parsing.
 - Git repo: branch `master`, remote `origin` = GitHub `task-manager`. Commit only when asked.
+
+## Auth (required env vars)
+- `backend/app/auth.py` implements single-account username+password auth with a stdlib-signed
+  token (`base64url(payload).base64url(hmac_sha256)`) stored in an HttpOnly cookie. No extra deps.
+- `TASK_APP_USERNAME` / `TASK_APP_PASSWORD` / `TASK_SECRET_KEY` are **required**: `main.py` calls
+  `auth.require_config()` at import time and **exits** if any is missing. This means `pytest` and
+  any local run must export all three, and existing tests will 401 without a logged-in client.
+- `TASK_TOKEN_DAYS` (default 30) controls cookie/token lifetime. `TASK_SECRET_KEY` must stay stable
+  or everyone is logged out on restart.
+- Only `/api/*` is protected (`dependencies=[Depends(auth.require_auth)]` on every business router);
+  `/api/auth/*` and `/api/health` stay open, and the SPA shell + `/assets/*` are intentionally
+  public so the login page can load. Cookie is `httponly`/`samesite=lax`, **no `Secure`** because
+  the supported deploy is plain http on an IP.
+- Frontend: `src/store/auth.tsx` (`AuthProvider`) + `src/components/auth/LoginView.tsx`; `App.tsx`
+  intercepts the whole app (no `/login` route — that would fight the SPA catch-all). `lib/api.ts`
+  sends `credentials: 'include'` and calls `setUnauthorizedHandler` on any non-login 401.
+  Logout lives in `src/components/settings/AccountSettings.tsx`. All new UI text is Chinese.
 
 ## Commands (Windows / PowerShell)
 Repo root (one command; installs missing deps, builds the frontend, serves it from the API):
@@ -19,6 +39,8 @@ Repo root (one command; installs missing deps, builds the frontend, serves it fr
 
 Backend, run from `backend/` (use the existing venv):
 - Install deps: `.venv\Scripts\python -m pip install -r requirements.txt`
+- Export `TASK_APP_USERNAME` / `TASK_APP_PASSWORD` / `TASK_SECRET_KEY` first, or `app.main`
+  exits at import (see the Auth section).
 - Dev API: `.venv\Scripts\python -m uvicorn app.main:app --reload` → http://127.0.0.1:8001
 - All tests: `.venv\Scripts\python -m pytest`
 - One test: `.venv\Scripts\python -m pytest tests/test_tasks.py::test_reorder_tasks`

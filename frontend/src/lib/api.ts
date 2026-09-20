@@ -3,6 +3,7 @@ import type {
   ImportResult,
   Preferences,
   Priority,
+  SessionInfo,
   Stats,
   Status,
   SubTask,
@@ -27,6 +28,13 @@ export class ApiError extends Error {
 
 type Body = object
 
+/** 401 时由 auth store 注册的回调，用于统一切回登录页。 */
+let unauthorizedHandler: (() => void) | null = null
+
+export function setUnauthorizedHandler(handler: (() => void) | null) {
+  unauthorizedHandler = handler
+}
+
 async function toError(res: Response): Promise<ApiError> {
   let message = res.statusText || `请求失败 (${res.status})`
   try {
@@ -42,18 +50,32 @@ async function toError(res: Response): Promise<ApiError> {
 async function request<T>(path: string, method = 'GET', body?: Body): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     method,
+    credentials: 'include',
     headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),
   })
 
-  if (!res.ok) throw await toError(res)
+  if (!res.ok) {
+    // 登录接口自身的 401 交给调用方处理，其余 401 统一触发重新登录。
+    if (res.status === 401 && !path.startsWith('/api/auth/login')) {
+      unauthorizedHandler?.()
+    }
+    throw await toError(res)
+  }
   if (res.status === 204) return undefined as T
   return (await res.json()) as T
 }
 
 async function requestForm<T>(path: string, form: FormData): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, { method: 'POST', body: form })
-  if (!res.ok) throw await toError(res)
+  const res = await fetch(`${BASE}${path}`, {
+    method: 'POST',
+    credentials: 'include',
+    body: form,
+  })
+  if (!res.ok) {
+    if (res.status === 401) unauthorizedHandler?.()
+    throw await toError(res)
+  }
   return (await res.json()) as T
 }
 
@@ -74,6 +96,12 @@ function qs(params: object): string {
 }
 
 export const api = {
+  auth: {
+    session: () => request<SessionInfo>('/api/auth/session'),
+    login: (username: string, password: string) =>
+      request<SessionInfo>('/api/auth/login', 'POST', { username, password }),
+    logout: () => request<SessionInfo>('/api/auth/logout', 'POST'),
+  },
   statuses: {
     list: () => request<Status[]>('/api/statuses'),
     create: (data: { name: string; color?: string; is_done?: boolean }) =>
