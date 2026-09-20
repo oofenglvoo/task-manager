@@ -79,14 +79,20 @@ Frontend, run from `frontend/`:
   it adds new `preferences` columns (`compact`, `group_by`, `bg_opacity`, `card_opacity`,
   `panel_opacity`), runs `_drop_projects()` (rebuilds `tasks` without `project_id`, drops the
   `projects` table, preserving every task row), `_add_task_group()` (adds `tasks.group_id` + index),
-  `_add_group_note()` (adds `groups.note`) and `_normalize_due_dates()` (rewrites legacy date-only
+  `_add_task_color()` (adds `tasks.color` VARCHAR(20), NULL = 按优先级取色), `_add_group_note()`
+  (adds `groups.note`) and `_normalize_due_dates()` (rewrites legacy date-only
   `due_date` to `T23:59:00`). The `priorities` table is created by `create_all` and seeded by
   `seed.seed_defaults`. `create_all` never drops columns/tables, so rebuild-style migrations must stay
   idempotent.
 - `/api/export` dumps all data; `POST /api/import` **wipes and replaces** statuses/tags/groups/
   priorities/tasks (legacy payloads still containing `projects`/`project_id` are accepted and ignored;
-  a legacy payload with no `priorities` re-seeds the default three and keeps task priority values).
+  a legacy payload with no `priorities` re-seeds the default three and keeps task priority values;
+  a payload whose tasks have no `color` imports them with NULL color).
   Export/import deliberately **exclude appearance preferences** (`preferences`) and background files.
+- `Task.color` (VARCHAR(20), nullable) is the card custom color: NULL = 按优先级取便签底色。
+  Frontend resolves it via `src/lib/taskColor.ts` (`taskColor()`: 自定义色优先，深色下过暗自动提亮，
+  空值回落优先级色) and renders custom colors through `.note-surface-custom` (inline `--card-tint`
+  + `color-mix`, alpha still follows `--app-card-alpha`). History snapshots do NOT record color.
 - Groups are a first-class entity (`groups` table, `/api/groups` CRUD + `/reorder`); a task has an
   optional `group_id`. Priorities are likewise first-class (`priorities` table, `/api/priorities`
   CRUD + `/reorder`). The board/list/mindmap "group by" toggle is persisted as `preferences.group_by`.
@@ -130,16 +136,20 @@ Frontend, run from `frontend/`:
   (`src/hooks/usePrioritiesMeta.ts`) expose `{ priorities, sorted, byId, label, color }`, falling back
   to `FALLBACK_PRIORITIES` (`src/lib/priority.ts`) while loading. Use these instead of any hardcoded
   label/color map. `PriorityManager.tsx` (settings page) does CRUD by name/color/level + up/down reorder.
-- The board's top section is **`TaskMindMap`** (ECharts-based, four switchable views):
-  `sankey` (default) / `radial` (sunburst) / `tree` / `swimlane` (CSS grid, not ECharts).
+- The board's top section is **`TaskMindMap`** (five switchable views, all lazy-loaded):
+  `sankey` (default) / `radial` / `tree` / `swimlane` (ECharts/SVG/CSS) / `score` (评分柱状图,
+  CSS-based in `ScoreBoardView.tsx` — no ECharts).
   The view choice is persisted to `localStorage` key `task-manager:mindmap-view`, and the
   collapse state to `task-manager:mindmap-collapsed`.
 - Chart data is built by pure functions in `src/lib/mindmap.ts` over `Task[]` + `Status[]` +
-  `Priority[]` (`buildTreeData` / `buildSunburstData` / `buildSankeyData` / `buildSwimlaneData`); there
-  is **no backend endpoint**. `Priority[]` is threaded through and drives ordering (by `level` desc),
-  labels and colors. Tasks within each (priority→status) branch are sorted by `taskScore` =
-  priority `level` + recency weight (`PRIORITY_FACTOR`/`RECENCY_FACTOR`), capped at `BRANCH_LIMIT`
-  (8) with the remainder collapsed into a "还有 N 个…" node.
+  `Priority[]` (`buildTreeData` / `buildSunburstData` / `buildSankeyData` / `buildSwimlaneData` /
+  `buildScoreBoardData`); there is **no backend endpoint**. The score view ranks non-archived tasks by
+  `groupOrder × GROUP_ORDER_FACTOR + taskOrder × TASK_ORDER_FACTOR + priorityLevel × SCORE_PRIORITY_FACTOR`
+  (分组顺序 > 组内顺序 > 优先级等级); `taskOrder` is the task's index within its group under the current
+  `position` sort. Bar colors come from `taskColor()` (custom color → priority tint). 树/旭日/桑基的
+  (priority→status) 分支内任务仍按 `taskScore()` = 优先级 `level` + 最近更新权重
+  （`PRIORITY_FACTOR`/`RECENCY_FACTOR`）排序，并截断到 `BRANCH_LIMIT`（8），其余折叠为
+  「还有 N 个…」节点——与评分柱状图是两套不同的打分逻辑，不要混淆。
 - **ECharts is registered on demand** in `src/lib/echarts.ts` (only Sankey/Sunburst/Tree + Tooltip
   + CanvasRenderer) and the views are **lazy-loaded** via `React.lazy` in `TaskMindMap.tsx`, so the
   initial bundle stays ~130KB gzip and ECharts sits in its own async chunk. Keep it that way: do

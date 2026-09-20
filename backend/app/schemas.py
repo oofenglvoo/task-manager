@@ -185,6 +185,7 @@ class TaskCreate(BaseModel):
     group_id: int | None = None
     description: str | None = None
     priority: int | None = None
+    color: str | None = Field(default=None, max_length=20)
     due_date: DueDatetime | None = None
     tag_ids: list[int] = Field(default_factory=list)
 
@@ -197,6 +198,7 @@ class TaskUpdate(BaseModel):
     group_id: int | None = None
     description: str | None = None
     priority: int | None = None
+    color: str | None = Field(default=None, max_length=20)
     due_date: DueDatetime | None = None
     tag_ids: list[int] | None = None
     position: int | None = None
@@ -219,6 +221,7 @@ class TaskOut(BaseModel):
     title: str
     description: str | None
     priority: int
+    color: str | None = None
     due_date: DueDatetime | None
     position: int
     is_archived: bool
@@ -381,6 +384,7 @@ class ExportTask(BaseModel):
     title: str
     description: str | None = None
     priority: int = 2
+    color: str | None = None
     due_date: DueDatetime | None = None
     position: int = 0
     is_archived: bool = False

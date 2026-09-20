@@ -174,6 +174,104 @@ export function groupSections(
   return sections
 }
 
+// --------------------------------------------------------------------------- #
+// 评分柱状图：分组顺序 > 组内顺序 > 优先级等级
+// --------------------------------------------------------------------------- #
+
+/** 权重：分组顺序影响最大，其次组内顺序，最后优先级等级。 */
+export const GROUP_ORDER_FACTOR = 100
+export const TASK_ORDER_FACTOR = 10
+export const SCORE_PRIORITY_FACTOR = 1
+
+export interface ScoreBoardItem {
+  id: number
+  title: string
+  score: number
+  groupOrder: number
+  taskOrder: number
+  priorityLevel: number
+  groupName: string
+  priorityName: string
+  color: string
+}
+
+/**
+ * 按「分组顺序、组内任务顺序、优先级等级」加权求和给每个任务打分。
+ *
+ * - 分组顺序：分组在「分组管理」中的次序（`group.position`），未分组固定最后；
+ *   该权重最高，因此分组的先后主导总分。
+ * - 组内顺序：任务在当前排序（`position` 升序）下的先后，因此拖动卡片的顺序
+ *   会直接影响分数。
+ * - 优先级等级：`priority.level`（越大越优先）。
+ *
+ * 分数越大的分组/任务排得越靠前，柱子也越长。
+ */
+export function buildScoreBoardData(
+  tasks: Task[],
+  priorities: Priority[],
+  paint: (task: Task) => string,
+): ScoreBoardItem[] {
+  const active = tasks.filter((task) => !task.is_archived)
+  const ordered = active.filter((task) => task.group != null)
+
+  const groupIds: number[] = []
+  for (const task of ordered) {
+    const id = task.group?.id
+    if (id != null && !groupIds.includes(id)) groupIds.push(id)
+  }
+  const groupOrder = new Map<number, number>()
+  const groups = new Map<number, Group>()
+  for (const task of ordered) {
+    if (task.group) groups.set(task.group.id, task.group)
+  }
+  ;[...groups.values()]
+    .sort((a, b) => a.position - b.position || a.id - b.id)
+    .forEach((group, index) => groupOrder.set(group.id, index + 1))
+
+  const items: ScoreBoardItem[] = []
+  const bucket = new Map<number | null, Task[]>()
+  for (const task of active) {
+    const key = task.group?.id ?? null
+    const list = bucket.get(key)
+    if (list) list.push(task)
+    else bucket.set(key, [task])
+  }
+
+  const keys = [...bucket.keys()].sort((a, b) => {
+    if (a == null) return 1
+    if (b == null) return -1
+    return (groupOrder.get(a) ?? 0) - (groupOrder.get(b) ?? 0)
+  })
+
+  const ungroupedRank = groupOrder.size + 1
+  for (const key of keys) {
+    const list = [...(bucket.get(key) ?? [])].sort(
+      (a, b) => a.position - b.position || a.id - b.id,
+    )
+    list.forEach((task, index) => {
+      const gOrder = key == null ? ungroupedRank : (groupOrder.get(key) ?? ungroupedRank)
+      const tOrder = index + 1
+      const level = priorityById(priorities, task.priority)?.level ?? 0
+      items.push({
+        id: task.id,
+        title: task.title,
+        score:
+          gOrder * GROUP_ORDER_FACTOR +
+          tOrder * TASK_ORDER_FACTOR +
+          level * SCORE_PRIORITY_FACTOR,
+        groupOrder: gOrder,
+        taskOrder: tOrder,
+        priorityLevel: level,
+        groupName: task.group?.name ?? UNGROUPED_NAME,
+        priorityName: priorityById(priorities, task.priority)?.name ?? `P${task.priority}`,
+        color: paint(task),
+      })
+    })
+  }
+
+  return items.sort((a, b) => b.score - a.score || a.id - b.id)
+}
+
 export interface MindMapTooltipMeta {
   task: Task
   status?: Status

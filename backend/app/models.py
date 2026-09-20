@@ -94,6 +94,7 @@ class Task(Base):
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     priority: Mapped[int] = mapped_column(Integer, nullable=False, default=PRIORITY_MEDIUM)
+    color: Mapped[str | None] = mapped_column(String(20), nullable=True)
     due_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

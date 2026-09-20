@@ -6,10 +6,23 @@ def test_create_task_uses_defaults(client, statuses, make_task):
     assert task["status_id"] == statuses[0]["id"]
     assert task["completed_at"] is None
     assert task["due_date"] is None
+    # 默认不自定义颜色（前端按优先级取便签底色）。
+    assert task["color"] is None
     assert task["tags"] == []
     assert task["subtasks"] == []
     assert task["created_at"] is not None
     assert task["updated_at"] is not None
+
+
+def test_task_color_can_be_set_and_cleared(client, make_task):
+    task = make_task(color="#ff00aa")
+    assert task["color"] == "#ff00aa"
+
+    updated = client.put(f"/api/tasks/{task['id']}", json={"color": "#00ff00"}).json()
+    assert updated["color"] == "#00ff00"
+
+    cleared = client.put(f"/api/tasks/{task['id']}", json={"color": None}).json()
+    assert cleared["color"] is None
 
 
 def test_create_task_with_all_fields(client, make_task):

@@ -194,3 +194,40 @@ def test_add_group_note_is_idempotent(tmp_path):
         columns = [row[1] for row in connection.execute("PRAGMA table_info(groups)")]
         assert columns.count("note") == 1
 
+
+def test_add_task_color_is_idempotent(tmp_path):
+    from app import database
+
+    db_path = tmp_path / "legacy.db"
+    _build_legacy_db(db_path)
+
+    engine = create_engine(f"sqlite:///{db_path.as_posix()}", future=True)
+    with engine.begin() as connection:
+        database._add_task_color(connection)
+    with engine.begin() as connection:
+        database._add_task_color(connection)
+
+    with sqlite3.connect(db_path) as connection:
+        columns = [row[1] for row in connection.execute("PRAGMA table_info(tasks)")]
+        assert columns.count("color") == 1
+        assert connection.execute("SELECT COUNT(*) FROM tasks").fetchone()[0] == 2
+        assert connection.execute(
+            "SELECT COUNT(*) FROM tasks WHERE color IS NULL"
+        ).fetchone()[0] == 2
+
+
+def test_add_task_color_noop_when_existing(tmp_path):
+    from app import database
+
+    db_path = tmp_path / "modern.db"
+    engine = create_engine(f"sqlite:///{db_path.as_posix()}", future=True)
+    with engine.begin() as connection:
+        connection.exec_driver_sql(
+            "CREATE TABLE tasks (id INTEGER NOT NULL PRIMARY KEY, color VARCHAR(20))"
+        )
+        database._add_task_color(connection)
+        columns = [
+            row[1] for row in connection.exec_driver_sql("PRAGMA table_info(tasks)")
+        ]
+        assert columns == ["id", "color"]
+

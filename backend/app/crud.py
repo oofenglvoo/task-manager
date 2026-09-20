@@ -114,6 +114,7 @@ def create_task(db: Session, payload) -> models.Task:
         title=_clean_title(payload.title),
         description=payload.description,
         priority=priority,
+        color=payload.color,
         due_date=payload.due_date,
         position=next_task_position(db),
     )

@@ -61,6 +61,7 @@ export interface Task {
   title: string
   description: string | null
   priority: number
+  color: string | null
   due_date: string | null
   position: number
   is_archived: boolean
@@ -106,6 +107,7 @@ export interface TaskInput {
   group_id?: number | null
   description?: string | null
   priority?: number
+  color?: string | null
   due_date?: string | null
   tag_ids?: number[]
 }

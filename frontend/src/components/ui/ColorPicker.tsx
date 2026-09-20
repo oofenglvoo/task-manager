@@ -18,9 +18,13 @@ const SWATCHES = [
 export function ColorPicker({
   value,
   onChange,
+  onClear,
+  clearLabel = '默认',
 }: {
   value: string
   onChange: (color: string) => void
+  onClear?: () => void
+  clearLabel?: string
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -49,6 +53,15 @@ export function ColorPicker({
           style={{ backgroundColor: value }}
         />
       </label>
+      {onClear ? (
+        <button
+          type="button"
+          onClick={onClear}
+          className="rounded border border-line bg-surface px-2 py-0.5 text-xs text-ink-soft transition-colors hover:border-line-strong hover:text-ink"
+        >
+          {clearLabel}
+        </button>
+      ) : null}
     </div>
   )
 }

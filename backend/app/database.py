@@ -61,6 +61,7 @@ def ensure_schema() -> None:
             )
         _drop_projects(connection)
         _add_task_group(connection)
+        _add_task_color(connection)
         _add_group_note(connection)
         _normalize_due_dates(connection)
 
@@ -91,6 +92,19 @@ def _add_group_note(connection) -> None:
     if not group_columns or "note" in group_columns:
         return
     connection.exec_driver_sql("ALTER TABLE groups ADD COLUMN note TEXT")
+
+
+def _add_task_color(connection) -> None:
+    """Add `tasks.color` to existing databases. Idempotent (PRAGMA guarded).
+
+    Nullable: NULL means "follow the priority tint" on the frontend.
+    """
+    task_columns = {
+        row[1] for row in connection.exec_driver_sql("PRAGMA table_info(tasks)")
+    }
+    if not task_columns or "color" in task_columns:
+        return
+    connection.exec_driver_sql("ALTER TABLE tasks ADD COLUMN color VARCHAR(20)")
 
 
 def _add_task_group(connection) -> None:

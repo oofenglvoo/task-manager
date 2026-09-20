@@ -1,5 +1,7 @@
+import type { CSSProperties } from 'react'
 import type { Priority } from './types'
 import { isDarkColor } from './chartTheme'
+import { taskColor } from './taskColor'
 
 // 数据未加载时的兜底优先级（与后端默认三条一致）。
 export const FALLBACK_PRIORITIES: Priority[] = [
@@ -64,4 +66,24 @@ export function noteSurfaceClassFor(
 /** 根据背景色决定文字用深色还是浅色（用于彩色优先级徽标）。 */
 export function priorityTextOn(color: string): string {
   return isDarkColor(color) ? 'text-white' : 'text-black'
+}
+
+/**
+ * 卡片底色：自定义颜色时用内联变量 `--card-tint`（alpha 由 `--app-card-alpha` 控制），
+ * 否则走优先级三档便签色。两者都受「卡片不透明度」滑块影响。
+ */
+export function cardSurfaceStyle(
+  task: { color: string | null; priority: number },
+  priorities: Priority[],
+  isDone: boolean,
+  isDark: boolean,
+): { className: string; style?: CSSProperties } {
+  if (task.color) {
+    const tint = isDone ? 'rgb(111 115 127)' : taskColor(task, priorities, isDark)
+    return {
+      className: 'note-surface-custom',
+      style: { '--card-tint': tint } as CSSProperties,
+    }
+  }
+  return { className: noteSurfaceClassFor(priorities, task.priority, isDone) }
 }

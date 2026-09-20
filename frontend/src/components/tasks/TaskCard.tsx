@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { useMemo } from 'react'
 import { CheckSquare, Clock, Pencil } from 'lucide-react'
+import { usePreferences } from '../../store/preferences'
 import type { CardSizeStyle } from '../../store/preferences'
 import type { Status, Task } from '../../lib/types'
 import {
@@ -10,7 +11,7 @@ import {
   formatDateTime,
   noteTilt,
 } from '../../lib/utils'
-import { noteSurfaceClassFor } from '../../lib/priority'
+import { cardSurfaceStyle } from '../../lib/priority'
 import { usePrioritiesMeta } from '../../hooks/usePrioritiesMeta'
 import { sanitizeDescription } from '../../lib/sanitizeHtml'
 import { TagChip } from '../ui/Badge'
@@ -51,6 +52,8 @@ export function TaskCard({
   const isDone = task.completed_at != null
   const tilt = noteTilt(task.id)
   const { priorities } = usePrioritiesMeta()
+  const { resolvedTheme } = usePreferences()
+  const surface = cardSurfaceStyle(task, priorities, isDone, resolvedTheme === 'dark')
   const descriptionHtml = useMemo(
     () => sanitizeDescription(task.description, { allowImages: false }),
     [task.description],
@@ -63,10 +66,10 @@ export function TaskCard({
   return (
     <div
       onClick={onOpen}
-      style={{ transform: `rotate(${tilt}deg)` }}
+      style={{ transform: `rotate(${tilt}deg)`, ...surface.style }}
       className={cn(
         'group relative flex h-full flex-col rounded-md border border-line/60 shadow-note transition-all duration-150',
-        noteSurfaceClassFor(priorities, task.priority, isDone),
+        surface.className,
         style.padding,
         onOpen && 'cursor-pointer hover:z-10 hover:-translate-y-0.5 hover:rotate-0 hover:shadow-panel',
         'motion-reduce:rotate-0 motion-reduce:transform-none',

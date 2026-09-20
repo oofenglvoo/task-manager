@@ -37,6 +37,27 @@ def test_import_preserves_due_date(client, make_task):
     assert imported["due_date"] == "2026-10-01T18:30:00"
 
 
+def test_import_preserves_task_color(client, make_task):
+    make_task(title="带颜色", color="#12ab34")
+    backup = client.get("/api/export").json()
+    assert backup["tasks"][0]["color"] == "#12ab34"
+
+    client.post("/api/import", json=backup)
+    tasks = client.get("/api/tasks").json()
+    assert tasks[0]["color"] == "#12ab34"
+
+
+def test_import_accepts_payload_without_color(client, make_task):
+    make_task(title="旧备份")
+    backup = client.get("/api/export").json()
+    for item in backup["tasks"]:
+        item.pop("color", None)
+
+    assert client.post("/api/import", json=backup).status_code == 200
+    tasks = client.get("/api/tasks").json()
+    assert tasks[0]["color"] is None
+
+
 def test_export_includes_timestamps(client, make_task):
     task = make_task(title="带时间戳")
     exported = next(item for item in client.get("/api/export").json()["tasks"])

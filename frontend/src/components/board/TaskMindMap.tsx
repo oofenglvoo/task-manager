@@ -21,14 +21,20 @@ const SwimlaneView = lazy(() =>
 const TreeView = lazy(() =>
   import('./mindmap/TreeView').then((module) => ({ default: module.TreeView })),
 )
+const ScoreBoardView = lazy(() =>
+  import('./mindmap/ScoreBoardView').then((module) => ({
+    default: module.ScoreBoardView,
+  })),
+)
 
-type MindMapView = 'sankey' | 'radial' | 'tree' | 'swimlane'
+type MindMapView = 'sankey' | 'radial' | 'tree' | 'swimlane' | 'score'
 
 const VIEW_OPTIONS: Array<{ value: MindMapView; label: string }> = [
   { value: 'sankey', label: '桑基流带' },
   { value: 'radial', label: '径向脑图' },
   { value: 'tree', label: '四列树' },
   { value: 'swimlane', label: '泳道画布' },
+  { value: 'score', label: '评分柱状图' },
 ]
 
 const VIEW_STORAGE_KEY = 'task-manager:mindmap-view'
@@ -39,6 +45,7 @@ const CHART_HEIGHTS: Record<MindMapView, number> = {
   radial: 420,
   tree: 440,
   swimlane: 440,
+  score: 440,
 }
 
 function loadView(): MindMapView {
@@ -83,9 +90,19 @@ export function TaskMindMap() {
       palette,
       height: chartHeight,
       groupBy,
+      isDark: resolvedTheme === 'dark',
       onOpenTask: openTask,
     }),
-    [tasks, statuses, priorities, palette, chartHeight, groupBy, openTask],
+    [
+      tasks,
+      statuses,
+      priorities,
+      palette,
+      chartHeight,
+      groupBy,
+      resolvedTheme,
+      openTask,
+    ],
   )
 
   function changeView(next: MindMapView) {
@@ -199,6 +216,8 @@ export function TaskMindMap() {
               <RadialView {...viewProps} />
             ) : view === 'tree' ? (
               <TreeView {...viewProps} />
+            ) : view === 'score' ? (
+              <ScoreBoardView {...viewProps} />
             ) : (
               <SwimlaneView {...viewProps} />
             )}

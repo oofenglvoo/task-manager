@@ -139,6 +139,13 @@ export function ListView() {
       >
         <td className="px-4 py-2">
           <div className="flex items-center gap-2">
+            {task.color ? (
+              <span
+                className="h-2.5 w-2.5 shrink-0 rounded-full"
+                style={{ backgroundColor: task.color }}
+                aria-hidden
+              />
+            ) : null}
             <span className={cn('text-ink', isDone && 'text-muted line-through')}>
               {task.title}
             </span>

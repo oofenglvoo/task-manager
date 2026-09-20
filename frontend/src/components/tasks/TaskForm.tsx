@@ -4,6 +4,7 @@ import { useCreateTask, useGroups, useStatuses, useTags } from '../../hooks/quer
 import { usePrioritiesMeta } from '../../hooks/usePrioritiesMeta'
 import { useToast } from '../../store/toast'
 import { Button } from '../ui/Button'
+import { ColorPicker } from '../ui/ColorPicker'
 import { Field, Input, Select, Textarea } from '../ui/Input'
 import { Modal } from '../ui/Modal'
 import { TagPicker } from '../ui/TagPicker'
@@ -19,6 +20,7 @@ interface FormState {
   statusId: number | ''
   groupId: number | ''
   priority: number
+  color: string | null
   dueDate: string
   description: string
   tagIds: number[]
@@ -29,6 +31,7 @@ const EMPTY: FormState = {
   statusId: '',
   groupId: '',
   priority: 2,
+  color: null,
   dueDate: '',
   description: '',
   tagIds: [],
@@ -82,6 +85,7 @@ export function TaskForm({ open, onClose, defaultStatusId }: TaskFormProps) {
       status_id: form.statusId === '' ? undefined : form.statusId,
       group_id: form.groupId === '' ? null : form.groupId,
       priority: form.priority,
+      color: form.color,
       due_date: form.dueDate || null,
       description: form.description.trim() || null,
       tag_ids: form.tagIds,
@@ -188,6 +192,15 @@ export function TaskForm({ open, onClose, defaultStatusId }: TaskFormProps) {
             tags={tags}
             selected={form.tagIds}
             onChange={(tagIds) => setForm({ ...form, tagIds })}
+          />
+        </Field>
+
+        <Field label="卡片颜色">
+          <ColorPicker
+            value={form.color ?? '#5e6ad2'}
+            onChange={(color) => setForm({ ...form, color })}
+            onClear={() => setForm({ ...form, color: null })}
+            clearLabel="按优先级"
           />
         </Field>
 

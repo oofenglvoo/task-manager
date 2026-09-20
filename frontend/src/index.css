@@ -134,6 +134,15 @@
   background-color: rgb(var(--c-note-high) / var(--app-card-alpha));
 }
 
+/* 任务自定义颜色：色值来自内联 --card-tint，alpha 同样跟随卡片不透明度。 */
+.note-surface-custom {
+  background-color: color-mix(
+    in srgb,
+    var(--card-tint) calc(var(--app-card-alpha) * 100%),
+    transparent
+  );
+}
+
 /* 图元素底色（脉络泳道格、泳道任务条等）：跟随卡片不透明度。 */
 .app-surface-canvas {
   background-color: rgb(var(--c-canvas) / var(--app-card-alpha));

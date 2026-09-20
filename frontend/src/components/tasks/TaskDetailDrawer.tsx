@@ -15,6 +15,7 @@ import { usePrioritiesMeta } from '../../hooks/usePrioritiesMeta'
 import { useToast } from '../../store/toast'
 import { useUI } from '../../store/ui'
 import { Button } from '../ui/Button'
+import { ColorPicker } from '../ui/ColorPicker'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { Drawer } from '../ui/Drawer'
 import { Input, Select } from '../ui/Input'
@@ -29,6 +30,7 @@ interface Draft {
   statusId: number | ''
   groupId: number | ''
   priority: number
+  color: string | null
   dueDate: string
   tagIds: number[]
   description: string
@@ -47,6 +49,7 @@ function draftFromTask(task: {
   status_id: number | null
   group_id: number | null
   priority: number
+  color: string | null
   due_date: string | null
   tags: Array<{ id: number }>
   description: string | null
@@ -56,6 +59,7 @@ function draftFromTask(task: {
     statusId: task.status_id ?? '',
     groupId: task.group_id ?? '',
     priority: task.priority,
+    color: task.color,
     dueDate: toDatetimeLocal(task.due_date),
     tagIds: task.tags.map((tag) => tag.id),
     description: task.description ?? '',
@@ -102,6 +106,7 @@ export function TaskDetailDrawer() {
       draft.statusId !== (task.status_id ?? '') ||
       draft.groupId !== (task.group_id ?? '') ||
       draft.priority !== task.priority ||
+      draft.color !== task.color ||
       draft.dueDate !== toDatetimeLocal(task.due_date) ||
       draft.description !== (task.description ?? '') ||
       !sameTags(draft.tagIds, task.tags.map((tag) => tag.id))
@@ -130,6 +135,7 @@ export function TaskDetailDrawer() {
           status_id: draft.statusId === '' ? null : draft.statusId,
           group_id: draft.groupId === '' ? null : draft.groupId,
           priority: draft.priority,
+          color: draft.color,
           due_date: draft.dueDate || null,
           tag_ids: draft.tagIds,
           description: draft.description.trim() || null,
@@ -251,6 +257,16 @@ export function TaskDetailDrawer() {
                     className="h-9 w-full rounded border border-line bg-canvas px-3 text-sm text-ink focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/50"
                   />
                 </label>
+              </div>
+
+              <div className="space-y-1.5">
+                <span className="text-xs font-medium text-ink-soft">卡片颜色</span>
+                <ColorPicker
+                  value={draft.color ?? '#5e6ad2'}
+                  onChange={(color) => patch({ color })}
+                  onClear={() => patch({ color: null })}
+                  clearLabel="按优先级"
+                />
               </div>
 
               <div className="space-y-1.5">
