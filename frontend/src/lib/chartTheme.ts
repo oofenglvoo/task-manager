@@ -19,17 +19,17 @@ export interface ChartPalette {
 export function chartPalette(isDark: boolean): ChartPalette {
   return {
     priority: isDark
-      ? { 1: '#8b93a7', 2: '#f0b45a', 3: '#f07070' }
+      ? { 1: '#6b7280', 2: '#d97706', 3: '#dc2626' }
       : { 1: '#6b7280', 2: '#d97706', 3: '#dc2626' },
-    root: isDark ? '#7c86e8' : '#4f5bc8',
-    line: isDark ? 'rgba(255,255,255,0.14)' : 'rgba(16,17,26,0.14)',
-    lineStrong: isDark ? 'rgba(255,255,255,0.28)' : 'rgba(16,17,26,0.28)',
-    text: isDark ? 'rgb(236 236 241)' : 'rgb(24 25 31)',
-    subText: isDark ? 'rgb(165 165 176)' : 'rgb(82 84 96)',
-    muted: isDark ? 'rgb(130 132 144)' : 'rgb(132 135 148)',
-    surface: isDark ? 'rgb(19 19 22)' : 'rgb(255 255 255)',
-    elevated: isDark ? 'rgb(26 26 31)' : 'rgb(246 247 249)',
-    canvas: isDark ? 'rgb(10 10 12)' : 'rgb(244 245 247)',
+    root: isDark ? '#6366f1' : '#4f5bdc',
+    line: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(16,17,26,0.12)',
+    lineStrong: isDark ? 'rgba(255,255,255,0.26)' : 'rgba(16,17,26,0.26)',
+    text: isDark ? 'rgb(237 237 242)' : 'rgb(26 27 33)',
+    subText: isDark ? 'rgb(168 168 180)' : 'rgb(84 86 98)',
+    muted: isDark ? 'rgb(116 116 128)' : 'rgb(134 137 150)',
+    surface: isDark ? 'rgb(24 24 30)' : 'rgb(255 255 255)',
+    elevated: isDark ? 'rgb(32 32 40)' : 'rgb(248 249 251)',
+    canvas: isDark ? 'rgb(16 16 20)' : 'rgb(245 246 248)',
     done: isDark ? '#6f737f' : '#9aa0ad',
   }
 }
@@ -114,7 +114,7 @@ export function priorityColorMap(
   isDark: boolean,
 ): Record<number, string> {
   const fallback = isDark
-    ? { 1: '#8b93a7', 2: '#f0b45a', 3: '#f07070' }
+    ? { 1: '#6b7280', 2: '#d97706', 3: '#dc2626' }
     : { 1: '#6b7280', 2: '#d97706', 3: '#dc2626' }
   const map: Record<number, string> = { ...fallback }
   for (const item of priorities) {

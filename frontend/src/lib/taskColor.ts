@@ -3,9 +3,9 @@ import type { Priority, Task } from './types'
 
 /** 优先级 id → 便签底色（低/中/高三档由优先级 level 决定）。 */
 const TONE_BY_LEVEL: Record<number, string> = {
-  1: '#5c5c68',
-  2: '#b07a16',
-  3: '#ac3e3e',
+  1: '#6b7280',
+  2: '#d97706',
+  3: '#dc2626',
 }
 
 /**
