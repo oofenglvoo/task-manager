@@ -72,6 +72,10 @@ interface PreferencesState extends Preferences {
 
 const STORAGE_KEY = 'task-manager:preferences'
 
+// 在 React 首次渲染、任何 effect 写回 localStorage 之前读取原始记录。
+// 只有本机确实存过用户设置时才为 true，避免新机默认值把服务器设置覆盖掉。
+const HAD_LOCAL_ON_LOAD = window.localStorage.getItem(STORAGE_KEY) != null
+
 const DEFAULTS: Preferences = {
   theme: 'system',
   cardSize: 'md',
@@ -157,8 +161,7 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
           !data.compact &&
           !data.group_by &&
           data.background_url === null
-        const hadLocal = window.localStorage.getItem(STORAGE_KEY) != null
-        if (isServerDefault && hadLocal) {
+        if (isServerDefault && HAD_LOCAL_ON_LOAD) {
           void api.settings
             .update({
               theme: prefsRef.current.theme,
