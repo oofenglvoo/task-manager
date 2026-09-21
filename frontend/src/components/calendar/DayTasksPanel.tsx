@@ -84,7 +84,7 @@ export function DayTasksPanel({
                     >
                       {priorityLabel(task.priority)}
                     </span>
-                    {task.due_date ? (
+                    {task.due_date && task.due_date.length > 10 ? (
                       <span className="shrink-0 text-[11px] text-muted">
                         <Clock className="mr-0.5 inline h-3 w-3" />
                         {task.due_date.slice(11, 16)}

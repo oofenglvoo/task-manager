@@ -1,5 +1,6 @@
 import json
 import re
+from datetime import date, datetime
 
 from fastapi import HTTPException
 from sqlalchemy import func, select
@@ -17,14 +18,78 @@ def _strip_images(html: str | None) -> str | None:
     return _IMG_TAG.sub("", html).strip() or None
 
 
+def as_datetime(value: object) -> datetime | None:
+    """把 ``due_date`` 归一化为 naive datetime（分钟精度）。
+
+    兼容四种历史形态：
+    - ``datetime``（正常路径）；
+    - 纯日期 ``date``（按 23:59 处理）；
+    - ISO 字符串（含历史快照；纯日期同样按 23:59）；
+    - 数字亲和性遗留值（``20260920235900`` 这类 int/float）。
+
+    归一化是必需的：否则 ``.isoformat()`` 会直接 500。
+    """
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        parsed = value.replace(tzinfo=None) if value.tzinfo else value
+    elif isinstance(value, date):
+        parsed = datetime(value.year, value.month, value.day, 23, 59)
+    elif isinstance(value, bool):
+        return None
+    elif isinstance(value, (int, float)):
+        parsed = _from_numeric(value)
+        if parsed is None:
+            return None
+    elif isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return None
+        try:
+            parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        except ValueError:
+            if text.isdigit() and len(text) >= 14:
+                parsed = _from_numeric(int(text[:14]))
+                if parsed is None:
+                    return None
+            else:
+                return None
+        if parsed.tzinfo is not None:
+            parsed = parsed.replace(tzinfo=None)
+        if len(text) <= 10:
+            parsed = parsed.replace(hour=23, minute=59)
+    else:
+        return None
+    return parsed.replace(second=0, microsecond=0)
+
+
+def _from_numeric(value: int | float) -> datetime | None:
+    """还原 ``YYYYMMDDHHMMSS`` 形态的数字时间戳（SQLite 数字亲和性遗留）。"""
+    text = str(int(value))
+    if len(text) < 8:
+        return None
+    try:
+        return datetime(
+            int(text[0:4]),
+            int(text[4:6]),
+            int(text[6:8]),
+            int(text[8:10]) if len(text) >= 10 else 0,
+            int(text[10:12]) if len(text) >= 12 else 0,
+            int(text[12:14]) if len(text) >= 14 else 0,
+        )
+    except ValueError:
+        return None
+
+
 def build_history_snapshot(task: models.Task) -> dict:
     """任务主字段的自包含快照（存名称而非外键，描述去除图片）。"""
+    due = as_datetime(task.due_date)
     return {
         "title": task.title,
         "status_name": task.status.name if task.status is not None else None,
         "group_name": task.group.name if task.group is not None else None,
         "priority": task.priority,
-        "due_date": task.due_date.isoformat() if task.due_date is not None else None,
+        "due_date": due.isoformat() if due is not None else None,
         "tag_names": [tag.name for tag in task.tags],
         "description": _strip_images(task.description),
     }
@@ -115,7 +180,7 @@ def create_task(db: Session, payload) -> models.Task:
         description=payload.description,
         priority=priority,
         color=payload.color,
-        due_date=payload.due_date,
+        due_date=as_datetime(payload.due_date),
         position=next_task_position(db),
     )
     if status is not None and status.is_done:
@@ -144,6 +209,9 @@ def update_task(db: Session, task: models.Task, payload) -> models.Task:
 
     if "priority" in data and data["priority"] is not None:
         data["priority"] = resolve_priority(db, data["priority"])
+
+    if "due_date" in data:
+        data["due_date"] = as_datetime(data["due_date"])
 
     for key, value in data.items():
         setattr(task, key, value)

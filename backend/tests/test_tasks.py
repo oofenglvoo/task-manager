@@ -170,3 +170,126 @@ def test_delete_task(client, make_task):
     task = make_task()
     assert client.delete(f"/api/tasks/{task['id']}").status_code == 204
     assert client.get(f"/api/tasks/{task['id']}").status_code == 404
+
+
+def test_update_task_with_legacy_text_due_date_does_not_crash(client, make_task):
+    """回归：旧库 due_date 是纯日期文本，更新任务时不应 500。
+
+    `build_history_snapshot` 曾直接调用 `.isoformat()`；迁移后读回来是
+    datetime，但日期部分按 23:59 还原。
+    """
+    from sqlalchemy import text
+
+    from app.database import engine
+
+    task = make_task(title="旧任务", due_date="2026-09-20T23:59")
+
+    with engine.begin() as connection:
+        connection.execute(
+            text("UPDATE tasks SET due_date = '2026-09-20' WHERE id = :id"),
+            {"id": task["id"]},
+        )
+
+    response = client.put(f"/api/tasks/{task['id']}", json={"title": "改过"})
+    assert response.status_code == 200, response.text
+    assert response.json()["title"] == "改过"
+
+
+def test_due_date_normalized_to_minute_precision(client, make_task):
+    """秒级/纯日期的写入值统一截断到分钟，历史快照同样保持分钟精度。"""
+    task = make_task(title="精度", due_date="2026-10-01T18:30")
+    assert task["due_date"] == "2026-10-01T18:30:00"
+
+    client.put(f"/api/tasks/{task['id']}", json={"due_date": "2026-10-01T18:30:45.123456"})
+    updated = client.get(f"/api/tasks/{task['id']}").json()
+    assert updated["due_date"] == "2026-10-01T18:30:00"
+
+    history = client.get(f"/api/tasks/{task['id']}/history").json()
+    assert history[0]["snapshot"]["due_date"] == "2026-10-01T18:30:00"
+
+
+def test_due_date_migration_rewrites_legacy_forms():
+    """迁移必须把三种旧形态都写成 ISO 文本。
+
+    数字亲和性值（`20260920235900`）会让 SQLite 把列判成 NUMERIC，
+    SQLAlchemy 的 datetime 处理器随后抛
+    `TypeError: fromisoformat: argument must be str` —— 这正是保存任务
+    时 500 的根因。
+    """
+    from sqlalchemy import text
+
+    from app.database import engine, ensure_schema
+
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "INSERT INTO tasks (title, priority, position, is_archived, "
+                "created_at, updated_at, due_date) VALUES "
+                "('numeric', 1, 1, 0, '2026-01-01 00:00:00', "
+                "'2026-01-01 00:00:00', 20260920235900), "
+                "('dateonly', 1, 2, 0, '2026-01-01 00:00:00', "
+                "'2026-01-01 00:00:00', '2026-09-20'), "
+                "('seconds', 1, 3, 0, '2026-01-01 00:00:00', "
+                "'2026-01-01 00:00:00', '2026-09-20T18:30:45')"
+            )
+        )
+
+    ensure_schema()
+
+    with engine.begin() as connection:
+        rows = connection.execute(
+            text("SELECT title, typeof(due_date), due_date FROM tasks ORDER BY position")
+        ).fetchall()
+    assert [(row[0], row[1], row[2]) for row in rows] == [
+        ("numeric", "text", "2026-09-20T23:59:00"),
+        ("dateonly", "text", "2026-09-20T23:59:00"),
+        ("seconds", "text", "2026-09-20T18:30:00"),
+    ]
+
+
+def test_history_snapshot_handles_legacy_date_only(client, make_task):
+    """历史快照里的纯日期 due_date 会被迁移清洗为 23:59。"""
+    from sqlalchemy import text
+
+    from app.database import engine, ensure_schema
+
+    task = make_task(title="A", due_date="2026-09-20T23:59")
+    with engine.begin() as connection:
+        connection.execute(
+            text("UPDATE tasks SET due_date = '2026-09-20' WHERE id = :id"),
+            {"id": task["id"]},
+        )
+        connection.execute(
+            text(
+                "UPDATE task_history SET snapshot = "
+                "REPLACE(snapshot, '\"due_date\": \"2026-09-20T23:59:00\"', "
+                "'\"due_date\": \"2026-09-20\"')"
+            )
+        )
+    # 真实旧库是在启动时跑迁移的，这里显式补上。
+    ensure_schema()
+
+    response = client.put(f"/api/tasks/{task['id']}", json={"title": "B"})
+    assert response.status_code == 200, response.text
+    snapshot = client.get(f"/api/tasks/{task['id']}/history").json()[0]["snapshot"]
+    assert snapshot["due_date"] == "2026-09-20T23:59:00"
+
+
+def test_as_datetime_handles_all_legacy_shapes():
+    """`crud.as_datetime` 是读路径的兜底，必须覆盖所有历史形态。"""
+    from datetime import date, datetime
+
+    from app.crud import as_datetime
+
+    assert as_datetime(None) is None
+    assert as_datetime("") is None
+    assert as_datetime("2026-09-20") == datetime(2026, 9, 20, 23, 59)
+    assert as_datetime("2026-09-20T23:59") == datetime(2026, 9, 20, 23, 59)
+    assert as_datetime("2026-09-20T23:59:00") == datetime(2026, 9, 20, 23, 59)
+    assert as_datetime("2026-09-20T18:30:45.123") == datetime(2026, 9, 20, 18, 30)
+    assert as_datetime("20260920235900") == datetime(2026, 9, 20, 23, 59)
+    assert as_datetime(20260920235900) == datetime(2026, 9, 20, 23, 59)
+    assert as_datetime(date(2026, 9, 20)) == datetime(2026, 9, 20, 23, 59)
+    assert as_datetime(datetime(2026, 9, 20, 18, 30)) == datetime(2026, 9, 20, 18, 30)
+    assert as_datetime("not-a-date") is None
+    assert as_datetime(b"x") is None

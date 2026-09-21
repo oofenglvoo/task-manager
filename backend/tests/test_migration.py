@@ -1,3 +1,4 @@
+import json
 import sqlite3
 from pathlib import Path
 
@@ -230,4 +231,99 @@ def test_add_task_color_noop_when_existing(tmp_path):
             row[1] for row in connection.exec_driver_sql("PRAGMA table_info(tasks)")
         ]
         assert columns == ["id", "color"]
+
+
+def test_normalize_due_dates_handles_all_legacy_forms(tmp_path):
+    """三种旧形态都要变成 ISO 文本，否则读路径会 TypeError / 显示错日期。"""
+    from app import database
+
+    db_path = tmp_path / "duedates.db"
+    engine = create_engine(f"sqlite:///{db_path.as_posix()}", future=True)
+    with engine.begin() as connection:
+        connection.exec_driver_sql(
+            "CREATE TABLE tasks (id INTEGER NOT NULL PRIMARY KEY, due_date DATE)"
+        )
+        connection.exec_driver_sql(
+            "INSERT INTO tasks (id, due_date) VALUES "
+            "(1, '2026-02-01'), "
+            "(2, '2026-02-01T18:30:45'), "
+            "(3, 20260920235900)"
+        )
+        database._normalize_due_dates(connection)
+
+    with sqlite3.connect(db_path) as connection:
+        rows = list(
+            connection.execute("SELECT id, typeof(due_date), due_date FROM tasks ORDER BY id")
+        )
+        assert rows == [
+            (1, "text", "2026-02-01T23:59:00"),
+            (2, "text", "2026-02-01T18:30:00"),
+            (3, "text", "2026-09-20T23:59:00"),
+        ]
+
+
+def test_normalize_due_dates_is_idempotent(tmp_path):
+    from app import database
+
+    db_path = tmp_path / "duedates_idem.db"
+    engine = create_engine(f"sqlite:///{db_path.as_posix()}", future=True)
+    with engine.begin() as connection:
+        connection.exec_driver_sql(
+            "CREATE TABLE tasks (id INTEGER NOT NULL PRIMARY KEY, due_date DATE)"
+        )
+        connection.exec_driver_sql(
+            "INSERT INTO tasks (id, due_date) VALUES (1, '2026-02-01'), (2, 20260920235900)"
+        )
+        database._normalize_due_dates(connection)
+    with engine.begin() as connection:
+        database._normalize_due_dates(connection)
+
+    with sqlite3.connect(db_path) as connection:
+        rows = list(connection.execute("SELECT id, due_date FROM tasks ORDER BY id"))
+        assert rows == [(1, "2026-02-01T23:59:00"), (2, "2026-09-20T23:59:00")]
+
+
+def test_normalize_due_dates_noop_without_column(tmp_path):
+    from app import database
+
+    db_path = tmp_path / "nodue.db"
+    engine = create_engine(f"sqlite:///{db_path.as_posix()}", future=True)
+    with engine.begin() as connection:
+        connection.exec_driver_sql(
+            "CREATE TABLE tasks (id INTEGER NOT NULL PRIMARY KEY)"
+        )
+        database._normalize_due_dates(connection)
+        columns = [
+            row[1] for row in connection.exec_driver_sql("PRAGMA table_info(tasks)")
+        ]
+        assert columns == ["id"]
+
+
+def test_normalize_history_due_dates_rewrites_date_only(tmp_path):
+    from app import database
+
+    db_path = tmp_path / "history.db"
+    engine = create_engine(f"sqlite:///{db_path.as_posix()}", future=True)
+    with engine.begin() as connection:
+        connection.exec_driver_sql(
+            "CREATE TABLE task_history (id INTEGER NOT NULL PRIMARY KEY, snapshot TEXT NOT NULL)"
+        )
+        connection.exec_driver_sql(
+            "INSERT INTO task_history (id, snapshot) VALUES "
+            "(1, '{\"title\": \"A\", \"due_date\": \"2026-09-20\"}'), "
+            "(2, '{\"title\": \"B\", \"due_date\": \"2026-09-20T18:30:45\"}'), "
+            "(3, '{\"title\": \"C\", \"due_date\": null}')"
+        )
+        database._normalize_history_due_dates(connection)
+    with engine.begin() as connection:
+        database._normalize_history_due_dates(connection)
+
+    with sqlite3.connect(db_path) as connection:
+        snapshots = [
+            row[0]
+            for row in connection.execute("SELECT snapshot FROM task_history ORDER BY id")
+        ]
+    assert json.loads(snapshots[0])["due_date"] == "2026-09-20T23:59:00"
+    assert json.loads(snapshots[1])["due_date"] == "2026-09-20T18:30:00"
+    assert json.loads(snapshots[2])["due_date"] is None
 

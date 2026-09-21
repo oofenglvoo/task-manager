@@ -69,14 +69,25 @@ Frontend, run from `frontend/`:
 - Importing `app.main` creates all tables and seeds defaults as a side effect: statuses
   待办/进行中/已完成. There is **no project concept** anymore.
 - DB defaults to `data/tasks.db`; override with env `TASK_DB_PATH` (absolute path).
-- `tests/conftest.py` sets `TASK_DB_PATH` to a temp dir **before** importing the app, and an
-  autouse fixture drops/recreates tables per test. Preserve that import order if editing it.
+- `tests/conftest.py` sets `TASK_DB_PATH` + the three auth env vars to fixed values **before**
+  importing the app, and an autouse fixture drops/recreates tables per test. The `client` fixture
+  logs in (all `/api/*` is protected, so business tests need it); `anonymous_client` stays
+  logged out for 401 checks. Preserve that import order if editing it.
 - Datetimes are stored naive UTC and serialized with a trailing `Z` (`schemas._serialize_utc`).
   `Task.due_date` is the exception: a naive **wall-clock** datetime (no `Z`, `schemas.DueDatetime`),
   compared against `datetime.now(timezone.utc).replace(tzinfo=None)` in `stats.py`. Legacy date-only
   strings (`YYYY-MM-DD`) mean **23:59 that day** — enforced both by `schemas.parse_due` (on input) and
   `database._normalize_due_dates()` (rewrites existing rows to `T23:59:00`). Overdue/due-soon are
   time-precise; the SQLite `DATE` column holds datetimes without a schema change.
+- **`due_date` must never be read raw**: SQLite keeps it as TEXT and its *affinity* decides what
+  SQLAlchemy hands back. A numeric-affinity legacy value (`20260920235900`) makes the driver raise
+  `TypeError: fromisoformat: argument must be str` **while loading the row** — before any CRUD code
+  runs, which is what produced the "保存任务 500" bug. Two independent guards exist, keep both:
+  `database._normalize_due_dates()` (boot-time migration: numeric → ISO text, `YYYY-MM-DD` → `T23:59:00`,
+  seconds → truncated to the minute; idempotent) and `crud.as_datetime()` (read/write-path fallback for
+  `datetime`/`date`/ISO string/`YYYYMMDDHHMMSS`). `crud` normalizes its own outputs through
+  `as_datetime()` so history snapshots stay minute-precision; `_normalize_history_due_dates()` cleans
+  the JSON `"due_date"` fragment inside `task_history.snapshot`.
 - `Task` has `created_at` (insert), `updated_at` (SQLAlchemy `onupdate=utcnow`, auto), `completed_at`.
 - `Task.priority` is an int (a **`priorities.id`**, not a fixed 1/2/3) with no range validation; the
   value must reference an existing `priorities` row or the write returns 404. `Priority` rows carry
@@ -120,8 +131,10 @@ Frontend, run from `frontend/`:
   `panel_opacity`), runs `_drop_projects()` (rebuilds `tasks` without `project_id`, drops the
   `projects` table, preserving every task row), `_add_task_group()` (adds `tasks.group_id` + index),
   `_add_task_color()` (adds `tasks.color` VARCHAR(20), NULL = 按优先级取色), `_add_group_note()`
-  (adds `groups.note`) and `_normalize_due_dates()` (rewrites legacy date-only
-  `due_date` to `T23:59:00`). The `priorities` table is created by `create_all` and seeded by
+  (adds `groups.note`), `_normalize_due_dates()` (numeric-affinity → ISO text, legacy date-only
+  `due_date` → `T23:59:00`, seconds truncated to the minute) and `_normalize_history_due_dates()`
+  (same rewrite for the JSON `"due_date"` fragment inside `task_history.snapshot`). The `priorities`
+  table is created by `create_all` and seeded by
   `seed.seed_defaults`. `create_all` never drops columns/tables, so rebuild-style migrations must stay
   idempotent.
 - `/api/export` dumps all data; `POST /api/import` **wipes and replaces** statuses/tags/groups/
