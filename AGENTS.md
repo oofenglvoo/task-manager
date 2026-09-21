@@ -187,10 +187,11 @@ Frontend, run from `frontend/`:
   a **strictly layered** weight `groupWeight × taskSpan × prioritySpan + taskWeight × prioritySpan + level`,
   where the order index is inverted (`total - order + 1`) so **越靠前分数越高**；`taskSpan`/`prioritySpan`
   are computed from the actual max task count / max priority level so later groups or large levels can
-  never bleed across layers. 未分组固定最低权重、排在所有分组之后。Bar colors deliberately reuse the
-  **card** surface rules via `cardSurfaceStyle()` (`note-surface-{low,medium,high}` / `note-surface-custom`
-  — not `taskColor()`, whose priority colors are far more saturated than the note tints), so bars and
-  the cards below them read as the same color. Bar width is `score / (maxScore * 1.25)`, so the longest
+  never bleed across layers. 未分组固定最低权重、排在所有分组之后。Bar color is the **task's group
+  color** (`task.group.color`; 未分组 → neutral gray `rgb(var(--c-line-strong))`), washed out with
+  `color-mix(in srgb, <groupColor> 55%, rgb(var(--c-surface)))` so bars stay readable in both themes
+  and never depend on the background image. 柱高 `h-5`（20px）、列表 `space-y-1`。Bar width is
+  `score / (maxScore * 1.25)`, so the longest
   bar sits at ~80% and never touches the right edge. 树/旭日/桑基的
   (priority→status) 分支内任务仍按 `taskScore()` = 优先级 `level` + 最近更新权重
   （`PRIORITY_FACTOR`/`RECENCY_FACTOR`）排序，并截断到 `BRANCH_LIMIT`（8），其余折叠为
