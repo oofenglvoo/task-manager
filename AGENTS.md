@@ -37,6 +37,18 @@ Repo root (one command; installs missing deps, builds the frontend, serves it fr
 - `npm start` (alias), `npm run build` (build only), `npm run serve` (serve without rebuild)
 - `--port <n>` / env `PORT` overrides the API port.
 
+Dependency freshness (all launchers): installs are no longer "exists → skip". Each entry point hashes
+the manifest contents (`backend/requirements.txt`, `frontend/package-lock.json`, root `package.json`)
+and compares against a `.deps-hash` marker stored **inside** the dependency dir
+(`backend/.venv/.deps-hash`, `frontend/node_modules/.deps-hash`, root `node_modules/.deps-hash` — all
+git-ignored). Mismatch → reinstall, then write the marker **only after** a successful install, so a
+failed install never leaves a stale marker. `scripts/run.mjs` and `start-server.bat` MUST produce the
+same hash for the same file: both key the digest on the path **relative to the repo root** with forward
+slashes (`deps_hash.py` receives `backend\requirements.txt`; `run.mjs` uses `relative(root, absPath)`).
+Changing one without the other makes the two launchers fight (each thinks the other is stale) and
+reinstall on every switch. Node (`crypto`) and Python (`scripts/deps_hash.py`, stdlib `hashlib`) agree
+byte-for-byte — verified `24e4fe…` for the current `requirements.txt`.
+
 Backend, run from `backend/` (use the existing venv):
 - Install deps: `.venv\Scripts\python -m pip install -r requirements.txt`
 - Export `TASK_APP_USERNAME` / `TASK_APP_PASSWORD` / `TASK_SECRET_KEY` first, or `app.main`

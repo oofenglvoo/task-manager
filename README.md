@@ -74,6 +74,11 @@ npm run dev
 构建前端到 `frontend/dist`，然后启动后端并由其托管前端。启动后访问
 http://127.0.0.1:8001 （接口文档 `/docs`），并会**自动打开系统默认浏览器**。按 Ctrl+C 停止。
 
+> **依赖更新会自动识别**：脚本按 `backend/requirements.txt`、`frontend/package-lock.json`
+> （根目录为 `package.json`）的内容计算 SHA-256 指纹并写入依赖目录内的 `.deps-hash` 标记，
+> 与上次安装的指纹不一致时才重新安装。所以升级依赖后无需手动 `pip install` / `npm install`，
+> 直接重新启动即可；清单没变则跳过安装，启动更快。安装失败会直接报错停止，不会带着旧依赖继续跑。
+
 可用脚本：
 
 | 命令 | 说明 |
@@ -149,6 +154,10 @@ APP_PORT=8001
 
 双击 `start-server.bat`：它会读取 `server.env`、按需创建 `backend/.venv` 并装依赖、
 构建前端，最后以 `APP_HOST:APP_PORT` 启动服务。按 Ctrl+C 停止。
+
+> 与 `npm run dev` 相同，它也会比对依赖清单指纹：`requirements.txt` / `package-lock.json`
+> 有更新时会**自动重新安装**，无需手动执行 `pip install` / `npm install`。
+> `APP_HOST` 请填 `0.0.0.0`（云服务器上公网 IP 并不在本机网卡上，填公网 IP 会导致绑定失败退出）。
 
 也可以手动启动（需要先设置好上面的环境变量）：
 

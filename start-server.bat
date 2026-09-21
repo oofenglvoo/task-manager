@@ -49,19 +49,40 @@ if not exist "backend\.venv\Scripts\python.exe" (
   if errorlevel 1 goto failed
   call backend\.venv\Scripts\python.exe -m pip install -r backend\requirements.txt
   if errorlevel 1 goto failed
+  call backend\.venv\Scripts\python.exe "%~dp0scripts\deps_hash.py" backend\requirements.txt > "backend\.venv\.deps-hash"
 ) else (
-  echo [2/4] Backend venv ready
+  set "REQ_HASH_NOW="
+  for /f "usebackq delims=" %%h in (`backend\.venv\Scripts\python.exe "%~dp0scripts\deps_hash.py" backend\requirements.txt`) do set "REQ_HASH_NOW=%%h"
+  set "REQ_HASH_OLD="
+  if exist "backend\.venv\.deps-hash" for /f "usebackq delims=" %%h in ("backend\.venv\.deps-hash") do set "REQ_HASH_OLD=%%h"
+  if not "!REQ_HASH_NOW!"=="!REQ_HASH_OLD!" (
+    echo [2/4] Backend requirements changed, reinstalling...
+    call backend\.venv\Scripts\python.exe -m pip install -r backend\requirements.txt
+    if errorlevel 1 goto failed
+    call backend\.venv\Scripts\python.exe "%~dp0scripts\deps_hash.py" backend\requirements.txt > "backend\.venv\.deps-hash"
+  ) else (
+    echo [2/4] Backend venv ready
+  )
 )
 
-if not exist "frontend\node_modules" (
-  echo [3/4] Installing frontend dependencies...
-  pushd frontend
-  call npm install
-  if errorlevel 1 ( popd & goto failed )
-  popd
-) else (
-  echo [3/4] Frontend dependencies ready
-)
+set "FEDE_HASH_NOW="
+for /f "usebackq delims=" %%h in (`backend\.venv\Scripts\python.exe "%~dp0scripts\deps_hash.py" frontend\package-lock.json`) do set "FEDE_HASH_NOW=%%h"
+set "FEDE_HASH_OLD="
+if exist "frontend\node_modules\.deps-hash" for /f "usebackq delims=" %%h in ("frontend\node_modules\.deps-hash") do set "FEDE_HASH_OLD=%%h"
+if not exist "frontend\node_modules" goto install_frontend
+if not "!FEDE_HASH_NOW!"=="!FEDE_HASH_OLD!" goto install_frontend
+echo [3/4] Frontend dependencies ready
+goto frontend_ready
+
+:install_frontend
+echo [3/4] Installing frontend dependencies...
+pushd frontend
+call npm install
+if errorlevel 1 ( popd & goto failed )
+popd
+backend\.venv\Scripts\python.exe "%~dp0scripts\deps_hash.py" frontend\package-lock.json > "frontend\node_modules\.deps-hash"
+
+:frontend_ready
 echo       Building frontend...
 pushd frontend
 call npm run build
