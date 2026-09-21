@@ -1,5 +1,6 @@
 ﻿import { QueryClientProvider } from '@tanstack/react-query'
 import { lazy, Suspense } from 'react'
+import type { ReactNode } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { queryClient } from './lib/queryClient'
 import { AuthProvider, useAuth } from './store/auth'
@@ -57,18 +58,28 @@ function AppRoutes() {
   )
 }
 
+/**
+ * 偏好必须能覆盖登录页（主题/背景/不透明度），但 `/api/settings` 是受保护接口，
+ * 只有登录后才能拉取。所以把 AuthProvider 放在外层，这里只负责把登录态透传下去：
+ * 未登录时 PreferencesProvider 不发请求，登录成功后自动重新拉取。
+ */
+function PreferencesProviderGate({ children }: { children: ReactNode }) {
+  const { authenticated } = useAuth()
+  return <PreferencesProvider authenticated={authenticated}>{children}</PreferencesProvider>
+}
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
-        <PreferencesProvider>
-          <AuthProvider>
+        <AuthProvider>
+          <PreferencesProviderGate>
             <UIProvider>
               <AppBackground />
               <AppRoutes />
             </UIProvider>
-          </AuthProvider>
-        </PreferencesProvider>
+          </PreferencesProviderGate>
+        </AuthProvider>
       </ToastProvider>
     </QueryClientProvider>
   )

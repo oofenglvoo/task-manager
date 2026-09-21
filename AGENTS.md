@@ -29,6 +29,14 @@
   intercepts the whole app (no `/login` route — that would fight the SPA catch-all). `lib/api.ts`
   sends `credentials: 'include'` and calls `setUnauthorizedHandler` on any non-login 401.
   Logout lives in `src/components/settings/AccountSettings.tsx`. All new UI text is Chinese.
+- **Provider order in `App.tsx` matters**: `AuthProvider` must be **outside** `PreferencesProvider`
+  (which receives `authenticated` via the `PreferencesProviderGate` wrapper). `/api/settings` is a
+  protected route, so fetching it before the session is known returns 401 — and `lib/api.ts` swallows
+  it with `.catch(() => {})`, meaning it would **never retry**: the server's `card_opacity` etc. would
+  silently never apply whenever a stale `localStorage` entry existed. `PreferencesProvider`'s fetch
+  effect is keyed on `authenticated` (so it re-runs after login) and the write-back effect is gated on
+  `synced && authenticated` (so a not-yet-synced local value can never overwrite the server's real
+  settings, and logout stops the writes without an effect-time `setState`).
 
 ## Commands (Windows / PowerShell)
 Repo root (one command; installs missing deps, builds the frontend, serves it from the API):

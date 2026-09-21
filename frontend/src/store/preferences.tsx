@@ -120,13 +120,28 @@ function loadPreferences(): Preferences {
 
 const PreferencesContext = createContext<PreferencesState | null>(null)
 
-export function PreferencesProvider({ children }: { children: ReactNode }) {
+/**
+ * `authenticated` 由外部（AuthProvider）传入：/api/settings 属于受保护接口，
+ * 未登录时请求只会拿到 401（并被静默吞掉、永不重试），所以必须等真正登录后再拉取。
+ */
+export function PreferencesProvider({
+  children,
+  authenticated,
+}: {
+  children: ReactNode
+  authenticated: boolean
+}) {
   const [prefs, setPrefs] = useState<Preferences>(loadPreferences)
   const [systemDark, setSystemDark] = useState(() =>
     window.matchMedia('(prefers-color-scheme: dark)').matches,
   )
   const prefsRef = useRef(prefs)
   prefsRef.current = prefs
+  // 服务器偏好是否已成功拉到。未同步时本地改动只写 localStorage，
+  // 否则会用「本机默认值」覆盖服务器上的真实设置。按登录态派生，
+  // 退出登录后自动回到未同步，无需在 effect 里重置（避免级联渲染）。
+  const [syncedFor, setSyncedFor] = useState(false)
+  const synced = syncedFor && authenticated
 
   useEffect(() => {
     const media = window.matchMedia('(prefers-color-scheme: dark)')
@@ -140,6 +155,9 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
   }, [prefs])
 
   useEffect(() => {
+    // 未登录不发请求：受保护的 /api/settings 只会返回 401 且不会自动重试。
+    // 登录成功后 authenticated 变化会重新执行本 effect，从而补拉设置。
+    if (!authenticated) return
     let active = true
     api.settings
       .get()
@@ -173,16 +191,37 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
               card_opacity: prefsRef.current.cardOpacity,
               panel_opacity: prefsRef.current.panelOpacity,
             })
+            .then(() => {
+              if (active) setSyncedFor(true)
+            })
             .catch(() => {})
           return
         }
         setPrefs(server)
+        setSyncedFor(true)
       })
       .catch(() => {})
     return () => {
       active = false
     }
-  }, [])
+  }, [authenticated])
+
+  // 已同步后，把本地改动写回服务器（未同步时不回写，避免覆盖服务器设置）。
+  useEffect(() => {
+    if (!synced) return
+    void api.settings
+      .update({
+        theme: prefs.theme,
+        card_size: prefs.cardSize,
+        compact: prefs.compact,
+        group_by: prefs.groupBy,
+        background_url: prefs.background,
+        bg_opacity: prefs.bgOpacity,
+        card_opacity: prefs.cardOpacity,
+        panel_opacity: prefs.panelOpacity,
+      })
+      .catch(() => {})
+  }, [synced, prefs])
 
   const resolvedTheme: 'dark' | 'light' =
     prefs.theme === 'system' ? (systemDark ? 'dark' : 'light') : prefs.theme
