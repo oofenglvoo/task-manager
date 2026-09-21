@@ -9,7 +9,7 @@ import { usePrioritiesMeta } from '../../hooks/usePrioritiesMeta'
 import { usePreferences } from '../../store/preferences'
 import { useToast } from '../../store/toast'
 import { useUI } from '../../store/ui'
-import { cardSurfaceStyle } from '../../lib/priority'
+import { previewTintStyle } from '../../lib/priority'
 import { Button } from '../ui/Button'
 import { Checkbox } from '../ui/Checkbox'
 import { Modal } from '../ui/Modal'
@@ -86,7 +86,7 @@ function TaskPreviewBody({
   const { push } = useToast()
 
   const isDone = task.completed_at != null
-  const surface = cardSurfaceStyle(task, priorities, isDone, isDark)
+  const surface = previewTintStyle(task, priorities, isDone, isDark)
   const priority = priorityLabel(task.priority)
   const { data: statuses = [] } = useStatuses()
   const status =
@@ -108,7 +108,7 @@ function TaskPreviewBody({
     <div className="flex min-h-0 flex-col">
       <header
         className={cn(
-          '-mx-5 -mt-4 mb-4 shrink-0 border-b border-line/60 px-5 py-4',
+          '-mx-5 -mt-px mb-4 shrink-0 border-b border-line/60 px-5 py-4',
           surface.className,
         )}
         style={surface.style}

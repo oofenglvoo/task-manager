@@ -153,6 +153,29 @@
   );
 }
 
+/*
+ * 预览窗抬头底色：色值来自内联 --preview-tint（优先级色或任务自定义色）。
+ * 与卡片便签色区分开：不是整块便签色，而是把强调色淡混到 surface 里，
+ * 让抬头底色跟着主题走、正文区保持干净的卡片白/深灰，两段不再硬碰硬。
+ * border-radius: inherit 跟随弹窗外圆角，避免抬头四角是直角而弹窗是圆角。
+ */
+.preview-tint {
+  background-color: color-mix(
+    in srgb,
+    var(--preview-tint) 18%,
+    rgb(var(--c-surface))
+  );
+  border-radius: inherit;
+}
+
+:root.light .preview-tint {
+  background-color: color-mix(
+    in srgb,
+    var(--preview-tint) 10%,
+    rgb(var(--c-surface))
+  );
+}
+
 /* 图元素底色（脉络泳道格、泳道任务条等）：跟随卡片不透明度。 */
 .app-surface-canvas {
   background-color: rgb(var(--c-canvas) / var(--app-card-alpha));

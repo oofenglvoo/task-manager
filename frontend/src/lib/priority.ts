@@ -91,3 +91,21 @@ export function cardSurfaceStyle(
   }
   return { className: noteSurfaceClassFor(priorities, task.priority, isDone), accent }
 }
+
+/**
+ * 预览窗（放大版卡片）抬头底色：不用卡片便签色，而是把强调色交给
+ * `.preview-tint` 淡混进 `--c-surface`，深浅两套比例在 CSS 里定义。
+ * 强调色同样走 `taskColor()`（自定义色优先 → 优先级色），已归档/已完成回落中性灰。
+ */
+export function previewTintStyle(
+  task: { color: string | null; priority: number },
+  priorities: Priority[],
+  isDone: boolean,
+  isDark: boolean,
+): { className: string; style: CSSProperties } {
+  const tint = isDone ? 'rgb(111 115 127)' : taskColor(task, priorities, isDark)
+  return {
+    className: 'preview-tint',
+    style: { '--preview-tint': tint } as CSSProperties,
+  }
+}

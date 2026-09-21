@@ -331,6 +331,15 @@ Frontend, run from `frontend/`:
   pass `false`), lists **all** subtasks with working checkboxes (`useUpdateSubtask`), and keeps every
   other field read-only. Its 编辑 button must call `closePreview()` **before** `openTask()` so the
   `Modal` (z-50) and `Drawer` (z-40) never stack.
+- The preview header does **not** reuse the card's sticky-note colors. `note-surface-{low,medium,high}`
+  is tuned for small cards and, at 768px wide, a full-strength tint (dark mode `--c-note-high` =
+  `rgb(160 58 58)`) collides with the `bg-surface` body — and it had no `border-radius`, so the header's
+  square corners poked past the dialog's `rounded-xl`. Instead `priority.ts` exports `previewTintStyle()`
+  (tint from `taskColor()`, 已完成/已归档 → neutral gray) which only sets the inline `--preview-tint`,
+  and `index.css` defines `.preview-tint` as `color-mix(--preview-tint N%, rgb(var(--c-surface)))` —
+  18% dark / 10% light (`:root.light` override) — plus `border-radius: inherit`. Keep the two systems
+  separate; do not swap the preview back to `cardSurfaceStyle()`. The header also uses `-mt-px` (not
+  `-mt-4`) so its bottom border sits flush on the scroll container's top edge while scrolling.
 - `Modal` takes a `scrollable` prop: it caps the dialog at `max-h-[78vh]`, makes the body
   `min-h-0 flex-1 overflow-y-auto`, and keeps `footer` pinned. Use it whenever content can be long —
   without it the dialog grows past the viewport and the footer scrolls out of reach.
