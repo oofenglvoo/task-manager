@@ -76,6 +76,14 @@ E2E / manual verification (run from the repo root, uses the backend venv):
     mojibake and the process dies silently with zero output.
   `subprocess.Popen(..., creationflags=DETACHED_PROCESS)` sidesteps both: Unicode args via
   `CreateProcessW`, no inherited handles, immediate return.
+- Every `subprocess` call inside `e2e_server.py` must pass `creationflags=NO_WINDOW`
+  (`CREATE_NO_WINDOW`). The script runs with no inheritable console, so each console-subsystem child
+  (`powershell`, `taskkill`, `tasklist`, `netstat`) otherwise gets a **visible blank console window**
+  — repeated `start`/`stop` cycles used to flash hundreds of them.
+- Prefer the PID file over process enumeration: `start` writes `%TEMP%\opencode\e2e-<port>.pid` and
+  `stop` kills that PID's tree (`taskkill /T`), so the normal path spawns **no** PowerShell at all.
+  `find_uvicorn_pids()` (CIM) is only a fallback for leftovers with no PID file. Port lookups use
+  `netstat -ano -p tcp`, not `Get-NetTCPConnection`.
 - Always probe with an explicit timeout (`urllib` `timeout=`, or `Invoke-WebRequest -TimeoutSec`) —
   a bare `Invoke-WebRequest` waits indefinitely.
 - uvicorn forks two processes (venv python + system python), so `Get-Process python` shows a pair.

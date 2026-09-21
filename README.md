@@ -225,12 +225,14 @@ python scripts\e2e_server.py status
 python scripts\e2e_server.py stop
 ```
 
-临时库与日志位于 `%TEMP%\opencode\e2e-<端口>.db|.log|.err`。服务会顺带托管
+临时库与日志位于 `%TEMP%\opencode\e2e-<端口>.db|.log|.err`，服务 PID 记录在同目录的
+`e2e-<端口>.pid`（`stop` 据此直接结束进程树，无需枚举）。服务会顺带托管
 `frontend/dist`，所以先 `npm run build` 再用浏览器打开 `http://127.0.0.1:8021`。
 
 > 请勿手写 `Start-Process` / 裸 `Invoke-WebRequest` 来起服务：前者会让常驻子进程继承控制台
 > 句柄而**永久阻塞**调用方，后者默认**无限等待**。脚本用 `subprocess.Popen` +
-> `DETACHED_PROCESS` 规避，并给探活加了显式超时。
+> `DETACHED_PROCESS` 规避，并给探活加了显式超时；脚本内所有 `subprocess` 调用都带
+> `CREATE_NO_WINDOW`，因此不会弹出空白 PowerShell 窗口。
 
 ## 配置
 
