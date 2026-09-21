@@ -187,8 +187,11 @@ Frontend, run from `frontend/`:
   a **strictly layered** weight `groupWeight × taskSpan × prioritySpan + taskWeight × prioritySpan + level`,
   where the order index is inverted (`total - order + 1`) so **越靠前分数越高**；`taskSpan`/`prioritySpan`
   are computed from the actual max task count / max priority level so later groups or large levels can
-  never bleed across layers. 未分组固定最低权重、排在所有分组之后。Bar colors come from `taskColor()`
-  (custom color → priority tint). 树/旭日/桑基的
+  never bleed across layers. 未分组固定最低权重、排在所有分组之后。Bar colors deliberately reuse the
+  **card** surface rules via `cardSurfaceStyle()` (`note-surface-{low,medium,high}` / `note-surface-custom`
+  — not `taskColor()`, whose priority colors are far more saturated than the note tints), so bars and
+  the cards below them read as the same color. Bar width is `score / (maxScore * 1.25)`, so the longest
+  bar sits at ~80% and never touches the right edge. 树/旭日/桑基的
   (priority→status) 分支内任务仍按 `taskScore()` = 优先级 `level` + 最近更新权重
   （`PRIORITY_FACTOR`/`RECENCY_FACTOR`）排序，并截断到 `BRANCH_LIMIT`（8），其余折叠为
   「还有 N 个…」节点——与评分柱状图是两套不同的打分逻辑，不要混淆。
@@ -223,6 +226,9 @@ Frontend, run from `frontend/`:
   jsDelivr / fastly / raw.githubusercontent 镜像抓取并写缓存；年份非法 400，全部失败且无缓存 502，
   前端 `useHolidays` 会静默降级（不显示休/班角标，其余功能正常）。因 12 月可能由次年文件决定，
   前端同时请求当年与次年数据合并。`holiday-cn` 的周末不视为法定节假日。
+  `holidays._normalize()` 必须**同时兼容 `isOffDay`（源站驼峰）和 `is_off_day`（缓存里的
+  归一化字段）**：写回缓存的是下划线字段，二次读取若只认驼峰会取到 None，`bool(None)` 让所有
+  节假日被误判为「班」（`tests/test_holidays.py` 锁定该回归）。
 - Drag-reorder only works when board sort is `position` (手动排序); other sorts disable drag.
   Dragging uses an explicit `GripVertical` handle (`SortableTaskCard`), not the whole card, and
   is also disabled while the list is truncated by the 60-per-page "显示更多" pagination.

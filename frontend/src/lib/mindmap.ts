@@ -1,4 +1,5 @@
-﻿import type { Group, Priority, Status, Task } from './types'
+﻿import type { CSSProperties } from 'react'
+import type { Group, Priority, Status, Task } from './types'
 import { withAlpha } from './chartTheme'
 import type { ChartPalette } from './chartTheme'
 import { dueState, formatDue } from './utils'
@@ -187,7 +188,10 @@ export interface ScoreBoardItem {
   priorityLevel: number
   groupName: string
   priorityName: string
-  color: string
+  /** 卡片底色类名（note-surface-*），与任务卡片取色规则完全一致。 */
+  surfaceClass: string
+  /** 自定义色的内联变量（--card-tint），无自定义色时为 undefined。 */
+  surfaceStyle?: CSSProperties
 }
 
 /**
@@ -209,7 +213,7 @@ export interface ScoreBoardItem {
 export function buildScoreBoardData(
   tasks: Task[],
   priorities: Priority[],
-  paint: (task: Task) => string,
+  paint: (task: Task) => { className: string; style?: CSSProperties },
 ): ScoreBoardItem[] {
   const active = tasks.filter((task) => !task.is_archived)
   const ordered = active.filter((task) => task.group != null)
@@ -272,6 +276,7 @@ export function buildScoreBoardData(
       const tOrder = index + 1
       const taskWeight = Math.max(1, taskCount - tOrder + 1)
       const level = priorityById(priorities, task.priority)?.level ?? 0
+      const surface = paint(task)
       items.push({
         id: task.id,
         title: task.title,
@@ -283,8 +288,10 @@ export function buildScoreBoardData(
         taskOrder: tOrder,
         priorityLevel: level,
         groupName: task.group?.name ?? UNGROUPED_NAME,
-        priorityName: priorityById(priorities, task.priority)?.name ?? `P${task.priority}`,
-        color: paint(task),
+        priorityName:
+          priorityById(priorities, task.priority)?.name ?? `P${task.priority}`,
+        surfaceClass: surface.className,
+        surfaceStyle: surface.style,
       })
     })
   }

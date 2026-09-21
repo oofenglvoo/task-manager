@@ -1,9 +1,8 @@
 import { useMemo } from 'react'
 import type { Priority, Task } from '../../../lib/types'
-import { isDarkColor } from '../../../lib/chartTheme'
 import type { ChartPalette } from '../../../lib/chartTheme'
 import { buildScoreBoardData } from '../../../lib/mindmap'
-import { taskColor } from '../../../lib/taskColor'
+import { cardSurfaceStyle } from '../../../lib/priority'
 
 interface ScoreBoardViewProps {
   tasks: Task[]
@@ -16,7 +15,7 @@ interface ScoreBoardViewProps {
 
 /**
  * 评分柱状图：按「分组顺序 > 组内顺序 > 优先级等级」加权求和，
- * 横条长度表示分数占比，颜色与任务卡片一致（自定义色优先，否则优先级色）。
+ * 横条长度表示分数占比，颜色复用任务卡片的取色规则（便签三档底色 / 自定义色）。
  */
 export function ScoreBoardView({
   tasks,
@@ -29,7 +28,7 @@ export function ScoreBoardView({
   const items = useMemo(
     () =>
       buildScoreBoardData(tasks, priorities, (task) =>
-        taskColor(task, priorities, isDark),
+        cardSurfaceStyle(task, priorities, task.completed_at != null, isDark),
       ),
     [tasks, priorities, isDark],
   )
@@ -64,28 +63,22 @@ export function ScoreBoardView({
                >
                  {index + 1}
                </span>
-                <span className="relative flex h-7 min-w-0 flex-1 overflow-hidden rounded-md bg-elevated/50">
+                <span className="relative flex h-5 min-w-0 flex-1 overflow-hidden rounded-md bg-elevated/50">
                   <span
-                    className="absolute inset-y-0 left-0 flex min-w-[22%] items-center gap-2 rounded-md px-3 transition-[width] duration-300 group-hover:brightness-110"
+                    className={`absolute inset-y-0 left-0 flex min-w-[22%] items-center gap-2 rounded-md px-2 transition-[width] duration-300 group-hover:brightness-110 ${item.surfaceClass}`}
                     style={{
                       width: `${scaleBase ? Math.max(22, (item.score / scaleBase) * 100) : 0}%`,
-                      backgroundColor: item.color,
+                      ...item.surfaceStyle,
                     }}
                   >
-                   <span
-                     className="min-w-0 flex-1 truncate text-xs font-medium"
-                     style={{ color: isDarkColor(item.color) ? '#fff' : '#17181d' }}
-                   >
-                     {item.title}
-                   </span>
-                   <span
-                     className="shrink-0 text-xs font-semibold tabular-nums"
-                     style={{ color: isDarkColor(item.color) ? '#fff' : '#17181d' }}
-                   >
-                     {item.score}
-                   </span>
-                 </span>
-               </span>
+                    <span className="min-w-0 flex-1 truncate text-xs font-medium text-ink">
+                      {item.title}
+                    </span>
+                    <span className="shrink-0 text-xs font-semibold tabular-nums text-ink">
+                      {item.score}
+                    </span>
+                  </span>
+                </span>
              </button>
            </li>
         ))}

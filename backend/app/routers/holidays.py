@@ -34,11 +34,16 @@ def _normalize(payload: dict, year: int) -> dict:
         date = item.get("date")
         if not date:
             continue
+        # 源站用驼峰 isOffDay，但写回缓存的是归一化后的 is_off_day；
+        # 读取缓存后再归一化时必须两种都认，否则会取到 None 而全部误判为「班」。
+        raw_off = item.get("isOffDay")
+        if raw_off is None:
+            raw_off = item.get("is_off_day")
         days.append(
             {
                 "date": date,
                 "name": item.get("name") or "",
-                "is_off_day": bool(item.get("isOffDay")),
+                "is_off_day": bool(raw_off),
             }
         )
     return {"year": year, "days": days}
