@@ -11,6 +11,10 @@ interface UIState {
   selectedTaskId: number | null
   openTask: (id: number) => void
   closeTask: () => void
+  /** 只读预览窗（放大版卡片）的任务 id，与 `selectedTaskId`（编辑抽屉）互不影响。 */
+  previewTaskId: number | null
+  openPreview: (id: number) => void
+  closePreview: () => void
   createOpen: boolean
   createStatusId: number | null
   /** 新建任务时预填的截止时间（YYYY-MM-DDTHH:MM），来自日历点击某天。 */
@@ -32,6 +36,7 @@ export function UIProvider({ children }: { children: ReactNode }) {
   const [priority, setPriority] = useState<number | null>(null)
   const [tagId, setTagId] = useState<number | null>(null)
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null)
+  const [previewTaskId, setPreviewTaskId] = useState<number | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [createStatusId, setCreateStatusId] = useState<number | null>(null)
   const [createDueDate, setCreateDueDate] = useState<string | null>(null)
@@ -49,6 +54,9 @@ export function UIProvider({ children }: { children: ReactNode }) {
       selectedTaskId,
       openTask: setSelectedTaskId,
       closeTask: () => setSelectedTaskId(null),
+      previewTaskId,
+      openPreview: setPreviewTaskId,
+      closePreview: () => setPreviewTaskId(null),
       createOpen,
       createStatusId,
       createDueDate,
@@ -70,6 +78,7 @@ export function UIProvider({ children }: { children: ReactNode }) {
       priority,
       tagId,
       selectedTaskId,
+      previewTaskId,
       createOpen,
       createStatusId,
       createDueDate,

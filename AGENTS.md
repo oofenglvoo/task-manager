@@ -59,6 +59,28 @@ Backend, run from `backend/` (use the existing venv):
 - `pytest.ini` sets `pythonpath=.` and `testpaths=tests`; run pytest from `backend/`.
 - No backend lint/format/typecheck config exists. Do not invent one.
 
+E2E / manual verification (run from the repo root, uses the backend venv):
+- `python scripts/e2e_server.py start [--port 8021] [--keep-db]` — boots a throwaway API on a temp
+  DB (`%TEMP%\opencode\e2e-<port>.db`), serves the built `frontend/dist`, and returns in a few
+  seconds. `stop` / `status` / `restart` also exist.
+- `python scripts/e2e_seed.py --port 8021` — logs in over HTTP and creates its own `【E2E】` tasks
+  (long rich-text description with an embedded image, 6 subtasks, one overdue). Idempotent; never
+  deletes other rows.
+- **Never** hand-roll `Start-Process`/`Invoke-WebRequest` loops for this. Two Windows traps have
+  burned us repeatedly, both avoided by the Python launcher:
+  - `Start-Process -RedirectStandardOutput` inherits the caller's console handles. uvicorn never
+    exits, so the handles never close and the launching shell **blocks forever** even though the
+    server is already up (looks like "卡死几分钟").
+  - WMI `Win32_Process.Create` marshals its command line through ANSI; this repo's path contains
+    Chinese (`任务管理系统`) and the system codepage is GBK (936), so the venv path is mangled into
+    mojibake and the process dies silently with zero output.
+  `subprocess.Popen(..., creationflags=DETACHED_PROCESS)` sidesteps both: Unicode args via
+  `CreateProcessW`, no inherited handles, immediate return.
+- Always probe with an explicit timeout (`urllib` `timeout=`, or `Invoke-WebRequest -TimeoutSec`) —
+  a bare `Invoke-WebRequest` waits indefinitely.
+- uvicorn forks two processes (venv python + system python), so `Get-Process python` shows a pair.
+  Always finish with `e2e_server.py stop` and confirm the count is 0.
+
 Frontend, run from `frontend/`:
 - Install deps: `npm install`
 - Dev server: `npm run dev` → http://localhost:5173 (proxies `/api` → 127.0.0.1:8001)
@@ -292,6 +314,18 @@ Frontend, run from `frontend/`:
   pencil opens `TaskDetailDrawer`, where all fields (title/status/priority/group/due/tags/
   description) are staged in a local draft and only persisted by the footer 保存 button; closing
   with unsaved changes prompts. Archive/restore and delete both go through `ConfirmDialog`.
+- The **board** card body and the card pencil go to *different* places: the body opens the read-only
+  `TaskPreviewModal` (放大版卡片), the pencil opens the editable `TaskDetailDrawer`. They are wired
+  through separate props on `TaskCard` (`onPreview` vs `onOpen`; `onPreview ?? onOpen` is the
+  fallback so list/mindmap callers that pass only `onOpen` keep working). State lives in
+  `ui.previewTaskId` / `openPreview` / `closePreview`, deliberately separate from `selectedTaskId`.
+  The preview renders the description with `sanitizeDescription(..., { allowImages: true })` (cards
+  pass `false`), lists **all** subtasks with working checkboxes (`useUpdateSubtask`), and keeps every
+  other field read-only. Its 编辑 button must call `closePreview()` **before** `openTask()` so the
+  `Modal` (z-50) and `Drawer` (z-40) never stack.
+- `Modal` takes a `scrollable` prop: it caps the dialog at `max-h-[78vh]`, makes the body
+  `min-h-0 flex-1 overflow-y-auto`, and keeps `footer` pinned. Use it whenever content can be long —
+  without it the dialog grows past the viewport and the footer scrolls out of reach.
 - Card density/size come from `CARD_SIZE_STYLES` in `src/store/preferences.tsx` (padding/title/
   desc lines/gap), plus a `compact` preference; both are persisted server-side. Cards show
   description + subtask progress only in 宽松 mode (`compact === false`).

@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom'
 import { useUI } from '../../store/ui'
 import { GroupManager } from '../board/GroupManager'
 import { TaskDetailDrawer } from '../tasks/TaskDetailDrawer'
+import { TaskPreviewModal } from '../tasks/TaskPreviewModal'
 import { TaskForm } from '../tasks/TaskForm'
 import { Modal } from '../ui/Modal'
 import { Toaster } from '../ui/Toaster'
@@ -21,6 +22,7 @@ export function AppShell() {
 
       <Sidebar />
       <TaskDetailDrawer />
+      <TaskPreviewModal />
       <TaskForm
         open={createOpen}
         onClose={closeCreate}

@@ -32,7 +32,7 @@ export function SortableTaskCard({
   onToggleSubtask,
   disabled,
 }: SortableTaskCardProps) {
-  const { openTask } = useUI()
+  const { openTask, openPreview } = useUI()
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: task.id, disabled })
 
@@ -62,6 +62,7 @@ export function SortableTaskCard({
         style={style}
         compact={compact}
         handle={handle}
+        onPreview={() => openPreview(task.id)}
         onOpen={() => openTask(task.id)}
         onStatusChange={(statusId) => onStatusChange(task.id, statusId)}
         onPriorityChange={(priority) => onPriorityChange(task.id, priority)}

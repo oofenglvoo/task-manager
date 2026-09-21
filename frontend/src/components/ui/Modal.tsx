@@ -10,6 +10,11 @@ interface ModalProps {
   children: ReactNode
   footer?: ReactNode
   width?: string
+  /**
+   * 让内容自身滚动：弹窗限制在视口内，中间区域用 flex-1 + overflow-y-auto。
+   * 用于内容可能很长的场景（如任务只读预览），避免整页滚动或内容被裁掉。
+   */
+  scrollable?: boolean
 }
 
 export function Modal({
@@ -19,6 +24,7 @@ export function Modal({
   children,
   footer,
   width = 'max-w-lg',
+  scrollable = false,
 }: ModalProps) {
   useEffect(() => {
     if (!open) return
@@ -40,6 +46,7 @@ export function Modal({
         className={cn(
           'w-full rounded-xl border border-line bg-surface shadow-lg',
           width,
+          scrollable && 'flex max-h-[78vh] flex-col overflow-hidden',
         )}
         onMouseDown={(event) => event.stopPropagation()}
       >
@@ -56,7 +63,13 @@ export function Modal({
             </button>
           </div>
         ) : null}
-        <div className="px-5 py-4">{children}</div>
+        <div
+          className={cn(
+            scrollable ? 'scrollbar-thin min-h-0 flex-1 overflow-y-auto px-5 py-4' : 'px-5 py-4',
+          )}
+        >
+          {children}
+        </div>
         {footer ? (
           <div className="flex justify-end gap-2 border-t border-line px-5 py-3.5">
             {footer}

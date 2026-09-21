@@ -29,6 +29,7 @@ interface TaskCardProps {
   compact?: boolean
   handle?: ReactNode
   onOpen?: () => void
+  onPreview?: () => void
   onStatusChange?: (statusId: number | null) => void
   onPriorityChange?: (priority: number) => void
   onToggleDone?: () => void
@@ -43,6 +44,7 @@ export function TaskCard({
   compact,
   handle,
   onOpen,
+  onPreview,
   onStatusChange,
   onPriorityChange,
   onToggleDone,
@@ -62,16 +64,17 @@ export function TaskCard({
   const hiddenSubtasks = task.subtasks.length - visibleSubtasks.length
 
   const hasFooter = Boolean(task.due_date) || task.subtasks.length > 0
+  const clickable = Boolean(onPreview || onOpen)
 
   return (
     <div
-      onClick={onOpen}
+      onClick={onPreview ?? onOpen}
       style={{ transform: `rotate(${tilt}deg)`, ...surface.style }}
       className={cn(
         'group relative flex h-full flex-col rounded-md border border-line/60 shadow-sm transition-all duration-150',
         surface.className,
         style.padding,
-        onOpen && 'cursor-pointer hover:z-10 hover:-translate-y-0.5 hover:rotate-0 hover:shadow-lg',
+        clickable && 'cursor-pointer hover:z-10 hover:-translate-y-0.5 hover:rotate-0 hover:shadow-lg',
         'motion-reduce:rotate-0 motion-reduce:transform-none',
       )}
     >
@@ -124,7 +127,7 @@ export function TaskCard({
         type="button"
         onClick={(event) => {
           event.stopPropagation()
-          onOpen?.()
+          ;(onPreview ?? onOpen)?.()
         }}
         className={cn(
           'rounded text-left font-medium leading-snug text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60',
