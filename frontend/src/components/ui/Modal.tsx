@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { X } from 'lucide-react'
 import { cn } from '../../lib/utils'
 
@@ -15,6 +15,14 @@ interface ModalProps {
    * 用于内容可能很长的场景（如任务只读预览），避免整页滚动或内容被裁掉。
    */
   scrollable?: boolean
+  /**
+   * 面板级样式：作用到最外层对话框。用于让整个弹窗（含底部按钮栏）
+   * 复用卡片的便签底色（`.note-surface-*` 在 CSS 中位于 `.bg-surface` 之后，
+   * 同权重下会盖掉面板的 `bg-surface`）。
+   * 注意：内层区域不要再挂 `bg-surface`，否则会遮挡面板底色。
+   */
+  panelClassName?: string
+  panelStyle?: CSSProperties
 }
 
 export function Modal({
@@ -25,6 +33,8 @@ export function Modal({
   footer,
   width = 'max-w-lg',
   scrollable = false,
+  panelClassName,
+  panelStyle,
 }: ModalProps) {
   useEffect(() => {
     if (!open) return
@@ -47,7 +57,9 @@ export function Modal({
           'w-full rounded-xl border border-line bg-surface shadow-lg',
           width,
           scrollable && 'flex max-h-[78vh] flex-col overflow-hidden',
+          panelClassName,
         )}
+        style={panelStyle}
         onMouseDown={(event) => event.stopPropagation()}
       >
         {title ? (

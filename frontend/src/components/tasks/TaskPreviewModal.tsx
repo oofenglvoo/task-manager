@@ -9,7 +9,7 @@ import { usePrioritiesMeta } from '../../hooks/usePrioritiesMeta'
 import { usePreferences } from '../../store/preferences'
 import { useToast } from '../../store/toast'
 import { useUI } from '../../store/ui'
-import { previewTintStyle } from '../../lib/priority'
+import { cardSurfaceStyle } from '../../lib/priority'
 import { Button } from '../ui/Button'
 import { Checkbox } from '../ui/Checkbox'
 import { Modal } from '../ui/Modal'
@@ -18,6 +18,7 @@ import { TagChip } from '../ui/Badge'
 
 /**
  * 只读的「放大版卡片」：点击看板卡片正文打开。
+ * 整个弹窗（抬头/正文/底部按钮栏）复用卡片的便签底色，看起来就是同一张卡片放大；
  * 描述完整显示（含图片）、子任务全列出且可勾选，其余字段只读；
  * 底部「编辑」切到可编辑的 TaskDetailDrawer。
  */
@@ -28,6 +29,10 @@ export function TaskPreviewModal() {
   const { resolvedTheme } = usePreferences()
 
   const open = previewTaskId != null
+  const isDone = task?.completed_at != null
+  const surface = task
+    ? cardSurfaceStyle(task, priorities, isDone, resolvedTheme === 'dark')
+    : undefined
 
   return (
     <Modal
@@ -35,6 +40,8 @@ export function TaskPreviewModal() {
       onClose={closePreview}
       width="max-w-3xl"
       scrollable
+      panelClassName={surface?.className}
+      panelStyle={surface?.style}
       footer={
         task ? (
           <>
@@ -60,12 +67,7 @@ export function TaskPreviewModal() {
           <Spinner className="h-5 w-5" />
         </div>
       ) : (
-        <TaskPreviewBody
-          task={task}
-          priorities={priorities}
-          priorityLabel={byId}
-          isDark={resolvedTheme === 'dark'}
-        />
+        <TaskPreviewBody task={task} priorityLabel={byId} />
       )}
     </Modal>
   )
@@ -73,20 +75,15 @@ export function TaskPreviewModal() {
 
 function TaskPreviewBody({
   task,
-  priorities,
   priorityLabel,
-  isDark,
 }: {
   task: Task
-  priorities: ReturnType<typeof usePrioritiesMeta>['priorities']
   priorityLabel: ReturnType<typeof usePrioritiesMeta>['byId']
-  isDark: boolean
 }) {
   const updateSubtask = useUpdateSubtask()
   const { push } = useToast()
 
   const isDone = task.completed_at != null
-  const surface = previewTintStyle(task, priorities, isDone, isDark)
   const priority = priorityLabel(task.priority)
   const { data: statuses = [] } = useStatuses()
   const status =
@@ -106,13 +103,7 @@ function TaskPreviewBody({
 
   return (
     <div className="flex min-h-0 flex-col">
-      <header
-        className={cn(
-          '-mx-5 -mt-px mb-4 shrink-0 border-b border-line/60 px-5 py-4',
-          surface.className,
-        )}
-        style={surface.style}
-      >
+      <header className="-mx-5 -mt-4 mb-4 shrink-0 border-b border-line/60 px-5 py-4">
         <div className="flex flex-wrap items-center gap-2 text-xs text-ink-soft">
           <span className={isDone ? 'text-success' : ''}>
             {isDone ? '已完成' : '进行中'}

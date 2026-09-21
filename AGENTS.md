@@ -147,9 +147,10 @@ Frontend, run from `frontend/`:
   files live in `DB_DIR/backgrounds/` (i.e. next to the SQLite file, so tests use the temp dir).
    Opacity prefs    Opacity prefs `bg_opacity`/`card_opacity`/`panel_opacity` (0–1, **不透明度**: 0 = 全透明, 1 = 完全
    不透明) drive CSS vars `--app-bg-scrim`, `--app-card-alpha`, `--app-panel-alpha`. `--app-card-alpha`
-   is the **final** alpha of `.note-surface-*` (便签卡片) and of `.app-surface-canvas` /
-   `.app-surface-elevated` (任务脉络内的泳道格与任务条) — do not re-introduce per-priority alpha
-   multipliers, tints differ by hue only. `--app-panel-alpha` only affects `.app-chrome` / `.app-surface-panel`
+   is the **final** alpha of `.note-surface-*` (便签卡片、任务预览弹窗与任务编辑抽屉的面板) and of
+   `.app-surface-canvas` / `.app-surface-elevated` (任务脉络内的泳道格与任务条) — do not re-introduce
+   per-priority alpha multipliers, tints differ by hue only. `--app-panel-alpha` only affects
+   `.app-chrome` / `.app-surface-panel`
    (顶栏/侧栏/任务脉脉络外层面板, 仅在设置了背景图时生效). Buttons, dropdown menus, badges and selected
     states must stay solid (`.bg-accent-soft` is redefined as a solid color-mix) so the sliders never
     make them semi-transparent. 图标按钮/工具按钮统一用 `rounded border border-line bg-surface` 实心底色
@@ -331,15 +332,23 @@ Frontend, run from `frontend/`:
   pass `false`), lists **all** subtasks with working checkboxes (`useUpdateSubtask`), and keeps every
   other field read-only. Its 编辑 button must call `closePreview()` **before** `openTask()` so the
   `Modal` (z-50) and `Drawer` (z-40) never stack.
-- The preview header does **not** reuse the card's sticky-note colors. `note-surface-{low,medium,high}`
-  is tuned for small cards and, at 768px wide, a full-strength tint (dark mode `--c-note-high` =
-  `rgb(160 58 58)`) collides with the `bg-surface` body — and it had no `border-radius`, so the header's
-  square corners poked past the dialog's `rounded-xl`. Instead `priority.ts` exports `previewTintStyle()`
-  (tint from `taskColor()`, 已完成/已归档 → neutral gray) which only sets the inline `--preview-tint`,
-  and `index.css` defines `.preview-tint` as `color-mix(--preview-tint N%, rgb(var(--c-surface)))` —
-  18% dark / 10% light (`:root.light` override) — plus `border-radius: inherit`. Keep the two systems
-  separate; do not swap the preview back to `cardSurfaceStyle()`. The header also uses `-mt-px` (not
-  `-mt-4`) so its bottom border sits flush on the scroll container's top edge while scrolling.
+- The preview modal and the detail drawer are **the card, enlarged**: the whole panel (header + body +
+  footer) uses the card's sticky-note surface, so it must render with the same color as the card on the
+  board. `Modal` and `Drawer` accept `panelClassName` / `panelStyle`, applied to the outermost panel;
+  pass `cardSurfaceStyle(task, priorities, isDone, isDark)` into them. `.note-surface-*` is unlayered
+  CSS emitted **after** Tailwind's utilities, so same-specificity it overrides the panel's `bg-surface`
+  (verified in the built CSS) — no `!important` needed.
+  Two rules that are easy to break:
+  - **Do not re-introduce `bg-surface` on inner regions** (header/body/footer). It is opaque, so it
+    either hides the panel tint (drawer header/footer originally had it) or double-composites and makes
+    that region darker than the rest. Inner sections stay transparent; form controls (`Input`/`Select`/
+    `RichTextEditor`/`ColorPicker`) keep their own solid background by design.
+  - **Do not tint only the header.** That leaves a tinted header over a white/neutral body, which is the
+    exact "颜色不统一" bug this was fixed for. There is no separate preview tint system — do not add one
+    back (`.preview-tint` / `previewTintStyle()` were removed).
+  The drawer resolves the tint from the **live draft** (`draft.color` / `draft.priority`), so dragging
+  the color picker recolors the whole drawer immediately. `--app-card-alpha` applies to these panels too,
+  i.e. the card-opacity slider makes the popup/drawer translucent like the card.
 - `Modal` takes a `scrollable` prop: it caps the dialog at `max-h-[78vh]`, makes the body
   `min-h-0 flex-1 overflow-y-auto`, and keeps `footer` pinned. Use it whenever content can be long —
   without it the dialog grows past the viewport and the footer scrolls out of reach.

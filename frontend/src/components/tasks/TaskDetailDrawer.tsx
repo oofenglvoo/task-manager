@@ -12,8 +12,10 @@ import {
   useUpdateTask,
 } from '../../hooks/queries'
 import { usePrioritiesMeta } from '../../hooks/usePrioritiesMeta'
+import { usePreferences } from '../../store/preferences'
 import { useToast } from '../../store/toast'
 import { useUI } from '../../store/ui'
+import { cardSurfaceStyle } from '../../lib/priority'
 import { Button } from '../ui/Button'
 import { ColorPicker } from '../ui/ColorPicker'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
@@ -79,7 +81,8 @@ export function TaskDetailDrawer() {
   const { data: statuses = [] } = useStatuses()
   const { data: tags = [] } = useTags()
   const { data: groups = [] } = useGroups()
-  const { sorted: sortedPriorities } = usePrioritiesMeta()
+  const { sorted: sortedPriorities, priorities } = usePrioritiesMeta()
+  const { resolvedTheme } = usePreferences()
   const updateTask = useUpdateTask()
   const archiveTask = useArchiveTask()
   const deleteTask = useDeleteTask()
@@ -158,16 +161,32 @@ export function TaskDetailDrawer() {
 
   const open = selectedTaskId != null
 
+  // 抽屉与卡片同底色：取草稿的实时颜色/优先级，改颜色时面板立即跟着变。
+  // 内层不要再用 bg-surface，否则会挡住面板底色；表单控件保持实心。
+  const surface = draft
+    ? cardSurfaceStyle(
+        { color: draft.color, priority: draft.priority },
+        priorities,
+        task?.completed_at != null,
+        resolvedTheme === 'dark',
+      )
+    : undefined
+
   return (
     <>
-      <Drawer open={open} onClose={requestClose}>
+      <Drawer
+        open={open}
+        onClose={requestClose}
+        panelClassName={surface?.className}
+        panelStyle={surface?.style}
+      >
         {isLoading || !task || !draft ? (
           <div className="flex flex-1 items-center justify-center">
             <Spinner className="h-5 w-5" />
           </div>
         ) : (
           <>
-            <header className="flex items-start gap-3 border-b border-line bg-surface px-5 py-5">
+            <header className="flex items-start gap-3 border-b border-line px-5 py-5">
               <div className="flex-1 space-y-2">
                 <div className="flex items-center gap-2 text-xs text-muted">
                   <span className={task.completed_at ? 'text-success' : ''}>
@@ -328,7 +347,7 @@ export function TaskDetailDrawer() {
               </div>
             </div>
 
-            <footer className="flex items-center gap-2 border-t border-line bg-surface px-5 py-3.5">
+            <footer className="flex items-center gap-2 border-t border-line px-5 py-3.5">
               <Button
                 onClick={() => setConfirmArchive(true)}
                 disabled={archiveTask.isPending}
