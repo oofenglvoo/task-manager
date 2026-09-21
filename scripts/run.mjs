@@ -110,7 +110,9 @@ function buildFrontend() {
 }
 
 function openBrowser(url) {
-  const options = { detached: true, stdio: 'ignore', shell: isWindows }
+  // windowsHide: cmd.exe 是控制台子系统程序，调用方（编辑器/自动化）无可继承
+  // 控制台时，系统会新分配一个可见空白窗口。detached 只解决生命周期，不解决弹窗。
+  const options = { detached: true, stdio: 'ignore', shell: isWindows, windowsHide: true }
   let command
   let args
   if (isWindows) {

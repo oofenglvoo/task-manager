@@ -86,8 +86,19 @@ E2E / manual verification (run from the repo root, uses the backend venv):
   `CreateProcessW`, no inherited handles, immediate return.
 - Every `subprocess` call inside `e2e_server.py` must pass `creationflags=NO_WINDOW`
   (`CREATE_NO_WINDOW`). The script runs with no inheritable console, so each console-subsystem child
-  (`powershell`, `taskkill`, `tasklist`, `netstat`) otherwise gets a **visible blank console window**
-  — repeated `start`/`stop` cycles used to flash hundreds of them.
+  (`python`, `powershell`, `taskkill`, `tasklist`, `netstat`) otherwise gets a **visible blank console
+  window** — repeated `start`/`stop` cycles used to flash hundreds of them.
+  `DETACHED_PROCESS` and `CREATE_NO_WINDOW` are **not** substitutes: `DETACHED_PROCESS` only stops the
+  parent from blocking (no inherited console handles), while clearing the console is exactly what makes a
+  console-subsystem child (`python.exe` is `Subsystem=3`; check a PE header's `+0x5C` word) get a new
+  visible console. The uvicorn `Popen` therefore needs **both**: `DETACHED_PROCESS |
+  CREATE_NEW_PROCESS_GROUP | NO_WINDOW`. Dropping `NO_WINDOW` there reintroduces the blank window even
+  though all the `subprocess.run` helpers are still protected.
+- The same rule applies outside this repo: any Node `spawn` of a console-subsystem binary
+  (`node.exe`, `cmd.exe`, `powershell.exe`) needs `windowsHide: true` (defaults to `false`;
+  `stdio: 'ignore'` alone does **not** suppress the window). This bit `scripts/run.mjs`'s
+  `openBrowser` (`cmd /c start`), the opencode `session-notify` plugin (`powershell.exe` toast), and
+  `playwright-skill/run.js`.
 - Prefer the PID file over process enumeration: `start` writes `%TEMP%\opencode\e2e-<port>.pid` and
   `stop` kills that PID's tree (`taskkill /T`), so the normal path spawns **no** PowerShell at all.
   `find_uvicorn_pids()` (CIM) is only a fallback for leftovers with no PID file. Port lookups use

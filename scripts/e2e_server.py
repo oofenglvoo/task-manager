@@ -13,8 +13,16 @@ Python 的 `subprocess.Popen` 两个坑都避开了：字符串全程 Unicode，
 `CreateProcessW` 传递；`DETACHED_PROCESS` 不继承控制台句柄，调用立即返回。
 
 另一个坑：本脚本自身运行在没有可继承控制台的环境里，任何控制台子系统子
-进程（powershell / taskkill / netstat）都会被 Windows 新分配一个**可见的
-空白控制台窗口**。所以下面每个 `subprocess` 调用都必须带 `NO_WINDOW`。
+进程（python / powershell / taskkill / netstat）都会被 Windows 新分配一个
+**可见的空白控制台窗口**。所以下面每个 `subprocess` 调用都必须带 `NO_WINDOW`。
+
+特别注意 `Popen` 启动 uvicorn 这一处：`DETACHED_PROCESS` 解决的是**父进程
+阻塞**（不继承控制台句柄），它**不解决弹窗**——恰恰相反，它清空了控制台，
+控制台子系统（Subsystem=3）的 `python.exe` 在「无控制台且未指定
+`CREATE_NO_WINDOW`」时，系统会补一个新的可见控制台窗口。所以两个标志必须
+**同时**带：`DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP | NO_WINDOW`。
+（`pythonw.exe` 是 Subsystem=2 不会弹窗，但 stdout/stderr 默认丢弃，不如
+`NO_WINDOW` 零风险。）
 
 用法（在仓库根目录）：
 
@@ -262,8 +270,12 @@ def start(port: int, keep_db: bool) -> int:
     creationflags = 0
     if os.name == "nt":
         # DETACHED_PROCESS：不继承控制台句柄 → 调用方立即返回，不阻塞。
+        # NO_WINDOW：控制台子系统（Subsystem=3）的 python.exe 在无控制台时会被
+        # 系统补一个可见窗口；DETACHED_PROCESS 清空控制台，所以必须叠加它。
         creationflags = (
-            subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+            subprocess.DETACHED_PROCESS
+            | subprocess.CREATE_NEW_PROCESS_GROUP
+            | NO_WINDOW
         )
 
     print(f"[e2e] 启动服务：端口 {port}，数据库 {target_db}")
