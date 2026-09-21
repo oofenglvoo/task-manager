@@ -35,6 +35,8 @@ export function ScoreBoardView({
   )
 
   const maxScore = items.length ? items[0].score : 0
+  // 基准取最高分的 1.25 倍：最长柱约占容器 80%，右侧留白，不顶到端点。
+  const scaleBase = maxScore * 1.25
 
   if (items.length === 0) {
     return (
@@ -62,14 +64,14 @@ export function ScoreBoardView({
                >
                  {index + 1}
                </span>
-               <span className="relative flex h-9 min-w-0 flex-1 overflow-hidden rounded-md bg-elevated/50">
-                 <span
-                   className="absolute inset-y-0 left-0 flex min-w-[22%] items-center gap-2 rounded-md px-3 transition-[width] duration-300 group-hover:brightness-110"
-                   style={{
-                     width: `${maxScore ? Math.max(22, (item.score / maxScore) * 100) : 0}%`,
-                     backgroundColor: item.color,
-                   }}
-                 >
+                <span className="relative flex h-7 min-w-0 flex-1 overflow-hidden rounded-md bg-elevated/50">
+                  <span
+                    className="absolute inset-y-0 left-0 flex min-w-[22%] items-center gap-2 rounded-md px-3 transition-[width] duration-300 group-hover:brightness-110"
+                    style={{
+                      width: `${scaleBase ? Math.max(22, (item.score / scaleBase) * 100) : 0}%`,
+                      backgroundColor: item.color,
+                    }}
+                  >
                    <span
                      className="min-w-0 flex-1 truncate text-xs font-medium"
                      style={{ color: isDarkColor(item.color) ? '#fff' : '#17181d' }}

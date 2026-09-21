@@ -136,8 +136,8 @@ export function CalendarView() {
   }
 
   return (
-    <div className="scrollbar-thin flex h-full flex-col overflow-y-auto">
-      <div className="mx-auto w-full max-w-[1400px] px-4 py-3">
+    <div className="flex h-full flex-col overflow-hidden">
+      <div className="mx-auto w-full max-w-[1400px] shrink-0 px-4 pt-3">
         <div className="app-surface-panel flex flex-wrap items-center gap-2 rounded-xl border border-line bg-surface p-2 shadow-sm">
           <div className="flex items-center gap-2 pl-1">
             <CalendarDays className="h-4 w-4 text-accent" />
@@ -184,16 +184,21 @@ export function CalendarView() {
       {isLoading ? (
         <LoadingBlock />
       ) : (
-        <div className="mx-auto w-full max-w-[1400px] flex-1 px-4 pb-6">
-          <div ref={gridRef} className="select-none">
-            <div className="grid grid-cols-7 gap-1.5 pb-1.5 text-center text-xs font-medium text-muted">
+        <div className="mx-auto flex w-full max-w-[1400px] flex-1 min-h-0 flex-col px-4 pb-3">
+          <div ref={gridRef} className="scrollbar-thin flex min-h-0 flex-1 flex-col select-none overflow-y-auto pb-2">
+            <div className="grid shrink-0 grid-cols-7 gap-1.5 pb-1.5 text-center text-xs font-medium text-muted">
               {WEEKDAYS.map((label, index) => (
                 <span key={label} className={cn(index >= 5 && 'text-ink-soft')}>
                   {label}
                 </span>
               ))}
             </div>
-            <div className="grid grid-cols-7 gap-1.5">
+            <div
+              className={cn(
+                'grid min-h-0 flex-1 grid-cols-7 gap-1.5',
+                view === 'week' ? 'grid-rows-1' : 'grid-rows-6',
+              )}
+            >
               {cells.map((cell) => {
                 const dayTasks = tasksByDay.get(cell.key) ?? []
                 const progress = dayProgress(dayTasks)
@@ -208,8 +213,8 @@ export function CalendarView() {
                     type="button"
                     onClick={() => setSelected(cell.key)}
                     className={cn(
-                      'flex flex-col rounded-xl border p-2 text-left transition-all',
-                      view === 'week' ? 'min-h-[260px]' : 'min-h-[116px]',
+                      'flex flex-col overflow-hidden rounded-xl border p-2 text-left transition-all',
+                      view === 'week' ? 'min-h-[220px]' : 'min-h-[96px]',
                       cell.inCurrentMonth
                         ? 'border-line bg-surface hover:border-line-strong hover:shadow-sm'
                         : 'border-line/40 bg-surface/40 opacity-55 hover:opacity-80',
@@ -234,7 +239,7 @@ export function CalendarView() {
             </div>
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-line bg-surface px-3 py-2 text-xs text-muted">
+          <div className="mt-2 flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-line bg-surface px-3 py-2 text-xs text-muted">
             <span className="inline-flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-success" />全部完成
             </span>
