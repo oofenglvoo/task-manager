@@ -82,18 +82,24 @@ E2E / manual verification (run from the repo root, uses the backend venv):
   - WMI `Win32_Process.Create` marshals its command line through ANSI; this repo's path contains
     Chinese (`任务管理系统`) and the system codepage is GBK (936), so the venv path is mangled into
     mojibake and the process dies silently with zero output.
-  `subprocess.Popen(..., creationflags=DETACHED_PROCESS)` sidesteps both: Unicode args via
-  `CreateProcessW`, no inherited handles, immediate return.
+  `subprocess.Popen(..., creationflags=CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW)` sidesteps both:
+  Unicode args via `CreateProcessW`, no inherited console (stdin/stdout/stderr are all redirected, so
+  the parent never blocks on a handle), immediate return.
+- **Do NOT use `DETACHED_PROCESS` to launch uvicorn.** It is what creates the "空白 PowerShell 窗口"
+  (it is really a Windows Terminal tab): `DETACHED_PROCESS` gives the child **no console at all**, so a
+  console-subsystem `python.exe` (`Subsystem=3`) with real standard handles makes Windows launch the
+  default terminal app and build a new console for it — window class `CASCADIA_HOSTING_WINDOW_CLASS`,
+  title = the child's exe path. `CREATE_NO_WINDOW` is **ignored** on that path, so combining them does
+  not help (measured: `NO_WINDOW` alone → clean; `DETACHED|NO_WINDOW` and `DETACHED` alone → window).
+  Verified fix: `creationflags = CREATE_NEW_PROCESS_GROUP | NO_WINDOW` only.
 - Every `subprocess` call inside `e2e_server.py` must pass `creationflags=NO_WINDOW`
   (`CREATE_NO_WINDOW`). The script runs with no inheritable console, so each console-subsystem child
-  (`python`, `powershell`, `taskkill`, `tasklist`, `netstat`) otherwise gets a **visible blank console
+  (`python`, `powershell`, `taskkill`, `tasklist`, `netstat`) otherwise gets a **visible console
   window** — repeated `start`/`stop` cycles used to flash hundreds of them.
-  `DETACHED_PROCESS` and `CREATE_NO_WINDOW` are **not** substitutes: `DETACHED_PROCESS` only stops the
-  parent from blocking (no inherited console handles), while clearing the console is exactly what makes a
-  console-subsystem child (`python.exe` is `Subsystem=3`; check a PE header's `+0x5C` word) get a new
-  visible console. The uvicorn `Popen` therefore needs **both**: `DETACHED_PROCESS |
-  CREATE_NEW_PROCESS_GROUP | NO_WINDOW`. Dropping `NO_WINDOW` there reintroduces the blank window even
-  though all the `subprocess.run` helpers are still protected.
+  To check for windows without trusting your eyes, enumerate top-level windows
+  (`EnumWindows` + `IsWindowVisible`) and assert **zero new** `CASCADIA_HOSTING_WINDOW_CLASS` /
+  `ConsoleWindowClass` windows appear while running `start`/`stop`/`restart`; ignore other apps'
+  windows (browser, WeChat) and the 0x0 `PseudoConsoleWindow`.
 - The same rule applies outside this repo: any Node `spawn` of a console-subsystem binary
   (`node.exe`, `cmd.exe`, `powershell.exe`) needs `windowsHide: true` (defaults to `false`;
   `stdio: 'ignore'` alone does **not** suppress the window). This bit `scripts/run.mjs`'s
