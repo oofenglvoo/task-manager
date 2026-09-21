@@ -208,12 +208,16 @@ Frontend, run from `frontend/`:
 - Sankey / tree / sunburst all render **task titles on canvas** (truncated, full text in the
   tooltip); swimlane renders them as chips with overdue / subtask-progress signals.
 - `/calendar` (菜单「日历」) is a **lazy-loaded** page (`React.lazy` in `App.tsx`, own chunk).
-  `CalendarView.tsx` 提供月/周视图切换、翻页、回到今天，复用顶部筛选（优先级/标签/搜索），
+  `CalendarView.tsx` 提供月/周视图切换、翻页、**鼠标滚轮翻页**、回到今天，复用顶部筛选（优先级/标签/搜索），
   默认排除已归档任务。任务**仅按 `due_date` 落格**（`src/lib/calendar.ts` 的 `groupTasksByDay`），
   每个日期格显示公历日 + 农历/节气/传统节日（`src/lib/lunar.ts` 封装 `lunar-javascript`，本地离线计算，
   周一为一周起始）、节假日「休/班」角标，以及当天任务数 `done/total` 与完成度着色
-  （全完成绿/进行中黄/含逾期红/待开始蓝）。点击日期弹出 `DayTasksPanel`（当天任务列表 + 「新建」入口，
+  （全完成绿/进行中黄/含逾期红/待开始蓝）；格内任务条按 `taskColor()` 着色、逾期任务带红色左边条。
+  点击日期弹出 `DayTasksPanel`（当天任务列表 + 「新建」入口，
   新建时通过 `ui.openCreate(null, dueDate)` 预填该日 23:59 的截止时间）。
+  **滚轮翻页实现要点**：只在日期网格区挂原生 `wheel` 监听（`{ passive: false }` + `preventDefault`
+  + 累计阈值 `WHEEL_THRESHOLD` 与冷却 `WHEEL_COOLDOWN_MS` 节流），React 的 `onWheel` 是 passive 无法阻止
+  页面滚动，所以必须用 `addEventListener`；监听挂在网格 ref 上而非 `window`，工具栏/图例区域仍可正常滚动。
 - 节假日数据（放假「休」/调休「班」）来自后端 `GET /api/holidays/{year}`（`routers/holidays.py`，
   数据源 `NateScarlet/holiday-cn`，MIT）：优先读缓存 `DB_DIR/holidays/{year}.json`，未命中则依次尝试
   jsDelivr / fastly / raw.githubusercontent 镜像抓取并写缓存；年份非法 400，全部失败且无缓存 502，

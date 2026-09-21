@@ -2,6 +2,8 @@ import { Clock, Plus } from 'lucide-react'
 import type { Task } from '../../lib/types'
 import { cn, dueState } from '../../lib/utils'
 import { usePrioritiesMeta } from '../../hooks/usePrioritiesMeta'
+import { usePreferences } from '../../store/preferences'
+import { taskColor } from '../../lib/taskColor'
 import { Button } from '../ui/Button'
 import { Modal } from '../ui/Modal'
 
@@ -30,7 +32,9 @@ export function DayTasksPanel({
   onOpenTask,
   onCreate,
 }: DayTasksPanelProps) {
-  const { label: priorityLabel, color: priorityColor } = usePrioritiesMeta()
+  const { label: priorityLabel, color: priorityColor, priorities } = usePrioritiesMeta()
+  const { resolvedTheme } = usePreferences()
+  const isDark = resolvedTheme === 'dark'
 
   return (
     <Modal open={open} title={`${dateLabel} 的任务`} onClose={onClose}>
@@ -50,12 +54,14 @@ export function DayTasksPanel({
             {tasks.map((task) => {
               const isDone = task.completed_at != null
               const state = dueState(task.due_date, isDone)
+              const tint = taskColor(task, priorities, isDark)
               return (
                 <li key={task.id}>
                   <button
                     type="button"
                     onClick={() => onOpenTask(task.id)}
-                    className="flex w-full items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-left transition-colors hover:border-line-strong hover:bg-elevated"
+                    className="flex w-full items-center gap-2 rounded-lg border border-line border-l-[3px] bg-surface px-3 py-2 text-left transition-colors hover:border-line-strong hover:bg-elevated"
+                    style={{ borderLeftColor: tint }}
                   >
                     <span
                       className={cn('h-2 w-2 shrink-0 rounded-full', STATE_DOT[state])}

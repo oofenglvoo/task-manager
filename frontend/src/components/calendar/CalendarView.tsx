@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { TaskQuery } from '../../lib/types'
 import {
@@ -21,11 +21,20 @@ import { DayTasksPanel } from './DayTasksPanel'
 
 const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日']
 
+// 滚轮翻页：累计滚动量达到阈值才翻一页，并加冷却时间，
+// 避免触控板一次滑动连续翻好几页。
+const WHEEL_THRESHOLD = 24
+const WHEEL_COOLDOWN_MS = 220
+
 export function CalendarView() {
   const { search, priority, tagId, openTask, openCreate } = useUI()
   const [view, setView] = useState<CalendarViewMode>('month')
   const [cursor, setCursor] = useState(() => new Date())
   const [selected, setSelected] = useState<string | null>(null)
+
+  const gridRef = useRef<HTMLDivElement | null>(null)
+  const wheelAccum = useRef(0)
+  const wheelLockUntil = useRef(0)
 
   const query = useMemo<TaskQuery>(
     () => ({
@@ -71,22 +80,53 @@ export function CalendarView() {
           return `${first.month} 月 ${first.day} 日 – ${last.month} 月 ${last.day} 日`
         })()
 
-  function shift(delta: number) {
-    setCursor((prev) => {
-      if (view === 'month') {
-        return new Date(prev.getFullYear(), prev.getMonth() + delta, 1)
-      }
-      return new Date(
-        prev.getFullYear(),
-        prev.getMonth(),
-        prev.getDate() + delta * 7,
-      )
-    })
-  }
+  const shift = useCallback(
+    (delta: number) => {
+      setCursor((prev) => {
+        if (view === 'month') {
+          return new Date(prev.getFullYear(), prev.getMonth() + delta, 1)
+        }
+        return new Date(
+          prev.getFullYear(),
+          prev.getMonth(),
+          prev.getDate() + delta * 7,
+        )
+      })
+    },
+    [view],
+  )
 
   function goToday() {
     setCursor(new Date())
   }
+
+  // 只在日期网格区域内接管滚轮：向上滚 = 上一页，向下滚 = 下一页。
+  // 必须用原生监听（passive: false）才能 preventDefault，阻止页面同时滚动。
+  useEffect(() => {
+    const node = gridRef.current
+    if (!node) return
+
+    const onWheel = (event: WheelEvent) => {
+      if (event.deltaY === 0) return
+      event.preventDefault()
+
+      const now = Date.now()
+      if (now < wheelLockUntil.current) return
+
+      wheelAccum.current += event.deltaY
+      if (Math.abs(wheelAccum.current) < WHEEL_THRESHOLD) return
+
+      const direction = wheelAccum.current > 0 ? 1 : -1
+      wheelAccum.current = 0
+      wheelLockUntil.current = now + WHEEL_COOLDOWN_MS
+      shift(direction)
+    }
+
+    node.addEventListener('wheel', onWheel, { passive: false })
+    return () => node.removeEventListener('wheel', onWheel)
+    // 依赖 isLoading：日期网格要等加载完成才渲染，挂载时 ref 还是 null，
+    // 不加这个依赖就永远不会补上监听。
+  }, [shift, isLoading])
 
   const selectedTasks = selected ? (tasksByDay.get(selected) ?? []) : []
 
@@ -97,37 +137,47 @@ export function CalendarView() {
 
   return (
     <div className="scrollbar-thin flex h-full flex-col overflow-y-auto">
-      <div className="mx-auto flex w-full max-w-[1400px] flex-wrap items-center gap-2 px-4 py-2.5">
-        <CalendarDays className="h-4 w-4 text-ink-soft" />
-        <span className="text-sm font-semibold text-ink">{title}</span>
-        <div className="ml-1 flex items-center gap-1">
-          <Button size="icon" variant="ghost" aria-label="上一页" onClick={() => shift(-1)}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button size="sm" onClick={goToday}>
-            回到今天
-          </Button>
-          <Button size="icon" variant="ghost" aria-label="下一页" onClick={() => shift(1)}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
+      <div className="mx-auto w-full max-w-[1400px] px-4 py-3">
+        <div className="app-surface-panel flex flex-wrap items-center gap-2 rounded-xl border border-line bg-surface p-2 shadow-sm">
+          <div className="flex items-center gap-2 pl-1">
+            <CalendarDays className="h-4 w-4 text-accent" />
+            <span className="text-base font-semibold text-ink">{title}</span>
+          </div>
 
-        <div className="ml-auto inline-flex rounded-md border border-line bg-surface p-0.5">
-          {(['month', 'week'] as const).map((mode) => (
-            <button
-              key={mode}
-              type="button"
-              onClick={() => setView(mode)}
-              className={cn(
-                'rounded px-3 py-1 text-xs transition-colors',
-                view === mode
-                  ? 'bg-accent text-white'
-                  : 'text-ink-soft hover:bg-elevated hover:text-ink',
-              )}
-            >
-              {mode === 'month' ? '月视图' : '周视图'}
-            </button>
-          ))}
+          <div className="flex items-center gap-1">
+            <Button size="icon" variant="ghost" aria-label="上一页" onClick={() => shift(-1)}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button size="sm" onClick={goToday}>
+              回到今天
+            </Button>
+            <Button size="icon" variant="ghost" aria-label="下一页" onClick={() => shift(1)}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+
+          <div className="ml-auto flex items-center gap-2">
+            <span className="hidden text-[11px] text-muted sm:inline">
+              滚轮翻页
+            </span>
+            <div className="inline-flex rounded-md border border-line bg-surface p-0.5">
+              {(['month', 'week'] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setView(mode)}
+                  className={cn(
+                    'rounded px-3 py-1 text-xs transition-colors',
+                    view === mode
+                      ? 'bg-accent text-white'
+                      : 'text-ink-soft hover:bg-elevated hover:text-ink',
+                  )}
+                >
+                  {mode === 'month' ? '月视图' : '周视图'}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -135,66 +185,81 @@ export function CalendarView() {
         <LoadingBlock />
       ) : (
         <div className="mx-auto w-full max-w-[1400px] flex-1 px-4 pb-6">
-          <div className="grid grid-cols-7 gap-1 pb-1 text-center text-[11px] text-muted">
-            {WEEKDAYS.map((label) => (
-              <span key={label}>{label}</span>
-            ))}
-          </div>
-          <div className="grid grid-cols-7 gap-1">
-            {cells.map((cell) => {
-              const dayTasks = tasksByDay.get(cell.key) ?? []
-              const progress = dayProgress(dayTasks)
-              const holiday = holidayType(holidayLookup, cell.key)
-              const lunar = lunarInfo(cell.year, cell.month, cell.day)
-              const isWeekend = [6, 0].includes(new Date(cell.year, cell.month - 1, cell.day).getDay())
-              return (
-                <button
-                  key={cell.key}
-                  type="button"
-                  onClick={() => setSelected(cell.key)}
-                  className={cn(
-                    'flex min-h-[104px] flex-col rounded-lg border p-2 text-left transition-colors',
-                    view === 'week' ? 'min-h-[240px]' : '',
-                    cell.inCurrentMonth
-                      ? 'border-line bg-surface'
-                      : 'border-line/40 bg-surface/40 opacity-60',
-                    isWeekend && cell.inCurrentMonth && 'bg-elevated/40',
-                    'hover:border-line-strong hover:bg-elevated',
-                  )}
-                >
-                  <div className="flex-1">
+          <div ref={gridRef} className="select-none">
+            <div className="grid grid-cols-7 gap-1.5 pb-1.5 text-center text-xs font-medium text-muted">
+              {WEEKDAYS.map((label, index) => (
+                <span key={label} className={cn(index >= 5 && 'text-ink-soft')}>
+                  {label}
+                </span>
+              ))}
+            </div>
+            <div className="grid grid-cols-7 gap-1.5">
+              {cells.map((cell) => {
+                const dayTasks = tasksByDay.get(cell.key) ?? []
+                const progress = dayProgress(dayTasks)
+                const holiday = holidayType(holidayLookup, cell.key)
+                const lunar = lunarInfo(cell.year, cell.month, cell.day)
+                const isWeekend = [6, 0].includes(
+                  new Date(cell.year, cell.month - 1, cell.day).getDay(),
+                )
+                return (
+                  <button
+                    key={cell.key}
+                    type="button"
+                    onClick={() => setSelected(cell.key)}
+                    className={cn(
+                      'flex flex-col rounded-xl border p-2 text-left transition-all',
+                      view === 'week' ? 'min-h-[260px]' : 'min-h-[116px]',
+                      cell.inCurrentMonth
+                        ? 'border-line bg-surface hover:border-line-strong hover:shadow-sm'
+                        : 'border-line/40 bg-surface/40 opacity-55 hover:opacity-80',
+                      isWeekend && cell.inCurrentMonth && 'bg-elevated/50',
+                      cell.isToday &&
+                        cell.inCurrentMonth &&
+                        'border-accent/60 ring-1 ring-accent/50',
+                    )}
+                  >
                     <DayCellContent
                       day={cell.day}
                       lunar={lunar}
                       progress={progress}
                       holiday={holiday}
                       tasks={dayTasks}
+                      isToday={cell.isToday && cell.inCurrentMonth}
+                      maxTasks={view === 'week' ? 5 : 2}
                     />
-                  </div>
-                  {cell.isToday && cell.inCurrentMonth ? (
-                    <span className="mt-1 inline-flex w-fit items-center gap-1 rounded-full bg-accent px-1.5 py-0.5 text-[10px] text-white">
-                      今天
-                    </span>
-                  ) : null}
-                </button>
-              )
-            })}
+                  </button>
+                )
+              })}
+            </div>
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px] text-muted">
-            <span className="inline-flex items-center gap-1">
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-line bg-surface px-3 py-2 text-xs text-muted">
+            <span className="inline-flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-success" />全部完成
             </span>
-            <span className="inline-flex items-center gap-1">
+            <span className="inline-flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-warning" />进行中
             </span>
-            <span className="inline-flex items-center gap-1">
+            <span className="inline-flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-danger" />含逾期
             </span>
-            <span className="inline-flex items-center gap-1">
+            <span className="inline-flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-accent" />待开始
             </span>
-            <span className="ml-auto">周一为一周起始</span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="rounded bg-success/20 px-1 text-[10px] font-medium leading-4 text-success">
+                休
+              </span>
+              放假
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="rounded bg-danger/20 px-1 text-[10px] font-medium leading-4 text-danger">
+                班
+              </span>
+              调休
+            </span>
+            <span className="ml-auto">周一为一周起始 · 滚轮翻页</span>
           </div>
         </div>
       )}
