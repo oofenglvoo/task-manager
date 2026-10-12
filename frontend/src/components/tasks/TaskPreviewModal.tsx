@@ -1,10 +1,10 @@
 import { useMemo } from 'react'
-import { CalendarClock, CheckSquare, Clock, Pencil } from 'lucide-react'
+import { CalendarClock, CheckSquare, Clock, Copy, Pencil } from 'lucide-react'
 import { errorMessage } from '../../lib/api'
 import { sanitizeDescription } from '../../lib/sanitizeHtml'
 import { cn, dueBadgeClass, dueLabel, formatDateTime } from '../../lib/utils'
 import type { Task } from '../../lib/types'
-import { useStatuses, useTask, useUpdateSubtask } from '../../hooks/queries'
+import { useDuplicateTask, useStatuses, useTask, useUpdateSubtask } from '../../hooks/queries'
 import { usePrioritiesMeta } from '../../hooks/usePrioritiesMeta'
 import { usePreferences } from '../../store/preferences'
 import { useToast } from '../../store/toast'
@@ -27,12 +27,25 @@ export function TaskPreviewModal() {
   const { data: task, isLoading } = useTask(previewTaskId)
   const { priorities, byId } = usePrioritiesMeta()
   const { resolvedTheme } = usePreferences()
+  const duplicateTask = useDuplicateTask()
+  const { push } = useToast()
 
   const open = previewTaskId != null
   const isDone = task?.completed_at != null
   const surface = task
     ? cardSurfaceStyle(task, priorities, isDone, resolvedTheme === 'dark')
     : undefined
+
+  function duplicate() {
+    if (!task) return
+    duplicateTask.mutate(task.id, {
+      onSuccess: () => {
+        push('任务已复制', 'success')
+        closePreview()
+      },
+      onError: (error) => push(errorMessage(error), 'error'),
+    })
+  }
 
   return (
     <Modal
@@ -46,6 +59,10 @@ export function TaskPreviewModal() {
         task ? (
           <>
             <div className="flex-1" />
+            <Button onClick={duplicate} disabled={duplicateTask.isPending}>
+              <Copy className="h-3.5 w-3.5" />
+              复制
+            </Button>
             <Button
               onClick={() => {
                 closePreview()
@@ -185,7 +202,7 @@ function TaskPreviewBody({
                 {doneCount}/{task.subtasks.length} · {progress}%
               </span>
             </div>
-            <div className="h-1 overflow-hidden rounded-full bg-line">
+            <div className="h-1 overflow-hidden rounded-full bg-ink/10">
               <div
                 className="h-full rounded-full bg-accent transition-all"
                 style={{ width: `${progress}%` }}

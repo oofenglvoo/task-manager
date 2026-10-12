@@ -151,6 +151,7 @@ export const api = {
     list: (query: TaskQuery = {}) => request<Task[]>(`/api/tasks${qs(query)}`),
     get: (id: number) => request<Task>(`/api/tasks/${id}`),
     create: (data: TaskInput) => request<Task>('/api/tasks', 'POST', data),
+    duplicate: (id: number) => request<Task>(`/api/tasks/${id}/duplicate`, 'POST'),
     update: (id: number, data: Partial<TaskInput> & { position?: number }) =>
       request<Task>(`/api/tasks/${id}`, 'PUT', data),
     remove: (id: number) => request<void>(`/api/tasks/${id}`, 'DELETE'),

@@ -4,12 +4,11 @@ import {
   DragOverlay,
   KeyboardSensor,
   PointerSensor,
-  pointerWithin,
-  rectIntersection,
+  useDroppable,
   useSensor,
   useSensors,
 } from '@dnd-kit/core'
-import type { CollisionDetection, DragEndEvent, DragStartEvent } from '@dnd-kit/core'
+import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core'
 import {
   SortableContext,
   arrayMove,
@@ -30,6 +29,7 @@ import { useToast } from '../../store/toast'
 import { useUI } from '../../store/ui'
 import { CARD_SIZE_STYLES, usePreferences } from '../../store/preferences'
 import type { CardSize } from '../../store/preferences'
+import { boardCollisionDetection } from '../../lib/dnd'
 import { Button } from '../ui/Button'
 import { EmptyState } from '../ui/EmptyState'
 import { Select } from '../ui/Input'
@@ -59,13 +59,10 @@ const SIZE_OPTIONS: Array<{ value: CardSize; label: string }> = [
 ]
 
 /**
- * 任务拖拽碰撞策略：优先命中指针下的投放区，指针滑出所有投放区时回退矩形相交。
- * 与 GroupedTaskBoard 保持一致，便于插到第一个位置。
+ * 任务拖拽碰撞策略见 `../../lib/dnd` 的 `boardCollisionDetection`
+ * （卡片优先，指针滑出所有卡片时回退到看板容器，便于拖到末尾）。
  */
-const taskCollisionDetection: CollisionDetection = (args) => {
-  const pointerCollisions = pointerWithin(args)
-  return pointerCollisions.length > 0 ? pointerCollisions : rectIntersection(args)
-}
+const BOARD_DROP_ID = 'board:end'
 
 const PAGE_SIZE = 60
 
@@ -151,6 +148,9 @@ export function BoardView() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
 
+  // 整块网格作为兜底投放区：拖到末尾卡片右侧空白处也能落到最后一个位置。
+  const { setNodeRef: setBoardRef } = useDroppable({ id: BOARD_DROP_ID })
+
   const onError = (error: unknown) => push(errorMessage(error), 'error')
 
   function changeStatus(taskId: number, statusId: number | null) {
@@ -183,11 +183,19 @@ export function BoardView() {
   function handleDragEnd(event: DragEndEvent) {
     setActiveId(null)
     const { active, over } = event
-    if (!over || active.id === over.id) return
+    if (!over) return
     const ids = visibleTasks.map((task) => task.id)
     const from = ids.indexOf(Number(active.id))
+    if (from < 0) return
+    // 落到看板容器（末尾卡片右侧空白）时移到最后一个位置。
+    if (String(over.id) === BOARD_DROP_ID) {
+      if (from === ids.length - 1) return
+      reorderTasks.mutate(arrayMove(ids, from, ids.length - 1), { onError })
+      return
+    }
+    if (active.id === over.id) return
     const to = ids.indexOf(Number(over.id))
-    if (from < 0 || to < 0) return
+    if (to < 0) return
     reorderTasks.mutate(arrayMove(ids, from, to), { onError })
   }
 
@@ -333,7 +341,7 @@ export function BoardView() {
           ) : (
             <DndContext
               sensors={sensors}
-              collisionDetection={taskCollisionDetection}
+              collisionDetection={boardCollisionDetection}
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
             >
@@ -342,6 +350,7 @@ export function BoardView() {
                 strategy={rectSortingStrategy}
               >
                 <div
+                  ref={setBoardRef}
                   className={`grid ${style.gap}`}
                   style={{
                     gridTemplateColumns: `repeat(auto-fill, minmax(${style.min}, 1fr))`,

@@ -172,6 +172,43 @@ def test_delete_task(client, make_task):
     assert client.get(f"/api/tasks/{task['id']}").status_code == 404
 
 
+def test_duplicate_task_copies_fields_tags_and_subtasks(client, make_task):
+    tag = client.post("/api/tags", json={"name": "紧急"}).json()
+    task = make_task(
+        title="发布版本",
+        tag_ids=[tag["id"]],
+        priority=3,
+        due_date="2026-10-01T18:30",
+        description="<p>打 tag 并推送</p>",
+        color="#5e6ad2",
+    )
+    client.post(f"/api/tasks/{task['id']}/subtasks", json={"title": "跑测试"})
+    sub = client.post(f"/api/tasks/{task['id']}/subtasks", json={"title": "发版"}).json()
+    client.put(f"/api/tasks/{task['id']}/subtasks/{sub['id']}", json={"is_done": True})
+
+    response = client.post(f"/api/tasks/{task['id']}/duplicate")
+    assert response.status_code == 201, response.text
+    copy = response.json()
+
+    assert copy["id"] != task["id"]
+    assert copy["title"] == "发布版本 副本"
+    assert copy["priority"] == 3
+    assert copy["color"] == "#5e6ad2"
+    assert copy["due_date"] == "2026-10-01T18:30:00"
+    assert copy["description"] == "<p>打 tag 并推送</p>"
+    assert [item["name"] for item in copy["tags"]] == ["紧急"]
+    assert [item["title"] for item in copy["subtasks"]] == ["跑测试", "发版"]
+    assert [item["is_done"] for item in copy["subtasks"]] == [False, True]
+    # 副本追加到看板末尾，且原任务不受影响。
+    ids = [item["id"] for item in client.get("/api/tasks").json()]
+    assert ids[-1] == copy["id"]
+    assert client.get(f"/api/tasks/{task['id']}").json()["title"] == "发布版本"
+    # 副本写入初始历史快照。
+    history = client.get(f"/api/tasks/{copy['id']}/history").json()
+    assert len(history) == 1
+    assert history[0]["snapshot"]["title"] == "发布版本 副本"
+
+
 def test_update_task_with_legacy_text_due_date_does_not_crash(client, make_task):
     """回归：旧库 due_date 是纯日期文本，更新任务时不应 500。
 

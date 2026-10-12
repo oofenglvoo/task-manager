@@ -194,6 +194,38 @@ def create_task(db: Session, payload) -> models.Task:
     return task
 
 
+def duplicate_task(db: Session, task: models.Task) -> models.Task:
+    """复制任务：主字段、标签、子任务（含勾选状态）全部保留，标题追加「副本」。"""
+    title = f"{task.title} 副本"[:500]
+    copy = models.Task(
+        status_id=task.status_id,
+        group_id=task.group_id,
+        title=title,
+        description=task.description,
+        priority=task.priority,
+        color=task.color,
+        due_date=task.due_date,
+        position=next_task_position(db),
+        is_archived=False,
+        completed_at=task.completed_at,
+    )
+    copy.tags = list(task.tags)
+    copy.subtasks = [
+        models.SubTask(
+            title=item.title,
+            is_done=item.is_done,
+            position=item.position,
+        )
+        for item in task.subtasks
+    ]
+    db.add(copy)
+    db.flush()
+    record_history(db, copy)  # 副本也写入初始快照 (v1)
+    db.commit()
+    db.refresh(copy)
+    return copy
+
+
 def update_task(db: Session, task: models.Task, payload) -> models.Task:
     data = payload.model_dump(exclude_unset=True)
     tag_ids = data.pop("tag_ids", None)

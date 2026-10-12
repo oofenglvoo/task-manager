@@ -4,18 +4,11 @@ import {
   DragOverlay,
   KeyboardSensor,
   PointerSensor,
-  pointerWithin,
-  rectIntersection,
   useDroppable,
   useSensor,
   useSensors,
 } from '@dnd-kit/core'
-import type {
-  CollisionDetection,
-  DragEndEvent,
-  DragStartEvent,
-  UniqueIdentifier,
-} from '@dnd-kit/core'
+import type { DragEndEvent, DragStartEvent, UniqueIdentifier } from '@dnd-kit/core'
 import {
   SortableContext,
   rectSortingStrategy,
@@ -28,6 +21,7 @@ import { GripVertical } from 'lucide-react'
 import type { CardSizeStyle } from '../../store/preferences'
 import type { Status, Task } from '../../lib/types'
 import { errorMessage } from '../../lib/api'
+import { boardCollisionDetection } from '../../lib/dnd'
 import { useMoveTask, useReorderGroups, useReorderTasks } from '../../hooks/queries'
 import { useToast } from '../../store/toast'
 import { TaskCard } from '../tasks/TaskCard'
@@ -58,79 +52,8 @@ interface GroupedTaskBoardProps {
 }
 
 /**
- * 拖拽碰撞策略（任务与分组共用一个 DndContext，按 active id 前缀分流）：
- *
- * 分组拖拽（active.id = `group:*`）：只在分组卡片之间取指针下最近的一个，
- * 否则分组手柄会命中自己内部的任务卡 / 容器，导致永远排不动。
- *
- * 任务拖拽（按优先级）：
- * 1. 分组顶部的「插到最前」细条（section-start:）命中时优先，否则 8px 细条抢不过卡片；
- * 2. 否则在命中的任务卡里取「距指针最近」的一张（pointerWithin 常有多张卡同时命中）；
- * 3. 没命中卡片时取分组容器（section:），指针不在任何投放区时回退矩形相交。
- *
- * 注意：用「指针坐标」而不是 dragged rect 中心来选最近目标，
- * 否则命中会跟着拖拽浮层偏移，落到错误的位置。
+ * 拖拽碰撞策略见 `../../lib/dnd` 的 `boardCollisionDetection`（分组/任务共用）。
  */
-const isTopStripId = (id: UniqueIdentifier) => String(id).startsWith('section-start:')
-const isGroupId = (id: UniqueIdentifier) => String(id).startsWith('group:')
-const isContainerId = (id: UniqueIdentifier) =>
-  String(id).startsWith('section:') || String(id).startsWith('section-start:')
-
-function center(rect: { left: number; top: number; width: number; height: number }) {
-  return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
-}
-
-function distanceTo(a: { x: number; y: number }, b: { x: number; y: number }) {
-  const dx = a.x - b.x
-  const dy = a.y - b.y
-  return dx * dx + dy * dy
-}
-
-function nearestToPointer(
-  args: Parameters<CollisionDetection>[0],
-  collisions: ReturnType<CollisionDetection>,
-) {
-  const { pointerCoordinates, droppableRects } = args
-  if (!pointerCoordinates) return collisions[0]
-  return collisions
-    .map((collision) => {
-      const rect = droppableRects.get(collision.id)
-      return {
-        collision,
-        distance: rect ? distanceTo(center(rect), pointerCoordinates) : Number.POSITIVE_INFINITY,
-      }
-    })
-    .sort((a, b) => a.distance - b.distance)[0].collision
-}
-
-const taskCollisionDetection: CollisionDetection = (args) => {
-  // 分组拖拽：只在分组之间竞争，避免命中自己内部的任务卡 / 容器。
-  if (args.active && isGroupId(args.active.id)) {
-    const groupContainers = args.droppableContainers.filter((container) =>
-      isGroupId(container.id),
-    )
-    const groupArgs = { ...args, droppableContainers: groupContainers }
-    const hits = pointerWithin(groupArgs)
-    const collisions = hits.length > 0 ? hits : rectIntersection(groupArgs)
-    if (collisions.length === 0) return []
-    return [nearestToPointer(args, collisions)]
-  }
-
-  const candidates = pointerWithin(args)
-  const collisions = candidates.length > 0 ? candidates : rectIntersection(args)
-
-  const topStrips = collisions.filter((c) => isTopStripId(c.id))
-  if (topStrips.length > 0) return topStrips
-
-  const cards = collisions.filter((c) => !isContainerId(c.id))
-  if (cards.length > 0) {
-    return [nearestToPointer(args, cards)]
-  }
-
-  const containers = collisions.filter((c) => isContainerId(c.id))
-  return containers.length > 0 ? containers : collisions
-}
-
 type Groups = Record<string, number[]>
 
 export function GroupedTaskBoard({
@@ -261,8 +184,8 @@ export function GroupedTaskBoard({
       }
       const next = [...sourceList]
       next.splice(from, 1)
-      // 移除原项后，落点在其之后的索引需要前移一位。
-      const insertIndex = from < overIndex ? overIndex - 1 : overIndex
+      // 与 `arrayMove` 一致：落点索引即目标卡片的原索引（拖到末卡时移到末尾）。
+      const insertIndex = overIndex
       if (insertIndex === from) return
       next.splice(insertIndex, 0, activeTaskId)
       groups[sourceKey] = next
@@ -303,7 +226,7 @@ export function GroupedTaskBoard({
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={taskCollisionDetection}
+      collisionDetection={boardCollisionDetection}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >

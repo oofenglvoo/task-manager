@@ -113,6 +113,14 @@ export function useUpdateTask() {
   })
 }
 
+export function useDuplicateTask() {
+  const invalidate = useInvalidateTasks()
+  return useMutation({
+    mutationFn: (id: number) => api.tasks.duplicate(id),
+    onSuccess: invalidate,
+  })
+}
+
 export function useDeleteTask() {
   const invalidate = useInvalidateTasks()
   return useMutation({

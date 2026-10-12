@@ -71,7 +71,7 @@ export function SubTaskList({ task }: { task: Task }) {
       </div>
 
       {task.subtasks.length > 0 ? (
-        <div className="h-1 overflow-hidden rounded-full bg-line">
+        <div className="h-1 overflow-hidden rounded-full bg-ink/10">
           <div
             className="h-full rounded-full bg-accent transition-all"
             style={{ width: `${progress}%` }}

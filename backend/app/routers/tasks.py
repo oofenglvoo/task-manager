@@ -99,6 +99,12 @@ def update_task(
     return crud.update_task(db, task, payload)
 
 
+@router.post("/{task_id}/duplicate", response_model=schemas.TaskOut, status_code=201)
+def duplicate_task(task_id: int, db: Session = Depends(get_db)):
+    task = _get_task(db, task_id)
+    return crud.duplicate_task(db, task)
+
+
 @router.put("/{task_id}/move", response_model=schemas.TaskOut)
 def move_task(task_id: int, payload: schemas.TaskMove, db: Session = Depends(get_db)):
     task = _get_task(db, task_id)

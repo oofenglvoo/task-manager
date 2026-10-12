@@ -19,7 +19,7 @@ import { Checkbox } from '../ui/Checkbox'
 import { PriorityMenu } from './PriorityMenu'
 import { StatusMenu } from './StatusMenu'
 
-const SUBTASK_LIMIT = 5
+const SUBTASK_LIMIT = 10
 
 interface TaskCardProps {
   task: Task

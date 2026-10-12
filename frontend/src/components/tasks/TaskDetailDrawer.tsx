@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Archive, ArchiveRestore, ChevronDown, ChevronUp, Trash2, X } from 'lucide-react'
+import { Archive, ArchiveRestore, ChevronDown, ChevronUp, Copy, Trash2, X } from 'lucide-react'
 import { errorMessage } from '../../lib/api'
 import { formatDateTime } from '../../lib/utils'
 import {
   useArchiveTask,
   useDeleteTask,
+  useDuplicateTask,
   useGroups,
   useStatuses,
   useTags,
@@ -86,6 +87,7 @@ export function TaskDetailDrawer() {
   const updateTask = useUpdateTask()
   const archiveTask = useArchiveTask()
   const deleteTask = useDeleteTask()
+  const duplicateTask = useDuplicateTask()
   const { push } = useToast()
 
   const [draft, setDraft] = useState<Draft | null>(null)
@@ -145,10 +147,24 @@ export function TaskDetailDrawer() {
         },
       },
       {
-        onSuccess: () => push('任务已保存', 'success'),
+        onSuccess: () => {
+          push('任务已保存', 'success')
+          closeTask()
+        },
         onError,
       },
     )
+  }
+
+  function duplicate() {
+    if (!task) return
+    duplicateTask.mutate(task.id, {
+      onSuccess: () => {
+        push('任务已复制', 'success')
+        closeTask()
+      },
+      onError,
+    })
   }
 
   function requestClose() {
@@ -358,6 +374,10 @@ export function TaskDetailDrawer() {
                   <Archive className="h-3.5 w-3.5" />
                 )}
                 {task.is_archived ? '恢复' : '归档'}
+              </Button>
+              <Button onClick={duplicate} disabled={duplicateTask.isPending}>
+                <Copy className="h-3.5 w-3.5" />
+                复制
               </Button>
               <div className="flex-1" />
               <Button variant="danger" onClick={() => setConfirmDelete(true)}>
