@@ -5,9 +5,10 @@ import { usePrioritiesMeta } from '../../hooks/usePrioritiesMeta'
 import { useToast } from '../../store/toast'
 import { Button } from '../ui/Button'
 import { ColorPicker } from '../ui/ColorPicker'
-import { Field, Input, Select, Textarea } from '../ui/Input'
+import { Field, Input, Select } from '../ui/Input'
 import { Modal } from '../ui/Modal'
 import { TagPicker } from '../ui/TagPicker'
+import { RichTextEditor } from '../ui/RichTextEditor'
 
 interface TaskFormProps {
   open: boolean
@@ -212,11 +213,11 @@ export function TaskForm({
         </Field>
 
         <Field label="描述">
-          <Textarea
-            rows={4}
+          <RichTextEditor
             value={form.description}
             placeholder="补充说明（可选）"
-            onChange={(event) => setForm({ ...form, description: event.target.value })}
+            minHeight={120}
+            onChange={(description) => setForm({ ...form, description })}
           />
         </Field>
 

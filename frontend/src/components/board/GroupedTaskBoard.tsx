@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   DndContext,
   DragOverlay,
@@ -26,6 +26,7 @@ import { useMoveTask, useReorderGroups, useReorderTasks } from '../../hooks/quer
 import { useToast } from '../../store/toast'
 import { TaskCard } from '../tasks/TaskCard'
 import { SortableTaskCard } from './SortableTaskCard'
+import { GroupQuickNav } from './GroupQuickNav'
 
 export interface TaskSection {
   key: string
@@ -74,6 +75,7 @@ export function GroupedTaskBoard({
   const { push } = useToast()
   const [activeId, setActiveId] = useState<number | null>(null)
   const [activeGroupId, setActiveGroupId] = useState<number | null>(null)
+  const sectionRefs = useRef(new Map<string, HTMLElement>())
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -223,6 +225,10 @@ export function GroupedTaskBoard({
     )
   }
 
+  function jumpToSection(key: string) {
+    sectionRefs.current.get(key)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   return (
     <DndContext
       sensors={sensors}
@@ -234,6 +240,16 @@ export function GroupedTaskBoard({
         items={sortableSections.map((section) => `group:${section.groupId}`)}
         strategy={verticalListSortingStrategy}
       >
+        <GroupQuickNav
+          sticky
+          items={sections.map((section) => ({
+            key: section.key,
+            name: section.name,
+            color: section.color,
+            count: section.tasks.length,
+          }))}
+          onJump={jumpToSection}
+        />
         <div className="space-y-6">
           {sections.map((section) => (
             <Section
@@ -247,6 +263,10 @@ export function GroupedTaskBoard({
               groupDraggable={
                 sortableSections.length > 1 && section.groupId != null
               }
+              registerSection={(element) => {
+                if (element) sectionRefs.current.set(section.key, element)
+                else sectionRefs.current.delete(section.key)
+              }}
               onChangeStatus={onChangeStatus}
               onChangePriority={onChangePriority}
               onToggleDone={onToggleDone}
@@ -291,6 +311,7 @@ interface SectionProps {
   compact: boolean
   dragEnabled: boolean
   groupDraggable: boolean
+  registerSection: (element: HTMLElement | null) => void
   onChangeStatus: (taskId: number, statusId: number | null) => void
   onChangePriority: (taskId: number, priority: number) => void
   onToggleDone: (task: Task) => void
@@ -305,6 +326,7 @@ function Section({
   compact,
   dragEnabled,
   groupDraggable,
+  registerSection,
   onChangeStatus,
   onChangePriority,
   onToggleDone,
@@ -334,7 +356,14 @@ function Section({
   }
 
   return (
-    <section ref={setSortableRef} style={style_} className="bg-transparent">
+    <section
+      ref={(element) => {
+        setSortableRef(element)
+        registerSection(element)
+      }}
+      style={style_}
+      className="scroll-mt-14 bg-transparent"
+    >
       <div className="mb-2 flex items-center gap-2">
         {groupDraggable ? (
           <button

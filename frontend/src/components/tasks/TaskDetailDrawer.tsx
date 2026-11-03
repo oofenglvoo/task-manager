@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Archive, ArchiveRestore, ChevronDown, ChevronUp, Copy, Trash2, X } from 'lucide-react'
 import { errorMessage } from '../../lib/api'
 import { formatDateTime } from '../../lib/utils'
+import { normalizeDescription } from '../../lib/richText'
 import {
   useArchiveTask,
   useDeleteTask,
@@ -65,7 +66,7 @@ function draftFromTask(task: {
     color: task.color,
     dueDate: toDatetimeLocal(task.due_date),
     tagIds: task.tags.map((tag) => tag.id),
-    description: task.description ?? '',
+    description: normalizeDescription(task.description),
   }
 }
 
@@ -113,7 +114,7 @@ export function TaskDetailDrawer() {
       draft.priority !== task.priority ||
       draft.color !== task.color ||
       draft.dueDate !== toDatetimeLocal(task.due_date) ||
-      draft.description !== (task.description ?? '') ||
+      draft.description !== normalizeDescription(task.description) ||
       !sameTags(draft.tagIds, task.tags.map((tag) => tag.id))
     )
   }, [task, draft])

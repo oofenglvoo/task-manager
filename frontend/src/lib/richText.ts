@@ -19,6 +19,22 @@ export function looksLikeHtml(value: string): boolean {
   return /<\/?[a-z][\s\S]*>/i.test(value)
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+/** 把旧版本保存的纯文本描述转换成可编辑、可展示的 HTML。 */
+export function normalizeDescription(value: string | null | undefined): string {
+  if (!value) return ''
+  if (looksLikeHtml(value)) return value
+  return escapeHtml(value.replace(/\r\n?/g, '\n')).replace(/\n/g, '<br>')
+}
+
 // 把富文本 HTML 转成用于卡片/列表/tooltip 展示与搜索的纯文本。
 export function htmlToText(html: string | null | undefined): string {
   if (!html) return ''

@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from 'react'
+import { Fragment, useMemo, useRef, useState } from 'react'
 import {
   ArrowDown,
   ArrowUp,
@@ -29,6 +29,7 @@ import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { Input, Select } from '../ui/Input'
 import { LoadingBlock } from '../ui/Spinner'
 import { TagChip } from '../ui/Badge'
+import { GroupQuickNav } from '../board/GroupQuickNav'
 
 type SortField = 'position' | 'priority' | 'due_date' | 'created_at' | 'title'
 
@@ -56,6 +57,7 @@ export function ListView() {
   const [groupId, setGroupId] = useState<number | ''>('')
   const [archived, setArchived] = useState(false)
   const [deleting, setDeleting] = useState<Task | null>(null)
+  const sectionRefs = useRef(new Map<string, HTMLTableRowElement>())
 
   const query = useMemo<TaskQuery>(
     () => ({
@@ -127,6 +129,10 @@ export function ListView() {
   }
 
   const onError = (error: unknown) => push(errorMessage(error), 'error')
+
+  function jumpToSection(key: string) {
+    sectionRefs.current.get(key)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   function renderRow(task: Task) {
     const status = task.status_id != null ? statusMap.get(task.status_id) : undefined
@@ -332,6 +338,20 @@ export function ListView() {
         </Button>
       </div>
 
+      {groupBy ? (
+        <div className="mx-auto w-full max-w-[1400px] px-4 pt-2">
+          <GroupQuickNav
+            items={sections.map((section) => ({
+              key: section.key,
+              name: section.name,
+              color: section.color,
+              count: section.tasks.length,
+            }))}
+            onJump={jumpToSection}
+          />
+        </div>
+      ) : null}
+
       {isLoading ? (
         <LoadingBlock />
       ) : (
@@ -367,7 +387,13 @@ export function ListView() {
               {groupBy
                 ? sections.map((section) => (
                     <Fragment key={section.key}>
-                      <tr className="border-b border-line/60 bg-elevated">
+                      <tr
+                        ref={(element) => {
+                          if (element) sectionRefs.current.set(section.key, element)
+                          else sectionRefs.current.delete(section.key)
+                        }}
+                        className="scroll-mt-12 border-b border-line/60 bg-elevated"
+                      >
                         <td colSpan={8} className="px-4 py-2">
                           <div className="flex items-center gap-2">
                             <span

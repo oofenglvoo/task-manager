@@ -1,6 +1,8 @@
 // 富文本描述的净化：卡片/历史时间线直接用 innerHTML 渲染，必须先过滤不可信 HTML。
 // 仅保留编辑器可产生的安全标签与属性，移除图片、脚本、事件处理器等。
 
+import { normalizeDescription } from './richText'
+
 const ALLOWED_TAGS = new Set([
   'B',
   'STRONG',
@@ -66,7 +68,10 @@ export function sanitizeDescription(
   if (typeof DOMParser === 'undefined') return html
   const { allowImages = false } = options
 
-  const doc = new DOMParser().parseFromString(`<div>${html}</div>`, 'text/html')
+  const doc = new DOMParser().parseFromString(
+    `<div>${normalizeDescription(html)}</div>`,
+    'text/html',
+  )
   const root = doc.body.firstElementChild
   if (!root) return ''
 

@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react'
 import {
   Bold,
   ImagePlus,
+  IndentDecrease,
+  IndentIncrease,
   Italic,
   List,
   ListOrdered,
@@ -91,6 +93,16 @@ export function RichTextEditor({
       event.preventDefault()
       insertImage(file)
     }
+  }
+
+  function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (event.key !== 'Tab') return
+    const selection = window.getSelection()
+    const node = selection?.anchorNode
+    const element = node instanceof Element ? node : node?.parentElement
+    if (!element?.closest('li')) return
+    event.preventDefault()
+    exec(event.shiftKey ? 'outdent' : 'indent')
   }
 
   const toolbarButton =
@@ -192,6 +204,24 @@ export function RichTextEditor({
         >
           <ListOrdered className="h-4 w-4" />
         </button>
+        <button
+          type="button"
+          title="减少缩进"
+          className={toolbarButton}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => exec('outdent')}
+        >
+          <IndentDecrease className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          title="增加缩进"
+          className={toolbarButton}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => exec('indent')}
+        >
+          <IndentIncrease className="h-4 w-4" />
+        </button>
 
         <span className="mx-0.5 h-4 w-px bg-line" />
 
@@ -235,6 +265,7 @@ export function RichTextEditor({
         data-placeholder={placeholder}
         onInput={emit}
         onBlur={emit}
+        onKeyDown={handleKeyDown}
         onPaste={handlePaste}
         onDrop={handleDrop}
         style={{ minHeight }}

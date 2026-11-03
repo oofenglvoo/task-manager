@@ -168,10 +168,37 @@
   padding-left: 1.25rem;
 }
 
+.rich-editor ul ul,
+.rich-content ul ul {
+  list-style: circle;
+}
+
+.rich-editor ul ul ul,
+.rich-content ul ul ul {
+  list-style: square;
+}
+
 .rich-editor ol,
 .rich-content ol {
   list-style: decimal;
   padding-left: 1.25rem;
+}
+
+.rich-editor ol ol,
+.rich-content ol ol {
+  list-style: lower-alpha;
+}
+
+.rich-editor ol ol ol,
+.rich-content ol ol ol {
+  list-style: lower-roman;
+}
+
+.rich-editor li > ul,
+.rich-editor li > ol,
+.rich-content li > ul,
+.rich-content li > ol {
+  margin-top: 0.125rem;
 }
 
 .rich-editor img,
