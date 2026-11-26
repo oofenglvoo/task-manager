@@ -378,6 +378,18 @@ export function useUpdateSubtask() {
   })
 }
 
+export function useReorderSubtasks() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ taskId, orderedIds }: { taskId: number; orderedIds: number[] }) =>
+      api.subtasks.reorder(taskId, orderedIds),
+    onSuccess: (_data, vars) => {
+      void qc.invalidateQueries({ queryKey: ['task', vars.taskId] })
+      void qc.invalidateQueries({ queryKey: ['tasks'] })
+    },
+  })
+}
+
 export function useDeleteSubtask() {
   const qc = useQueryClient()
   return useMutation({

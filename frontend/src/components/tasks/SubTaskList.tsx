@@ -1,8 +1,13 @@
 import { useState } from 'react'
-import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronUp, Pencil, Plus, Trash2 } from 'lucide-react'
 import { errorMessage } from '../../lib/api'
 import type { Task } from '../../lib/types'
-import { useCreateSubtask, useDeleteSubtask, useUpdateSubtask } from '../../hooks/queries'
+import {
+  useCreateSubtask,
+  useDeleteSubtask,
+  useReorderSubtasks,
+  useUpdateSubtask,
+} from '../../hooks/queries'
 import { useToast } from '../../store/toast'
 import { Checkbox } from '../ui/Checkbox'
 import { Input } from '../ui/Input'
@@ -14,6 +19,7 @@ export function SubTaskList({ task }: { task: Task }) {
   const createSubtask = useCreateSubtask()
   const updateSubtask = useUpdateSubtask()
   const deleteSubtask = useDeleteSubtask()
+  const reorderSubtasks = useReorderSubtasks()
   const { push } = useToast()
 
   const done = task.subtasks.filter((item) => item.is_done).length
@@ -59,6 +65,20 @@ export function SubTaskList({ task }: { task: Task }) {
     )
   }
 
+  function move(index: number, direction: -1 | 1) {
+    const target = index + direction
+    if (target < 0 || target >= task.subtasks.length) return
+    const ids = task.subtasks.map((item) => item.id)
+    ;[ids[index], ids[target]] = [ids[target], ids[index]]
+    reorderSubtasks.mutate(
+      { taskId: task.id, orderedIds: ids },
+      { onError },
+    )
+  }
+
+  const reorderButton =
+    'rounded border border-line bg-surface p-1 text-muted opacity-0 transition-opacity hover:text-ink group-hover:opacity-100 disabled:pointer-events-none disabled:opacity-0'
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -80,7 +100,7 @@ export function SubTaskList({ task }: { task: Task }) {
       ) : null}
 
       <ul className="space-y-1">
-        {task.subtasks.map((subtask) =>
+        {task.subtasks.map((subtask, index) =>
           editingId === subtask.id ? (
             <li key={subtask.id} className="flex items-center gap-2 px-1 py-0.5">
               <Checkbox
@@ -136,6 +156,24 @@ export function SubTaskList({ task }: { task: Task }) {
               >
                 {subtask.title}
               </span>
+              <button
+                type="button"
+                title="上移"
+                disabled={index === 0}
+                onClick={() => move(index, -1)}
+                className={reorderButton}
+              >
+                <ChevronUp className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                title="下移"
+                disabled={index === task.subtasks.length - 1}
+                onClick={() => move(index, 1)}
+                className={reorderButton}
+              >
+                <ChevronDown className="h-3.5 w-3.5" />
+              </button>
               <button
                 type="button"
                 title="编辑"

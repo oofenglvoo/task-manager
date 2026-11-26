@@ -47,3 +47,40 @@ def test_subtask_id_must_belong_to_task(client, make_task):
         f"/api/tasks/{second['id']}/subtasks/{subtask['id']}", json={"is_done": True}
     )
     assert response.status_code == 404
+
+
+def test_subtask_reorder(client, make_task):
+    task = make_task()
+    ids = [
+        client.post(f"/api/tasks/{task['id']}/subtasks", json={"title": title}).json()[
+            "id"
+        ]
+        for title in ("甲", "乙", "丙")
+    ]
+
+    response = client.put(
+        f"/api/tasks/{task['id']}/subtasks/reorder",
+        json={"ordered_ids": [ids[2], ids[0], ids[1]]},
+    )
+    assert response.status_code == 204
+
+    listed = client.get(f"/api/tasks/{task['id']}/subtasks").json()
+    assert [item["title"] for item in listed] == ["丙", "甲", "乙"]
+    assert [item["position"] for item in listed] == [1, 2, 3]
+
+
+def test_subtask_reorder_rejects_foreign_id(client, make_task):
+    first = make_task()
+    second = make_task()
+    own = client.post(f"/api/tasks/{first['id']}/subtasks", json={"title": "甲"}).json()
+    foreign = client.post(
+        f"/api/tasks/{second['id']}/subtasks", json={"title": "乙"}
+    ).json()
+
+    response = client.put(
+        f"/api/tasks/{first['id']}/subtasks/reorder",
+        json={"ordered_ids": [own["id"], foreign["id"]]},
+    )
+    assert response.status_code == 404
+    listed = client.get(f"/api/tasks/{first['id']}/subtasks").json()
+    assert [item["title"] for item in listed] == ["甲"]

@@ -43,6 +43,24 @@ def create_subtask(
     return subtask
 
 
+@router.put("/{task_id}/subtasks/reorder", status_code=204)
+def reorder_subtasks(
+    task_id: int, payload: schemas.ReorderPayload, db: Session = Depends(get_db)
+):
+    task = _get_task(db, task_id)
+    owned_ids = {item.id for item in task.subtasks}
+    requested_ids = set(payload.ordered_ids)
+    missing = requested_ids - owned_ids
+    if missing:
+        raise HTTPException(status_code=404, detail="子任务不存在")
+    by_id = {item.id: item for item in task.subtasks}
+    ordered = [by_id[subtask_id] for subtask_id in payload.ordered_ids]
+    ordered += [item for item in task.subtasks if item.id not in requested_ids]
+    for index, subtask in enumerate(ordered, start=1):
+        subtask.position = index
+    db.commit()
+
+
 @router.put(
     "/{task_id}/subtasks/{subtask_id}", response_model=schemas.SubTaskOut
 )

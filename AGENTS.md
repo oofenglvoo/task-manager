@@ -331,6 +331,12 @@ Frontend, run from `frontend/`:
   `sanitizeDescription()` (`src/lib/sanitizeHtml.ts`, whitelist tags/attrs, images stripped), always
   (both 宽松/紧凑). Never inject `task.description` without sanitizing. `htmlToText()` in
   `src/lib/richText.ts` remains for any plain-text needs.
+- **`Field` (`src/components/ui/Input.tsx`) must stay a `<div>`, never a `<label>`.** A native
+  `<label>` wrapping the field content forwards every click on non-interactive descendants to its
+  "labeled control" (the first labelable descendant). For the 描述 field that was the toolbar's
+  加粗 `<button>`, so each click into the editor silently ran `execCommand('bold')` and every later
+  keystroke was wrapped in `<b>` (the "描述默认加粗" bug). The same forwarding could toggle the first
+  tag/color button; do not re-introduce label wrapping for multi-control fields.
 - Card grid (宽松 mode, `compact === false`) lists up to 5 subtasks with working checkboxes and a
   "还有 N 个" line; toggling uses `useUpdateSubtask` wired through `BoardView` → `SortableTaskCard` /
   `GroupedTaskBoard`. Card subtasks are **toggle-only** (no rename/delete there).

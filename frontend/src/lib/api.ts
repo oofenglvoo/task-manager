@@ -176,6 +176,10 @@ export const api = {
       id: number,
       data: Partial<{ title: string; is_done: boolean }>,
     ) => request<SubTask>(`/api/tasks/${taskId}/subtasks/${id}`, 'PUT', data),
+    reorder: (taskId: number, orderedIds: number[]) =>
+      request<void>(`/api/tasks/${taskId}/subtasks/reorder`, 'PUT', {
+        ordered_ids: orderedIds,
+      }),
     remove: (taskId: number, id: number) =>
       request<void>(`/api/tasks/${taskId}/subtasks/${id}`, 'DELETE'),
   },
