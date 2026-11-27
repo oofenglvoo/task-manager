@@ -330,3 +330,62 @@ def test_as_datetime_handles_all_legacy_shapes():
     assert as_datetime(datetime(2026, 9, 20, 18, 30)) == datetime(2026, 9, 20, 18, 30)
     assert as_datetime("not-a-date") is None
     assert as_datetime(b"x") is None
+
+
+def test_pinned_task_comes_first_in_manual_sort(client, make_task):
+    first = make_task(title="第一")
+    second = make_task(title="第二")
+    third = make_task(title="第三")
+
+    pinned = client.put(f"/api/tasks/{third['id']}", json={"is_pinned": True})
+    assert pinned.status_code == 200
+    assert pinned.json()["is_pinned"] is True
+
+    ids = [item["id"] for item in client.get("/api/tasks").json()]
+    assert ids == [third["id"], first["id"], second["id"]]
+
+
+def test_unpin_restores_manual_order(client, make_task):
+    first = make_task(title="第一")
+    second = make_task(title="第二")
+
+    client.put(f"/api/tasks/{second['id']}", json={"is_pinned": True})
+    client.put(f"/api/tasks/{second['id']}", json={"is_pinned": False})
+
+    ids = [item["id"] for item in client.get("/api/tasks").json()]
+    assert ids == [first["id"], second["id"]]
+
+
+def test_pin_does_not_affect_other_sorts(client, make_task):
+    low = make_task(title="低", priority=1)
+    high = make_task(title="高", priority=3)
+    client.put(f"/api/tasks/{low['id']}", json={"is_pinned": True})
+
+    ids = [
+        item["id"]
+        for item in client.get("/api/tasks?sort=priority&order=desc").json()
+    ]
+    assert ids == [high["id"], low["id"]]
+
+
+def test_duplicate_task_drops_pin(client, make_task):
+    task = make_task(title="置顶原任务")
+    client.put(f"/api/tasks/{task['id']}", json={"is_pinned": True})
+
+    copy = client.post(f"/api/tasks/{task['id']}/duplicate").json()
+    assert copy["title"] == "置顶原任务 副本"
+    assert copy["is_pinned"] is False
+
+
+def test_pin_toggle_does_not_touch_updated_at(client, make_task):
+    task = make_task(title="置顶不改修改时间")
+    before = task["updated_at"]
+
+    pinned = client.put(f"/api/tasks/{task['id']}", json={"is_pinned": True}).json()
+    assert pinned["updated_at"] == before
+
+    # 正常内容修改仍然刷新 updated_at。
+    renamed = client.put(
+        f"/api/tasks/{task['id']}", json={"title": "改了标题"}
+    ).json()
+    assert renamed["updated_at"] != before

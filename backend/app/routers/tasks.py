@@ -69,10 +69,13 @@ def list_tasks(
         )
 
     column = SORT_COLUMNS[sort]
-    stmt = stmt.order_by(
-        column.desc() if order == "desc" else column.asc(),
-        models.Task.id.asc(),
-    )
+    order_clauses = []
+    if sort == "position":
+        # 置顶（非永久）只在手动排序下优先；按优先级/日期等排序时完全按所选字段。
+        order_clauses.append(models.Task.is_pinned.desc())
+    order_clauses.append(column.desc() if order == "desc" else column.asc())
+    order_clauses.append(models.Task.id.asc())
+    stmt = stmt.order_by(*order_clauses)
     return list(db.scalars(stmt.options(*LOAD_OPTIONS)))
 
 

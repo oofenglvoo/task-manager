@@ -50,6 +50,7 @@ interface GroupedTaskBoardProps {
   onChangePriority: (taskId: number, priority: number) => void
   onToggleDone: (task: Task) => void
   onToggleSubtask: (taskId: number, subtaskId: number, isDone: boolean) => void
+  onTogglePin: (task: Task) => void
 }
 
 /**
@@ -68,6 +69,7 @@ export function GroupedTaskBoard({
   onChangePriority,
   onToggleDone,
   onToggleSubtask,
+  onTogglePin,
 }: GroupedTaskBoardProps) {
   const reorderTasks = useReorderTasks()
   const moveTask = useMoveTask()
@@ -271,6 +273,7 @@ export function GroupedTaskBoard({
               onChangePriority={onChangePriority}
               onToggleDone={onToggleDone}
               onToggleSubtask={onToggleSubtask}
+              onTogglePin={onTogglePin}
             />
           ))}
         </div>
@@ -316,6 +319,7 @@ interface SectionProps {
   onChangePriority: (taskId: number, priority: number) => void
   onToggleDone: (task: Task) => void
   onToggleSubtask: (taskId: number, subtaskId: number, isDone: boolean) => void
+  onTogglePin: (task: Task) => void
 }
 
 function Section({
@@ -331,6 +335,7 @@ function Section({
   onChangePriority,
   onToggleDone,
   onToggleSubtask,
+  onTogglePin,
 }: SectionProps) {
   const { setNodeRef, isOver } = useDroppable({ id: `section:${section.key}` })
   const { setNodeRef: setStartRef, isOver: isOverStart } = useDroppable({
@@ -435,6 +440,7 @@ function Section({
               onPriorityChange={onChangePriority}
               onToggleDone={onToggleDone}
               onToggleSubtask={onToggleSubtask}
+              onTogglePin={onTogglePin}
             />
           ))}
         </div>

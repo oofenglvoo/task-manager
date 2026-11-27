@@ -91,6 +91,7 @@ def export_data(db: Session = Depends(get_db)):
                 due_date=task.due_date,
                 position=task.position,
                 is_archived=task.is_archived,
+                is_pinned=task.is_pinned,
                 created_at=task.created_at,
                 updated_at=task.updated_at,
                 completed_at=task.completed_at,
@@ -99,6 +100,7 @@ def export_data(db: Session = Depends(get_db)):
                     schemas.ExportSubTask(
                         title=subtask.title,
                         is_done=subtask.is_done,
+                        is_pinned=subtask.is_pinned,
                         position=subtask.position,
                     )
                     for subtask in task.subtasks
@@ -233,6 +235,7 @@ def import_data(payload: schemas.ExportData, db: Session = Depends(get_db)):
             due_date=item.due_date,
             position=item.position,
             is_archived=item.is_archived,
+            is_pinned=item.is_pinned,
             completed_at=item.completed_at,
         )
         if item.created_at is not None:
@@ -249,6 +252,7 @@ def import_data(payload: schemas.ExportData, db: Session = Depends(get_db)):
                 models.SubTask(
                     title=subtask.title,
                     is_done=subtask.is_done,
+                    is_pinned=subtask.is_pinned,
                     position=subtask.position,
                 )
             )

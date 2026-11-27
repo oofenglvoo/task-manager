@@ -5,6 +5,7 @@ from datetime import date, datetime
 from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 
 from . import models
 from .models import utcnow
@@ -195,7 +196,10 @@ def create_task(db: Session, payload) -> models.Task:
 
 
 def duplicate_task(db: Session, task: models.Task) -> models.Task:
-    """复制任务：主字段、标签、子任务（含勾选状态）全部保留，标题追加「副本」。"""
+    """复制任务：主字段、标签、子任务（含勾选状态）全部保留，标题追加「副本」。
+
+    置顶标记不复制：副本是新任务，若跟随原任务置顶会突然插到分组最前，容易误解。
+    """
     title = f"{task.title} 副本"[:500]
     copy = models.Task(
         status_id=task.status_id,
@@ -207,6 +211,7 @@ def duplicate_task(db: Session, task: models.Task) -> models.Task:
         due_date=task.due_date,
         position=next_task_position(db),
         is_archived=False,
+        is_pinned=False,
         completed_at=task.completed_at,
     )
     copy.tags = list(task.tags)
@@ -214,6 +219,7 @@ def duplicate_task(db: Session, task: models.Task) -> models.Task:
         models.SubTask(
             title=item.title,
             is_done=item.is_done,
+            is_pinned=item.is_pinned,
             position=item.position,
         )
         for item in task.subtasks
@@ -235,6 +241,7 @@ def update_task(db: Session, task: models.Task, payload) -> models.Task:
     new_group_id = data.pop("group_id", None)
 
     before = build_history_snapshot(task)
+    before_updated_at = task.updated_at
 
     if "title" in data and data["title"] is not None:
         data["title"] = _clean_title(data["title"])
@@ -266,6 +273,15 @@ def update_task(db: Session, task: models.Task, payload) -> models.Task:
 
     if build_history_snapshot(task) != before:
         record_history(db, task)
+
+    # 置顶/位置只是显示开关，不是内容修改：别刷新 updated_at（否则卡片「修改时间」
+    # 与脉络图里按最近更新的评分都会因为点一下图钉而变动）。
+    if set(data) <= {"is_pinned", "position"} and not (
+        status_provided or group_provided or tag_ids is not None
+    ):
+        task.updated_at = before_updated_at
+        # 赋回原值不会被判为「脏」，必须显式标记，否则 onupdate 仍会覆盖。
+        flag_modified(task, "updated_at")
 
     db.commit()
     db.refresh(task)

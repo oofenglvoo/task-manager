@@ -138,3 +138,39 @@ def test_import_rejects_missing_tag(client):
         "tasks": [{"id": 1, "title": "坏任务", "tag_ids": [999]}],
     }
     assert client.post("/api/import", json=payload).status_code == 400
+
+
+def test_export_import_preserves_pin(client, make_task):
+    task = make_task(title="置顶任务")
+    client.put(f"/api/tasks/{task['id']}", json={"is_pinned": True})
+    subtask = client.post(
+        f"/api/tasks/{task['id']}/subtasks", json={"title": "置顶子任务"}
+    ).json()
+    client.put(
+        f"/api/tasks/{task['id']}/subtasks/{subtask['id']}", json={"is_pinned": True}
+    )
+
+    backup = client.get("/api/export").json()
+    exported = next(item for item in backup["tasks"] if item["id"] == task["id"])
+    assert exported["is_pinned"] is True
+    assert exported["subtasks"][0]["is_pinned"] is True
+
+    assert client.post("/api/import", json=backup).status_code == 200
+    tasks = client.get("/api/tasks").json()
+    imported = next(item for item in tasks if item["title"] == "置顶任务")
+    assert imported["is_pinned"] is True
+    assert imported["subtasks"][0]["is_pinned"] is True
+
+
+def test_import_accepts_payload_without_pin(client, make_task):
+    task = make_task(title="旧备份")
+    client.post(f"/api/tasks/{task['id']}/subtasks", json={"title": "子任务"})
+    backup = client.get("/api/export").json()
+    for item in backup["tasks"]:
+        item.pop("is_pinned", None)
+        for sub in item["subtasks"]:
+            sub.pop("is_pinned", None)
+
+    assert client.post("/api/import", json=backup).status_code == 200
+    tasks = client.get("/api/tasks").json()
+    assert tasks[0]["is_pinned"] is False

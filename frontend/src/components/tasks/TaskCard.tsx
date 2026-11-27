@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { useMemo } from 'react'
-import { CheckSquare, Clock, Pencil } from 'lucide-react'
+import { CheckSquare, Clock, Pencil, Pin } from 'lucide-react'
 import { usePreferences } from '../../store/preferences'
 import type { CardSizeStyle } from '../../store/preferences'
 import type { Status, Task } from '../../lib/types'
@@ -34,6 +34,7 @@ interface TaskCardProps {
   onPriorityChange?: (priority: number) => void
   onToggleDone?: () => void
   onToggleSubtask?: (subtaskId: number, isDone: boolean) => void
+  onTogglePin?: () => void
 }
 
 export function TaskCard({
@@ -49,6 +50,7 @@ export function TaskCard({
   onPriorityChange,
   onToggleDone,
   onToggleSubtask,
+  onTogglePin,
 }: TaskCardProps) {
   const doneCount = task.subtasks.filter((item) => item.is_done).length
   const isDone = task.completed_at != null
@@ -95,6 +97,26 @@ export function TaskCard({
           ) : null}
         </div>
         <div className="flex shrink-0 items-center gap-1">
+          {onTogglePin ? (
+            <button
+              type="button"
+              aria-label={task.is_pinned ? '取消置顶' : '置顶'}
+              title={task.is_pinned ? '取消置顶' : '置顶'}
+              aria-pressed={task.is_pinned}
+              onClick={(event) => {
+                event.stopPropagation()
+                onTogglePin()
+              }}
+              className={cn(
+                'rounded border p-0.5 transition-all focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60',
+                task.is_pinned
+                  ? 'border-accent/50 bg-accent-soft text-accent'
+                  : 'border-line bg-surface text-muted opacity-0 hover:bg-elevated hover:text-ink group-hover:opacity-100',
+              )}
+            >
+              <Pin className={cn('h-3.5 w-3.5', task.is_pinned && 'fill-current')} />
+            </button>
+          ) : null}
           {handle}
           {onOpen ? (
             <button

@@ -164,6 +164,7 @@ class SubTaskCreate(BaseModel):    title: str = Field(min_length=1, max_length=5
 class SubTaskUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=500)
     is_done: bool | None = None
+    is_pinned: bool | None = None
 
 
 class SubTaskOut(BaseModel):
@@ -173,6 +174,7 @@ class SubTaskOut(BaseModel):
     task_id: int
     title: str
     is_done: bool
+    is_pinned: bool = False
     position: int
 
 
@@ -202,6 +204,7 @@ class TaskUpdate(BaseModel):
     due_date: DueDatetime | None = None
     tag_ids: list[int] | None = None
     position: int | None = None
+    is_pinned: bool | None = None
 
     _normalize_due = field_validator("due_date", mode="before")(parse_due)
 
@@ -225,6 +228,7 @@ class TaskOut(BaseModel):
     due_date: DueDatetime | None
     position: int
     is_archived: bool
+    is_pinned: bool = False
     created_at: UtcDatetime
     updated_at: UtcDatetime
     completed_at: UtcDatetime | None
@@ -383,6 +387,7 @@ class ExportPriority(BaseModel):
 class ExportSubTask(BaseModel):
     title: str
     is_done: bool = False
+    is_pinned: bool = False
     position: int = 0
 
 
@@ -402,6 +407,7 @@ class ExportTask(BaseModel):
     due_date: DueDatetime | None = None
     position: int = 0
     is_archived: bool = False
+    is_pinned: bool = False
     created_at: datetime | None = None
     updated_at: datetime | None = None
     completed_at: datetime | None = None

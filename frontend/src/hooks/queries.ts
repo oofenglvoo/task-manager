@@ -369,7 +369,7 @@ export function useUpdateSubtask() {
     }: {
       taskId: number
       id: number
-      data: Partial<{ title: string; is_done: boolean }>
+      data: Partial<{ title: string; is_done: boolean; is_pinned: boolean }>
     }) => api.subtasks.update(taskId, id, data),
     onSuccess: (_data, vars) => {
       void qc.invalidateQueries({ queryKey: ['task', vars.taskId] })

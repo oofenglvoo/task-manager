@@ -169,6 +169,13 @@ export function BoardView() {
     }
   }
 
+  function togglePin(task: Task) {
+    updateTask.mutate(
+      { id: task.id, data: { is_pinned: !task.is_pinned } },
+      { onError },
+    )
+  }
+
   function toggleSubtask(taskId: number, subtaskId: number, isDone: boolean) {
     updateSubtask.mutate(
       { taskId, id: subtaskId, data: { is_done: isDone } },
@@ -215,7 +222,7 @@ export function BoardView() {
             <span className="text-xs text-muted">（已加载 {visibleTasks.length} 条，拖拽已暂停）</span>
           ) : null}
           {!manualOrder ? (
-            <span className="text-xs text-muted">（切换「手动排序」后可拖拽）</span>
+            <span className="text-xs text-muted">（切换「手动排序」后可拖拽、置顶才生效）</span>
           ) : groupBy ? (
             <span className="text-xs text-muted">（同组拖拽排序，跨组拖拽迁移分组）</span>
           ) : null}
@@ -337,6 +344,7 @@ export function BoardView() {
               onChangePriority={changePriority}
               onToggleDone={toggleDone}
               onToggleSubtask={toggleSubtask}
+              onTogglePin={togglePin}
             />
           ) : (
             <DndContext
@@ -371,6 +379,7 @@ export function BoardView() {
                       onPriorityChange={changePriority}
                       onToggleDone={toggleDone}
                       onToggleSubtask={toggleSubtask}
+                      onTogglePin={togglePin}
                     />
                   ))}
                 </div>

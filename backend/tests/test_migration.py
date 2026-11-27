@@ -327,3 +327,40 @@ def test_normalize_history_due_dates_rewrites_date_only(tmp_path):
     assert json.loads(snapshots[1])["due_date"] == "2026-09-20T18:30:00"
     assert json.loads(snapshots[2])["due_date"] is None
 
+
+
+def test_add_bool_column_is_idempotent(tmp_path):
+    from app import database
+
+    db_path = tmp_path / "legacy.db"
+    engine = create_engine(f"sqlite:///{db_path.as_posix()}", future=True)
+    with engine.begin() as connection:
+        connection.exec_driver_sql(
+            "CREATE TABLE tasks (id INTEGER NOT NULL PRIMARY KEY)"
+        )
+        connection.exec_driver_sql(
+            "CREATE TABLE subtasks (id INTEGER NOT NULL PRIMARY KEY)"
+        )
+        database._add_bool_column(connection, "tasks", "is_pinned")
+        database._add_bool_column(connection, "subtasks", "is_pinned")
+    with engine.begin() as connection:
+        database._add_bool_column(connection, "tasks", "is_pinned")
+
+    with sqlite3.connect(db_path) as connection:
+        task_columns = [
+            row[1] for row in connection.execute("PRAGMA table_info(tasks)")
+        ]
+        subtask_columns = [
+            row[1] for row in connection.execute("PRAGMA table_info(subtasks)")
+        ]
+        assert task_columns.count("is_pinned") == 1
+        assert subtask_columns.count("is_pinned") == 1
+
+
+def test_add_bool_column_skips_missing_table(tmp_path):
+    from app import database
+
+    db_path = tmp_path / "empty.db"
+    engine = create_engine(f"sqlite:///{db_path.as_posix()}", future=True)
+    with engine.begin() as connection:
+        database._add_bool_column(connection, "tasks", "is_pinned")

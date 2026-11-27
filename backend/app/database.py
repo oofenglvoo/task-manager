@@ -64,8 +64,26 @@ def ensure_schema() -> None:
         _add_task_group(connection)
         _add_task_color(connection)
         _add_group_note(connection)
+        _add_bool_column(connection, "tasks", "is_pinned")
+        _add_bool_column(connection, "subtasks", "is_pinned")
         _normalize_due_dates(connection)
         _normalize_history_due_dates(connection)
+
+
+def _add_bool_column(connection, table: str, column: str) -> None:
+    """Add a NOT NULL BOOLEAN column defaulting to 0. Idempotent (PRAGMA guarded).
+
+    `create_all` only creates missing tables, so existing databases need this to
+    pick up new flag columns. `table`/`column` are literals from this module.
+    """
+    columns = {
+        row[1] for row in connection.exec_driver_sql(f"PRAGMA table_info({table})")
+    }
+    if not columns or column in columns:
+        return
+    connection.exec_driver_sql(
+        f"ALTER TABLE {table} ADD COLUMN {column} BOOLEAN NOT NULL DEFAULT 0"
+    )
 
 
 def _normalize_due_dates(connection) -> None:
