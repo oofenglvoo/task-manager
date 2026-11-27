@@ -151,6 +151,14 @@ export function useReorderTasks() {
   })
 }
 
+export function usePinTask() {
+  const invalidate = useInvalidateTasks()
+  return useMutation({
+    mutationFn: (id: number) => api.tasks.pin(id),
+    onSuccess: invalidate,
+  })
+}
+
 export function useArchiveTask() {
   const invalidate = useInvalidateTasks()
   return useMutation({
@@ -369,7 +377,7 @@ export function useUpdateSubtask() {
     }: {
       taskId: number
       id: number
-      data: Partial<{ title: string; is_done: boolean; is_pinned: boolean }>
+      data: Partial<{ title: string; is_done: boolean }>
     }) => api.subtasks.update(taskId, id, data),
     onSuccess: (_data, vars) => {
       void qc.invalidateQueries({ queryKey: ['task', vars.taskId] })
@@ -383,6 +391,18 @@ export function useReorderSubtasks() {
   return useMutation({
     mutationFn: ({ taskId, orderedIds }: { taskId: number; orderedIds: number[] }) =>
       api.subtasks.reorder(taskId, orderedIds),
+    onSuccess: (_data, vars) => {
+      void qc.invalidateQueries({ queryKey: ['task', vars.taskId] })
+      void qc.invalidateQueries({ queryKey: ['tasks'] })
+    },
+  })
+}
+
+export function usePinSubtask() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ taskId, id }: { taskId: number; id: number }) =>
+      api.subtasks.pin(taskId, id),
     onSuccess: (_data, vars) => {
       void qc.invalidateQueries({ queryKey: ['task', vars.taskId] })
       void qc.invalidateQueries({ queryKey: ['tasks'] })

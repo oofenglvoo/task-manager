@@ -19,6 +19,7 @@ import { LayoutGrid, Layers, Plus, Rows3, Settings2 } from 'lucide-react'
 import { errorMessage } from '../../lib/api'
 import type { Task, TaskQuery } from '../../lib/types'
 import {
+  usePinTask,
   useReorderTasks,
   useStatuses,
   useTasks,
@@ -71,6 +72,7 @@ export function BoardView() {
   const { cardSize, compact, groupBy, setCardSize, setCompact, setGroupBy } = usePreferences()
   const { data: statuses = [] } = useStatuses()
   const reorderTasks = useReorderTasks()
+  const pinTask = usePinTask()
   const updateTask = useUpdateTask()
   const updateSubtask = useUpdateSubtask()
   const { push } = useToast()
@@ -169,11 +171,8 @@ export function BoardView() {
     }
   }
 
-  function togglePin(task: Task) {
-    updateTask.mutate(
-      { id: task.id, data: { is_pinned: !task.is_pinned } },
-      { onError },
-    )
+  function pinToTop(task: Task) {
+    pinTask.mutate(task.id, { onError })
   }
 
   function toggleSubtask(taskId: number, subtaskId: number, isDone: boolean) {
@@ -222,7 +221,7 @@ export function BoardView() {
             <span className="text-xs text-muted">（已加载 {visibleTasks.length} 条，拖拽已暂停）</span>
           ) : null}
           {!manualOrder ? (
-            <span className="text-xs text-muted">（切换「手动排序」后可拖拽、置顶才生效）</span>
+            <span className="text-xs text-muted">（切换「手动排序」后可拖拽）</span>
           ) : groupBy ? (
             <span className="text-xs text-muted">（同组拖拽排序，跨组拖拽迁移分组）</span>
           ) : null}
@@ -344,7 +343,7 @@ export function BoardView() {
               onChangePriority={changePriority}
               onToggleDone={toggleDone}
               onToggleSubtask={toggleSubtask}
-              onTogglePin={togglePin}
+              onPin={pinToTop}
             />
           ) : (
             <DndContext
@@ -379,7 +378,7 @@ export function BoardView() {
                       onPriorityChange={changePriority}
                       onToggleDone={toggleDone}
                       onToggleSubtask={toggleSubtask}
-                      onTogglePin={togglePin}
+                      onPin={pinToTop}
                     />
                   ))}
                 </div>

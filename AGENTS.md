@@ -144,20 +144,17 @@ Frontend, run from `frontend/`:
   `as_datetime()` so history snapshots stay minute-precision; `_normalize_history_due_dates()` cleans
   the JSON `"due_date"` fragment inside `task_history.snapshot`.
 - `Task` has `created_at` (insert), `updated_at` (SQLAlchemy `onupdate=utcnow`, auto), `completed_at`.
-- **`is_pinned` is a display overlay, not an order mutation** (tasks and subtasks both). `position`
-  stays the real manual order, so unpinning restores the original slot — that is the "非永久" part.
-  Consequences to keep in mind:
-  - `GET /api/tasks` adds `is_pinned DESC` **only when `sort == "position"`**; every other sort ignores
-    it. Grouped boards inherit the rule for free because sections keep the server order.
-  - `Task.subtasks` is ordered by `(is_pinned DESC, position, id)` via a **callable** `order_by=lambda`
-    (the old `order_by="SubTask.position"` string form cannot express a tuple).
-  - `reorder` endpoints still write `position` 1..n from the submitted ids, so a drag across the pin
-    boundary is undone by the next read (pinned items snap back). That is intended, not a bug.
-  - `crud.duplicate_task` deliberately does **not** copy the task-level pin (a copy jumping to the top
-    of its group reads as a bug); subtask pins are copied.
-  - New flag columns need both a `server_default` on the model **and** an
-    `ensure_schema()` → `_add_bool_column()` entry; without the server default, legacy raw SQL inserts
-    in tests fail on the NOT NULL constraint.
+- **"置顶" is a one-shot reorder, not a flag.** `POST /api/tasks/{id}/pin` and
+  `POST /api/tasks/{id}/subtasks/{subtask_id}/pin` rewrite `position` to 1..n with the target first;
+  nothing remembers the old slot, so there is deliberately **no "取消置顶"** — the user drags it back.
+  - `crud.pin_task` only re-sequences tasks with the **same `is_archived`** value, so pinning on the
+    active board never shuffles the archive's positions.
+  - It rewrites `position` for the whole scope, which bumps `updated_at` on every touched row (same
+    as `PUT /api/tasks/reorder`). Accepted: the card's "修改" time is not content-only here.
+  - An earlier iteration shipped an `is_pinned` boolean column; it is gone on purpose. Do not
+    reintroduce a flag — a pin that can be "cancelled" needs the old slot, which the user rejected.
+    `ensure_schema()` → `_drop_column_if_exists()` removes the stale column best-effort (SQLite
+    ≥ 3.35 has `DROP COLUMN`; older versions keep an unused column that nothing reads).
 - `Task.priority` is an int (a **`priorities.id`**, not a fixed 1/2/3) with no range validation; the
   value must reference an existing `priorities` row or the write returns 404. `Priority` rows carry
   `name/color/level/position`; `level` is the weight (higher = more important) and `position` is the

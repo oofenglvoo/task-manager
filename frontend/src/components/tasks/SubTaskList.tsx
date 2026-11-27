@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react'
+import { useState } from 'react'
 import {
   DndContext,
   KeyboardSensor,
@@ -23,6 +23,7 @@ import { cn } from '../../lib/utils'
 import {
   useCreateSubtask,
   useDeleteSubtask,
+  usePinSubtask,
   useReorderSubtasks,
   useUpdateSubtask,
 } from '../../hooks/queries'
@@ -38,6 +39,7 @@ export function SubTaskList({ task }: { task: Task }) {
   const updateSubtask = useUpdateSubtask()
   const deleteSubtask = useDeleteSubtask()
   const reorderSubtasks = useReorderSubtasks()
+  const pinSubtask = usePinSubtask()
   const { push } = useToast()
 
   const sensors = useSensors(
@@ -49,8 +51,6 @@ export function SubTaskList({ task }: { task: Task }) {
   const progress = task.subtasks.length
     ? Math.round((done / task.subtasks.length) * 100)
     : 0
-  // 服务端已按「置顶优先、再按 position」排序，置顶块是列表开头连续的一段。
-  const pinnedCount = task.subtasks.filter((item) => item.is_pinned).length
 
   const onError = (error: unknown) => push(errorMessage(error), 'error')
 
@@ -97,11 +97,8 @@ export function SubTaskList({ task }: { task: Task }) {
     )
   }
 
-  function togglePin(subtask: SubTask) {
-    updateSubtask.mutate(
-      { taskId: task.id, id: subtask.id, data: { is_pinned: !subtask.is_pinned } },
-      { onError },
-    )
+  function pinToTop(subtask: SubTask) {
+    pinSubtask.mutate({ taskId: task.id, id: subtask.id }, { onError })
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -111,8 +108,6 @@ export function SubTaskList({ task }: { task: Task }) {
     const from = ids.indexOf(Number(active.id))
     const to = ids.indexOf(Number(over.id))
     if (from < 0 || to < 0) return
-    // 置顶子任务始终排在前面，跨过置顶边界的落点会被服务端排序「拉回」，
-    // 因此这里只提交新的可见顺序，位置由后端按该顺序重排。
     reorderSubtasks.mutate(
       { taskId: task.id, orderedIds: arrayMove(ids, from, to) },
       { onError },
@@ -150,32 +145,25 @@ export function SubTaskList({ task }: { task: Task }) {
             strategy={verticalListSortingStrategy}
           >
             <ul className="space-y-1">
-              {task.subtasks.map((subtask, index) => (
-                <Fragment key={subtask.id}>
-                  {index === pinnedCount && pinnedCount > 0 ? (
-                    <li
-                      aria-hidden
-                      className="my-1 border-t border-dashed border-line"
-                    />
-                  ) : null}
-                  <SubTaskRow
-                    subtask={subtask}
-                    editing={editingId === subtask.id}
-                    editingTitle={editingTitle}
-                    onEditingTitleChange={setEditingTitle}
-                    onStartEdit={() => startEdit(subtask.id, subtask.title)}
-                    onCommitEdit={commitEdit}
-                    onCancelEdit={cancelEdit}
-                    onToggleDone={(checked) => toggleDone(subtask, checked)}
-                    onTogglePin={() => togglePin(subtask)}
-                    onDelete={() =>
-                      deleteSubtask.mutate(
-                        { taskId: task.id, id: subtask.id },
-                        { onError },
-                      )
-                    }
-                  />
-                </Fragment>
+              {task.subtasks.map((subtask) => (
+                <SubTaskRow
+                  key={subtask.id}
+                  subtask={subtask}
+                  editing={editingId === subtask.id}
+                  editingTitle={editingTitle}
+                  onEditingTitleChange={setEditingTitle}
+                  onStartEdit={() => startEdit(subtask.id, subtask.title)}
+                  onCommitEdit={commitEdit}
+                  onCancelEdit={cancelEdit}
+                  onToggleDone={(checked) => toggleDone(subtask, checked)}
+                  onPin={() => pinToTop(subtask)}
+                  onDelete={() =>
+                    deleteSubtask.mutate(
+                      { taskId: task.id, id: subtask.id },
+                      { onError },
+                    )
+                  }
+                />
               ))}
             </ul>
           </SortableContext>
@@ -216,7 +204,7 @@ interface SubTaskRowProps {
   onCommitEdit: () => void
   onCancelEdit: () => void
   onToggleDone: (checked: boolean) => void
-  onTogglePin: () => void
+  onPin: () => void
   onDelete: () => void
 }
 
@@ -229,7 +217,7 @@ function SubTaskRow({
   onCommitEdit,
   onCancelEdit,
   onToggleDone,
-  onTogglePin,
+  onPin,
   onDelete,
 }: SubTaskRowProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -294,18 +282,12 @@ function SubTaskRow({
 
       <button
         type="button"
-        title={subtask.is_pinned ? '取消置顶' : '置顶'}
-        aria-label={subtask.is_pinned ? '取消置顶' : '置顶'}
-        aria-pressed={subtask.is_pinned}
-        onClick={onTogglePin}
-        className={cn(
-          'rounded border p-1 transition-opacity focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60',
-          subtask.is_pinned
-            ? 'border-accent/50 bg-accent-soft text-accent'
-            : 'border-line bg-surface text-muted opacity-0 hover:text-ink group-hover:opacity-100',
-        )}
+        title="置顶（挪到最前）"
+        aria-label="置顶"
+        onClick={onPin}
+        className="rounded border border-line bg-surface p-1 text-muted opacity-0 transition-opacity hover:text-ink focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 group-hover:opacity-100"
       >
-        <Pin className={cn('h-3.5 w-3.5', subtask.is_pinned && 'fill-current')} />
+        <Pin className="h-3.5 w-3.5" />
       </button>
 
       {!editing ? (

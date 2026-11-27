@@ -161,6 +161,8 @@ export const api = {
     ) => request<Task>(`/api/tasks/${id}/move`, 'PUT', data),
     reorder: (orderedIds: number[]) =>
       request<void>('/api/tasks/reorder', 'PUT', { ordered_ids: orderedIds }),
+    /** 置顶：直接挪到最前（一次性动作，没有取消）。 */
+    pin: (id: number) => request<void>(`/api/tasks/${id}/pin`, 'POST'),
     archive: (id: number, isArchived = true) =>
       request<Task>(`/api/tasks/${id}/archive`, 'POST', { is_archived: isArchived }),
     history: (id: number) => request<TaskHistory[]>(`/api/tasks/${id}/history`),
@@ -174,12 +176,15 @@ export const api = {
     update: (
       taskId: number,
       id: number,
-      data: Partial<{ title: string; is_done: boolean; is_pinned: boolean }>,
+      data: Partial<{ title: string; is_done: boolean }>,
     ) => request<SubTask>(`/api/tasks/${taskId}/subtasks/${id}`, 'PUT', data),
     reorder: (taskId: number, orderedIds: number[]) =>
       request<void>(`/api/tasks/${taskId}/subtasks/reorder`, 'PUT', {
         ordered_ids: orderedIds,
       }),
+    /** 置顶：直接挪到子任务列表最前（一次性动作，没有取消）。 */
+    pin: (taskId: number, id: number) =>
+      request<void>(`/api/tasks/${taskId}/subtasks/${id}/pin`, 'POST'),
     remove: (taskId: number, id: number) =>
       request<void>(`/api/tasks/${taskId}/subtasks/${id}`, 'DELETE'),
   },

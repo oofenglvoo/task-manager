@@ -17,7 +17,7 @@ interface SortableTaskCardProps {
   onPriorityChange: (taskId: number, priority: number) => void
   onToggleDone: (task: Task) => void
   onToggleSubtask?: (taskId: number, subtaskId: number, isDone: boolean) => void
-  onTogglePin: (task: Task) => void
+  onPin: (task: Task) => void
   disabled?: boolean
 }
 
@@ -31,7 +31,7 @@ export function SortableTaskCard({
   onPriorityChange,
   onToggleDone,
   onToggleSubtask,
-  onTogglePin,
+  onPin,
   disabled,
 }: SortableTaskCardProps) {
   const { openTask, openPreview } = useUI()
@@ -69,7 +69,7 @@ export function SortableTaskCard({
         onStatusChange={(statusId) => onStatusChange(task.id, statusId)}
         onPriorityChange={(priority) => onPriorityChange(task.id, priority)}
         onToggleDone={() => onToggleDone(task)}
-        onTogglePin={() => onTogglePin(task)}
+        onPin={() => onPin(task)}
         onToggleSubtask={
           onToggleSubtask
             ? (subtaskId, isDone) => onToggleSubtask(task.id, subtaskId, isDone)

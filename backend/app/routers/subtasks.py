@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from .. import models, schemas
+from .. import crud, models, schemas
 from ..database import get_db
 
 router = APIRouter(prefix="/api/tasks", tags=["subtasks"])
@@ -82,6 +82,12 @@ def update_subtask(
     db.commit()
     db.refresh(subtask)
     return subtask
+
+
+@router.post("/{task_id}/subtasks/{subtask_id}/pin", status_code=204)
+def pin_subtask(task_id: int, subtask_id: int, db: Session = Depends(get_db)):
+    """置顶子任务：挪到该任务子任务列表最前（一次性动作，无取消）。"""
+    crud.pin_subtask(db, _get_subtask(db, task_id, subtask_id))
 
 
 @router.delete("/{task_id}/subtasks/{subtask_id}", status_code=204)

@@ -34,7 +34,8 @@ interface TaskCardProps {
   onPriorityChange?: (priority: number) => void
   onToggleDone?: () => void
   onToggleSubtask?: (subtaskId: number, isDone: boolean) => void
-  onTogglePin?: () => void
+  /** 置顶：一次性动作，直接挪到最前，没有「取消置顶」。 */
+  onPin?: () => void
 }
 
 export function TaskCard({
@@ -50,7 +51,7 @@ export function TaskCard({
   onPriorityChange,
   onToggleDone,
   onToggleSubtask,
-  onTogglePin,
+  onPin,
 }: TaskCardProps) {
   const doneCount = task.subtasks.filter((item) => item.is_done).length
   const isDone = task.completed_at != null
@@ -97,24 +98,18 @@ export function TaskCard({
           ) : null}
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          {onTogglePin ? (
+          {onPin ? (
             <button
               type="button"
-              aria-label={task.is_pinned ? '取消置顶' : '置顶'}
-              title={task.is_pinned ? '取消置顶' : '置顶'}
-              aria-pressed={task.is_pinned}
+              aria-label="置顶"
+              title="置顶（挪到最前）"
               onClick={(event) => {
                 event.stopPropagation()
-                onTogglePin()
+                onPin()
               }}
-              className={cn(
-                'rounded border p-0.5 transition-all focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60',
-                task.is_pinned
-                  ? 'border-accent/50 bg-accent-soft text-accent'
-                  : 'border-line bg-surface text-muted opacity-0 hover:bg-elevated hover:text-ink group-hover:opacity-100',
-              )}
+              className="rounded border border-line bg-surface p-0.5 text-muted opacity-0 transition-opacity hover:bg-elevated hover:text-ink focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 group-hover:opacity-100"
             >
-              <Pin className={cn('h-3.5 w-3.5', task.is_pinned && 'fill-current')} />
+              <Pin className="h-3.5 w-3.5" />
             </button>
           ) : null}
           {handle}

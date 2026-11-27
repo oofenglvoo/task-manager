@@ -5,7 +5,6 @@ from datetime import date, datetime
 from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
-from sqlalchemy.orm.attributes import flag_modified
 
 from . import models
 from .models import utcnow
@@ -196,10 +195,7 @@ def create_task(db: Session, payload) -> models.Task:
 
 
 def duplicate_task(db: Session, task: models.Task) -> models.Task:
-    """复制任务：主字段、标签、子任务（含勾选状态）全部保留，标题追加「副本」。
-
-    置顶标记不复制：副本是新任务，若跟随原任务置顶会突然插到分组最前，容易误解。
-    """
+    """复制任务：主字段、标签、子任务（含勾选状态）全部保留，标题追加「副本」。"""
     title = f"{task.title} 副本"[:500]
     copy = models.Task(
         status_id=task.status_id,
@@ -211,7 +207,6 @@ def duplicate_task(db: Session, task: models.Task) -> models.Task:
         due_date=task.due_date,
         position=next_task_position(db),
         is_archived=False,
-        is_pinned=False,
         completed_at=task.completed_at,
     )
     copy.tags = list(task.tags)
@@ -219,7 +214,6 @@ def duplicate_task(db: Session, task: models.Task) -> models.Task:
         models.SubTask(
             title=item.title,
             is_done=item.is_done,
-            is_pinned=item.is_pinned,
             position=item.position,
         )
         for item in task.subtasks
@@ -241,7 +235,6 @@ def update_task(db: Session, task: models.Task, payload) -> models.Task:
     new_group_id = data.pop("group_id", None)
 
     before = build_history_snapshot(task)
-    before_updated_at = task.updated_at
 
     if "title" in data and data["title"] is not None:
         data["title"] = _clean_title(data["title"])
@@ -273,15 +266,6 @@ def update_task(db: Session, task: models.Task, payload) -> models.Task:
 
     if build_history_snapshot(task) != before:
         record_history(db, task)
-
-    # 置顶/位置只是显示开关，不是内容修改：别刷新 updated_at（否则卡片「修改时间」
-    # 与脉络图里按最近更新的评分都会因为点一下图钉而变动）。
-    if set(data) <= {"is_pinned", "position"} and not (
-        status_provided or group_provided or tag_ids is not None
-    ):
-        task.updated_at = before_updated_at
-        # 赋回原值不会被判为「脏」，必须显式标记，否则 onupdate 仍会覆盖。
-        flag_modified(task, "updated_at")
 
     db.commit()
     db.refresh(task)
@@ -320,3 +304,30 @@ def reorder_tasks(db: Session, ordered_ids: list[int]) -> None:
         if task is not None:
             task.position = index
     db.commit()
+
+
+def pin_task(db: Session, task: models.Task) -> None:
+    """置顶：直接把任务挪到手动顺序最前。
+
+    一次性动作：不记录原位置，也就没有「取消置顶」——想复原只能再拖回去。
+    只重排与它归档状态相同的任务，避免归档区/未归档区的 position 互相打乱。
+    """
+    stmt = (
+        select(models.Task.id)
+        .where(models.Task.is_archived == task.is_archived)
+        .order_by(models.Task.position, models.Task.id)
+    )
+    ordered_ids = [task_id for task_id in db.scalars(stmt) if task_id != task.id]
+    ordered_ids.insert(0, task.id)
+    reorder_tasks(db, ordered_ids)
+    db.refresh(task)
+
+
+def pin_subtask(db: Session, subtask: models.SubTask) -> None:
+    """置顶子任务：挪到该任务子任务列表最前（一次性动作，无取消）。"""
+    ordered_ids = [
+        item.id for item in subtask.task.subtasks if item.id != subtask.id
+    ]
+    ordered_ids.insert(0, subtask.id)
+    reorder_entities(db, models.SubTask, ordered_ids)
+    db.refresh(subtask)

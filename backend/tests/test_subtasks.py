@@ -86,7 +86,7 @@ def test_subtask_reorder_rejects_foreign_id(client, make_task):
     assert [item["title"] for item in listed] == ["甲"]
 
 
-def test_pinned_subtask_sorts_first(client, make_task):
+def test_pin_subtask_moves_to_front(client, make_task):
     task = make_task()
     items = {
         title: client.post(
@@ -95,49 +95,20 @@ def test_pinned_subtask_sorts_first(client, make_task):
         for title in ("甲", "乙", "丙")
     }
 
-    pinned = client.put(
-        f"/api/tasks/{task['id']}/subtasks/{items['乙']['id']}",
-        json={"is_pinned": True},
-    )
-    assert pinned.status_code == 200
-    assert pinned.json()["is_pinned"] is True
-
-    listed = client.get(f"/api/tasks/{task['id']}/subtasks").json()
-    assert [item["title"] for item in listed] == ["乙", "甲", "丙"]
-
-    # 取消置顶后回到原 position 顺序（非永久置顶）。
-    client.put(
-        f"/api/tasks/{task['id']}/subtasks/{items['乙']['id']}",
-        json={"is_pinned": False},
-    )
-    listed = client.get(f"/api/tasks/{task['id']}/subtasks").json()
-    assert [item["title"] for item in listed] == ["甲", "乙", "丙"]
-
-
-def test_subtask_reorder_keeps_pinned_first(client, make_task):
-    task = make_task()
-    items = {
-        title: client.post(
-            f"/api/tasks/{task['id']}/subtasks", json={"title": title}
-        ).json()
-        for title in ("甲", "乙", "丙")
-    }
-    client.put(
-        f"/api/tasks/{task['id']}/subtasks/{items['乙']['id']}",
-        json={"is_pinned": True},
-    )
-
-    response = client.put(
-        f"/api/tasks/{task['id']}/subtasks/reorder",
-        json={
-            "ordered_ids": [
-                items["丙"]["id"],
-                items["甲"]["id"],
-                items["乙"]["id"],
-            ]
-        },
+    response = client.post(
+        f"/api/tasks/{task['id']}/subtasks/{items['丙']['id']}/pin"
     )
     assert response.status_code == 204
 
     listed = client.get(f"/api/tasks/{task['id']}/subtasks").json()
-    assert [item["title"] for item in listed] == ["乙", "丙", "甲"]
+    assert [item["title"] for item in listed] == ["丙", "甲", "乙"]
+    assert [item["position"] for item in listed] == [1, 2, 3]
+    assert "is_pinned" not in listed[0]
+
+
+def test_pin_subtask_of_missing_task_returns_404(client, make_task):
+    task = make_task()
+    subtask = client.post(
+        f"/api/tasks/{task['id']}/subtasks", json={"title": "甲"}
+    ).json()
+    assert client.post(f"/api/tasks/99999/subtasks/{subtask['id']}/pin").status_code == 404

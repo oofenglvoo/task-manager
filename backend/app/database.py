@@ -64,26 +64,29 @@ def ensure_schema() -> None:
         _add_task_group(connection)
         _add_task_color(connection)
         _add_group_note(connection)
-        _add_bool_column(connection, "tasks", "is_pinned")
-        _add_bool_column(connection, "subtasks", "is_pinned")
+        _drop_column_if_exists(connection, "tasks", "is_pinned")
+        _drop_column_if_exists(connection, "subtasks", "is_pinned")
         _normalize_due_dates(connection)
         _normalize_history_due_dates(connection)
 
 
-def _add_bool_column(connection, table: str, column: str) -> None:
-    """Add a NOT NULL BOOLEAN column defaulting to 0. Idempotent (PRAGMA guarded).
+def _drop_column_if_exists(connection, table: str, column: str) -> None:
+    """Best-effort removal of an abandoned column. Idempotent (PRAGMA guarded).
 
-    `create_all` only creates missing tables, so existing databases need this to
-    pick up new flag columns. `table`/`column` are literals from this module.
+    置顶曾经是一个 `is_pinned` 标记列，后来改成「直接把 position 挪到最前」的
+    一次性动作，列因此废弃。`create_all` 不会删列，所以在这里清理；SQLite
+    3.35+ 才支持 DROP COLUMN，旧版本失败时静默跳过——多出来的列没人读写，无害。
+    `table`/`column` 都是本模块里的字面量。
     """
     columns = {
         row[1] for row in connection.exec_driver_sql(f"PRAGMA table_info({table})")
     }
-    if not columns or column in columns:
+    if not columns or column not in columns:
         return
-    connection.exec_driver_sql(
-        f"ALTER TABLE {table} ADD COLUMN {column} BOOLEAN NOT NULL DEFAULT 0"
-    )
+    try:
+        connection.exec_driver_sql(f"ALTER TABLE {table} DROP COLUMN {column}")
+    except Exception:  # noqa: BLE001 - 旧版 SQLite 不支持 DROP COLUMN
+        pass
 
 
 def _normalize_due_dates(connection) -> None:

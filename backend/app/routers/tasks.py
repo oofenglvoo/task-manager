@@ -69,13 +69,10 @@ def list_tasks(
         )
 
     column = SORT_COLUMNS[sort]
-    order_clauses = []
-    if sort == "position":
-        # 置顶（非永久）只在手动排序下优先；按优先级/日期等排序时完全按所选字段。
-        order_clauses.append(models.Task.is_pinned.desc())
-    order_clauses.append(column.desc() if order == "desc" else column.asc())
-    order_clauses.append(models.Task.id.asc())
-    stmt = stmt.order_by(*order_clauses)
+    stmt = stmt.order_by(
+        column.desc() if order == "desc" else column.asc(),
+        models.Task.id.asc(),
+    )
     return list(db.scalars(stmt.options(*LOAD_OPTIONS)))
 
 
@@ -106,6 +103,12 @@ def update_task(
 def duplicate_task(task_id: int, db: Session = Depends(get_db)):
     task = _get_task(db, task_id)
     return crud.duplicate_task(db, task)
+
+
+@router.post("/{task_id}/pin", status_code=204)
+def pin_task(task_id: int, db: Session = Depends(get_db)):
+    """置顶：直接把任务挪到手动顺序最前（一次性动作，无取消）。"""
+    crud.pin_task(db, _get_task(db, task_id))
 
 
 @router.put("/{task_id}/move", response_model=schemas.TaskOut)

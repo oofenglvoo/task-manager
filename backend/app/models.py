@@ -10,7 +10,6 @@ from sqlalchemy import (
     String,
     Table,
     Text,
-    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -99,10 +98,6 @@ class Task(Base):
     due_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    # 置顶（非永久）：只在手动排序下排到所属分组最前，取消后回到原 position 顺序。
-    is_pinned: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False, server_default=text("0")
-    )
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, default=utcnow, onupdate=utcnow
@@ -117,12 +112,7 @@ class Task(Base):
     subtasks: Mapped[list["SubTask"]] = relationship(
         back_populates="task",
         cascade="all, delete-orphan",
-        # 置顶（非永久）子任务排在前面，其余按手动 position。
-        order_by=lambda: [
-            SubTask.is_pinned.desc(),
-            SubTask.position,
-            SubTask.id,
-        ],
+        order_by="SubTask.position",
     )
     history: Mapped[list["TaskHistory"]] = relationship(
         back_populates="task",
@@ -154,10 +144,6 @@ class SubTask(Base):
     )
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     is_done: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    # 置顶（非永久）：排在子任务列表最前，取消后回到原 position 顺序。
-    is_pinned: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False, server_default=text("0")
-    )
     position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utcnow)
 

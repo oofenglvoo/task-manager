@@ -26,8 +26,6 @@ export interface SubTask {
   task_id: number
   title: string
   is_done: boolean
-  /** 置顶（非永久）：排在子任务列表最前，可取消。 */
-  is_pinned: boolean
   position: number
 }
 
@@ -67,8 +65,6 @@ export interface Task {
   due_date: string | null
   position: number
   is_archived: boolean
-  /** 置顶（非永久）：手动排序下排到所属分组最前，可取消。 */
-  is_pinned: boolean
   created_at: string
   updated_at: string
   completed_at: string | null
@@ -114,7 +110,6 @@ export interface TaskInput {
   color?: string | null
   due_date?: string | null
   tag_ids?: number[]
-  is_pinned?: boolean
 }
 
 export interface TaskQuery {

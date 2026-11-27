@@ -328,39 +328,39 @@ def test_normalize_history_due_dates_rewrites_date_only(tmp_path):
     assert json.loads(snapshots[2])["due_date"] is None
 
 
-
-def test_add_bool_column_is_idempotent(tmp_path):
+def test_drop_column_if_exists_is_idempotent(tmp_path):
     from app import database
 
     db_path = tmp_path / "legacy.db"
     engine = create_engine(f"sqlite:///{db_path.as_posix()}", future=True)
     with engine.begin() as connection:
         connection.exec_driver_sql(
-            "CREATE TABLE tasks (id INTEGER NOT NULL PRIMARY KEY)"
+            "CREATE TABLE tasks ("
+            "id INTEGER NOT NULL PRIMARY KEY, is_pinned BOOLEAN NOT NULL DEFAULT 0)"
         )
-        connection.exec_driver_sql(
-            "CREATE TABLE subtasks (id INTEGER NOT NULL PRIMARY KEY)"
-        )
-        database._add_bool_column(connection, "tasks", "is_pinned")
-        database._add_bool_column(connection, "subtasks", "is_pinned")
+        connection.exec_driver_sql("INSERT INTO tasks (id, is_pinned) VALUES (1, 1)")
+        database._drop_column_if_exists(connection, "tasks", "is_pinned")
     with engine.begin() as connection:
-        database._add_bool_column(connection, "tasks", "is_pinned")
+        database._drop_column_if_exists(connection, "tasks", "is_pinned")
 
     with sqlite3.connect(db_path) as connection:
-        task_columns = [
-            row[1] for row in connection.execute("PRAGMA table_info(tasks)")
-        ]
-        subtask_columns = [
-            row[1] for row in connection.execute("PRAGMA table_info(subtasks)")
-        ]
-        assert task_columns.count("is_pinned") == 1
-        assert subtask_columns.count("is_pinned") == 1
+        columns = [row[1] for row in connection.execute("PRAGMA table_info(tasks)")]
+        assert "is_pinned" not in columns
+        assert connection.execute("SELECT COUNT(*) FROM tasks").fetchone()[0] == 1
 
 
-def test_add_bool_column_skips_missing_table(tmp_path):
+def test_drop_column_skips_missing_table_or_column(tmp_path):
     from app import database
 
     db_path = tmp_path / "empty.db"
     engine = create_engine(f"sqlite:///{db_path.as_posix()}", future=True)
     with engine.begin() as connection:
-        database._add_bool_column(connection, "tasks", "is_pinned")
+        database._drop_column_if_exists(connection, "tasks", "is_pinned")
+        connection.exec_driver_sql(
+            "CREATE TABLE tasks (id INTEGER NOT NULL PRIMARY KEY)"
+        )
+        database._drop_column_if_exists(connection, "tasks", "is_pinned")
+        columns = [
+            row[1] for row in connection.exec_driver_sql("PRAGMA table_info(tasks)")
+        ]
+        assert columns == ["id"]

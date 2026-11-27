@@ -332,60 +332,46 @@ def test_as_datetime_handles_all_legacy_shapes():
     assert as_datetime(b"x") is None
 
 
-def test_pinned_task_comes_first_in_manual_sort(client, make_task):
+def test_pin_moves_task_to_front(client, make_task):
     first = make_task(title="第一")
     second = make_task(title="第二")
     third = make_task(title="第三")
 
-    pinned = client.put(f"/api/tasks/{third['id']}", json={"is_pinned": True})
-    assert pinned.status_code == 200
-    assert pinned.json()["is_pinned"] is True
+    response = client.post(f"/api/tasks/{third['id']}/pin")
+    assert response.status_code == 204
+
+    tasks = client.get("/api/tasks").json()
+    assert [item["id"] for item in tasks] == [third["id"], first["id"], second["id"]]
+    assert [item["position"] for item in tasks] == [1, 2, 3]
+
+
+def test_pin_keeps_other_relative_order(client, make_task):
+    tasks = [make_task(title=f"任务{index}") for index in range(4)]
+
+    client.post(f"/api/tasks/{tasks[2]['id']}/pin")
 
     ids = [item["id"] for item in client.get("/api/tasks").json()]
-    assert ids == [third["id"], first["id"], second["id"]]
+    assert ids == [tasks[2]["id"], tasks[0]["id"], tasks[1]["id"], tasks[3]["id"]]
 
 
-def test_unpin_restores_manual_order(client, make_task):
-    first = make_task(title="第一")
-    second = make_task(title="第二")
+def test_pin_is_a_one_shot_reorder_not_a_flag(client, make_task):
+    """置顶只改 position：任务上不再有 is_pinned 状态字段。"""
+    task = make_task()
+    assert client.post(f"/api/tasks/{task['id']}/pin").status_code == 204
 
-    client.put(f"/api/tasks/{second['id']}", json={"is_pinned": True})
-    client.put(f"/api/tasks/{second['id']}", json={"is_pinned": False})
-
-    ids = [item["id"] for item in client.get("/api/tasks").json()]
-    assert ids == [first["id"], second["id"]]
+    fetched = client.get(f"/api/tasks/{task['id']}").json()
+    assert "is_pinned" not in fetched
+    assert fetched["position"] == 1
 
 
-def test_pin_does_not_affect_other_sorts(client, make_task):
-    low = make_task(title="低", priority=1)
-    high = make_task(title="高", priority=3)
-    client.put(f"/api/tasks/{low['id']}", json={"is_pinned": True})
+def test_pin_leaves_archived_tasks_alone(client, make_task):
+    active = make_task(title="进行中")
+    archived = make_task(title="已归档")
+    client.post(f"/api/tasks/{archived['id']}/archive", json={"is_archived": True})
 
-    ids = [
-        item["id"]
-        for item in client.get("/api/tasks?sort=priority&order=desc").json()
+    client.post(f"/api/tasks/{active['id']}/pin")
+
+    assert [item["id"] for item in client.get("/api/tasks?archived=true").json()] == [
+        archived["id"]
     ]
-    assert ids == [high["id"], low["id"]]
-
-
-def test_duplicate_task_drops_pin(client, make_task):
-    task = make_task(title="置顶原任务")
-    client.put(f"/api/tasks/{task['id']}", json={"is_pinned": True})
-
-    copy = client.post(f"/api/tasks/{task['id']}/duplicate").json()
-    assert copy["title"] == "置顶原任务 副本"
-    assert copy["is_pinned"] is False
-
-
-def test_pin_toggle_does_not_touch_updated_at(client, make_task):
-    task = make_task(title="置顶不改修改时间")
-    before = task["updated_at"]
-
-    pinned = client.put(f"/api/tasks/{task['id']}", json={"is_pinned": True}).json()
-    assert pinned["updated_at"] == before
-
-    # 正常内容修改仍然刷新 updated_at。
-    renamed = client.put(
-        f"/api/tasks/{task['id']}", json={"title": "改了标题"}
-    ).json()
-    assert renamed["updated_at"] != before
+    assert client.get(f"/api/tasks/{archived['id']}").json()["position"] == 2
